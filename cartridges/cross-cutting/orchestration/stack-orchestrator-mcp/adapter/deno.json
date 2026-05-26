@@ -1,17 +1,21 @@
 {
   "name": "@hyperpolymath/stack-orchestrator-mcp-adapter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "exports": {
     "./parser": "./parser.ts",
     "./planner": "./planner.ts",
+    "./executor": "./executor.ts",
+    "./rollback": "./rollback.ts",
+    "./lsp_client": "./lsp_client.ts",
     "./types": "./types.ts"
   },
   "tasks": {
-    "test": "deno test --allow-read --allow-env",
-    "check": "deno check parser.ts planner.ts types.ts"
+    "test": "deno test --allow-read --allow-run --allow-env",
+    "check": "deno check parser.ts planner.ts executor.ts rollback.ts lsp_client.ts types.ts"
   },
   "imports": {
     "@std/toml": "jsr:@std/toml@1",
-    "@std/assert": "jsr:@std/assert@1"
+    "@std/assert": "jsr:@std/assert@1",
+    "@std/path": "jsr:@std/path@1"
   }
 }

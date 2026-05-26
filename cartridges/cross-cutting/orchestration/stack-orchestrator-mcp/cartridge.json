@@ -13,7 +13,8 @@
     "REST"
   ],
   "states": [
-    "phase-2-parser-planner"
+    "phase-2-parser-planner",
+    "phase-3-execute-rollback"
   ],
   "auth": {
     "method": "none",

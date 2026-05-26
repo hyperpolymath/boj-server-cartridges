@@ -1,0 +1,653 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "api": {
+    "base_url": "local://local-coord-mcp",
+    "content_type": "application/json"
+  },
+  "auth": {
+    "credential_source": null,
+    "description": "Per-instance session token issued on coord_register. All subsequent calls require this token.",
+    "env_var": null,
+    "method": "session-token"
+  },
+  "bind": {
+    "address": "127.0.0.1",
+    "loopback_only": true,
+    "port": 7745
+  },
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "description": "Localhost multi-instance coordination — peer discovery, message passing, and task claiming for parallel AI sessions on the same machine",
+  "domain": "ai",
+  "federation": "none",
+  "name": "local-coord-mcp",
+  "protocols": [
+    "MCP",
+    "Agentic"
+  ],
+  "spdx": "MPL-2.0",
+  "tier": "Ayo",
+  "tools": [
+    {
+      "description": "Register this instance as a coordination peer. Returns a peer ID and a session token for all subsequent calls. Optional `context` (alphanumeric + hyphen/underscore, max 32 bytes) disambiguates multiple windows of the same client_kind. Optional `declared_affinities` is an array of tag names the peer self-reports as strengths — feeds the reassignment engine (Task #14). Optional `variant` is a free-form model identifier (Task #33). Optional `capabilities` advertises class / tier / prover_strengths for cold-start routing (Task #34).",
+      "inputSchema": {
+        "properties": {
+          "capabilities": {
+            "description": "Capability advertisement used for cold-start routing (Task #34). All three keys are individually optional.",
+            "properties": {
+              "class": {
+                "description": "Capability classes (e.g. 'reasoning', 'coding', 'proof', 'grammar'). CSV internally, max 128 bytes total.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "prover_strengths": {
+                "description": "Prover names this peer claims strength in (e.g. 'coq', 'lean', 'tlaps'). CSV internally, max 256 bytes total.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "tier": {
+                "description": "Advertised capability tier 1..5 (0 = unset).",
+                "maximum": 5,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "client_kind": {
+            "description": "Client family: claude, gemini, copilot, openai, mistral, or custom (Task #33 extended openai + mistral).",
+            "enum": [
+              "claude",
+              "gemini",
+              "copilot",
+              "custom",
+              "openai",
+              "mistral"
+            ],
+            "type": "string"
+          },
+          "context": {
+            "description": "Optional per-window disambiguator (repo name, tty label). Alphanumeric/hyphen/underscore only, max 32 chars.",
+            "type": "string"
+          },
+          "declared_affinities": {
+            "description": "Optional array of tag strings the peer claims as strengths (e.g. ['proof-analysis', 'supervision']). Feeds Task #14 reassignment engine.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "role": {
+            "description": "Optional requested role (DD-32). master is ALWAYS rejected here — promote via coord_promote_to_master. Default: claude->journeyman, others->apprentice. Old aliases (executor, supervised) accepted for one release.",
+            "enum": [
+              "journeyman",
+              "apprentice",
+              "executor",
+              "supervised"
+            ],
+            "type": "string"
+          },
+          "variant": {
+            "description": "Free-form model/variant label (Task #33). Alphanumeric + `.`/`-`/`_` only, max 32 bytes. e.g. 'opus-4.7', 'flash-2.5', 'leanstral'.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_kind"
+        ],
+        "type": "object"
+      },
+      "name": "coord_register"
+    },
+    {
+      "description": "List all active coordination peers on this machine. Returns peer IDs, client kinds, and states.",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_list_peers"
+    },
+    {
+      "description": "Send a message to a specific peer (by peer ID) or broadcast to all peers (target '*'). Messages are queued in recipient inboxes.",
+      "inputSchema": {
+        "properties": {
+          "message": {
+            "description": "Message content",
+            "type": "string"
+          },
+          "target": {
+            "description": "Peer ID to send to, or '*' for broadcast",
+            "type": "string"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "target",
+          "message"
+        ],
+        "type": "object"
+      },
+      "name": "coord_send"
+    },
+    {
+      "description": "Receive the next message from this peer's inbox. Returns the message content, or empty if no messages pending.",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_receive"
+    },
+    {
+      "description": "Attempt to claim a task (mutex-style). If the task is unclaimed, this peer becomes the holder. If another peer holds it, the claim is denied. Idempotent if already held by caller. Task #15: optional confidence, dispatch_preference (deliberate/broadcast/auto), task_difficulty (trivial/routine/challenging/novel) — default policy broadcasts trivial+routine, deliberates on challenging+novel. Claim rejection triggers a per-client_kind rate-limit: 5 rejections / 10 min => 30s cooldown before the next attempt. Optional `paths` declares working-tree files this claim expects to touch; the bridge layer returns advisory `path_overlap` warnings when overlap is detected with other active claims. Bridge-only — backend ignores the field.",
+      "inputSchema": {
+        "properties": {
+          "confidence": {
+            "description": "Sender's self-assessed fit 0.0-1.0 (DD-28; feeds overclaim detector)",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "dispatch_preference": {
+            "description": "Routing hint (DD-30). auto = server derives from task_difficulty",
+            "enum": [
+              "deliberate",
+              "broadcast",
+              "auto"
+            ],
+            "type": "string"
+          },
+          "paths": {
+            "description": "Optional advisory list of working-tree paths this claim expects to touch. Bridge-layer hint only — not enforced by the backend.",
+            "items": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "task": {
+            "description": "Task identifier to claim (e.g. 'audit-boj-server')",
+            "type": "string"
+          },
+          "task_difficulty": {
+            "description": "Difficulty level (DD-30; drives default dispatch mode)",
+            "enum": [
+              "trivial",
+              "routine",
+              "challenging",
+              "novel"
+            ],
+            "type": "string"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "task"
+        ],
+        "type": "object"
+      },
+      "name": "coord_claim_task"
+    },
+    {
+      "description": "Set or broadcast this peer's current work status. Other peers can see it via coord_list_peers.",
+      "inputSchema": {
+        "properties": {
+          "status": {
+            "description": "Current work status description",
+            "type": "string"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "status"
+        ],
+        "type": "object"
+      },
+      "name": "coord_status"
+    },
+    {
+      "description": "Promote this peer to the master role (DD-32, renamed from supervisor). Requires BOJ_MASTER_TOKEN env-var (BOJ_SUPERVISOR_TOKEN accepted as fallback for one release) and the presented secret to match. At most one master at a time. The old tool name `coord_promote_to_supervisor` is accepted as an alias.",
+      "inputSchema": {
+        "properties": {
+          "secret": {
+            "description": "Must match BOJ_MASTER_TOKEN env var on the server (BOJ_SUPERVISOR_TOKEN fallback)",
+            "type": "string"
+          },
+          "token": {
+            "description": "Own session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "secret"
+        ],
+        "type": "object"
+      },
+      "name": "coord_promote_to_master"
+    },
+    {
+      "description": "Send a message with a declared risk_tier. Tier 2+ from role=apprentice peers is quarantined for master review; everything else delivers directly. Returns status:quarantined + request_id when gated.",
+      "inputSchema": {
+        "properties": {
+          "message": {
+            "description": "Message content (typically an A2ML envelope per schemas/coord-messages.ncl)",
+            "type": "string"
+          },
+          "risk_tier": {
+            "description": "Declared risk tier 0-4 per the risk ladder",
+            "maximum": 4,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "target": {
+            "description": "Peer ID to send to, or '*' for broadcast",
+            "type": "string"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "target",
+          "message",
+          "risk_tier"
+        ],
+        "type": "object"
+      },
+      "name": "coord_send_gated"
+    },
+    {
+      "description": "List all currently quarantined messages awaiting master decision. Master role only.",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Master session token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_review"
+    },
+    {
+      "description": "Read the full message body of a specific quarantined entry. Master role only.",
+      "inputSchema": {
+        "properties": {
+          "request_id": {
+            "description": "Request ID from coord_review or coord_send_gated",
+            "type": "integer"
+          },
+          "token": {
+            "description": "Master session token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "request_id"
+        ],
+        "type": "object"
+      },
+      "name": "coord_review_entry"
+    },
+    {
+      "description": "Approve a quarantined message — delivers to target and removes from queue. Master role only.",
+      "inputSchema": {
+        "properties": {
+          "request_id": {
+            "description": "Request ID to approve",
+            "type": "integer"
+          },
+          "token": {
+            "description": "Master session token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "request_id"
+        ],
+        "type": "object"
+      },
+      "name": "coord_approve"
+    },
+    {
+      "description": "Reject a quarantined message with a reason — removes from queue without delivery. Master role only. Reason logged for audit.",
+      "inputSchema": {
+        "properties": {
+          "reason": {
+            "description": "Reason for rejection (surfaces in audit log)",
+            "type": "string"
+          },
+          "request_id": {
+            "description": "Request ID to reject",
+            "type": "integer"
+          },
+          "token": {
+            "description": "Master session token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "request_id",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "name": "coord_reject"
+    },
+    {
+      "description": "Report the outcome of a claim or attempted op against an affinity tag. Aggregated into the track record keyed on client_kind (survives peer restart). Feeds effective_affinity + reassignment suggestions. Task #14: optional `confidence` 0.0-1.0 feeds the overclaim detector.",
+      "inputSchema": {
+        "properties": {
+          "confidence": {
+            "description": "Self-assessed confidence at claim time (0.0-1.0). Feeds overclaim detection.",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "duration_ms": {
+            "description": "Wall-time duration of the op in ms (optional, default 0)",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "outcome": {
+            "description": "'success' or 'fail' (or 1/0)",
+            "enum": [
+              "success",
+              "fail"
+            ],
+            "type": "string"
+          },
+          "risk_tier": {
+            "description": "Risk tier of the op (0-4)",
+            "maximum": 4,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "tag": {
+            "description": "Affinity tag the op belongs to (e.g. 'proof-analysis', 'routine-edit')",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "tag",
+          "outcome",
+          "risk_tier"
+        ],
+        "type": "object"
+      },
+      "name": "coord_report_outcome"
+    },
+    {
+      "description": "Return per-(client_kind, tag) effective_affinity computed over the last 20 attempts OR last 7 days (whichever is larger). Used by Opus to drive attester selection (DD-27) and reassignment suggestions (DD-28).",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_get_affinities"
+    },
+    {
+      "description": "Set this peer's declared affinities (self-reported strengths). Replaces any existing list. Task #14 diffs against effective_affinity to detect overclaim/promote/remove outliers.",
+      "inputSchema": {
+        "properties": {
+          "tags": {
+            "description": "Array of tag names (e.g. ['proof-analysis', 'supervision']). Serialised as CSV internally (max 256 bytes total).",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "tags"
+        ],
+        "type": "object"
+      },
+      "name": "coord_set_declared_affinities"
+    },
+    {
+      "description": "Run the reassignment-suggestion scanner (Task #14). Scans track-record aggregates vs declared_affinities; enqueues candidate envelopes in the quarantine for master review. Rules: overclaim (high avg_confidence + low effective_affinity), promote (high effective_affinity on undeclared tag), remove (low effective_affinity with >=5 attempts). Master reviews via coord_review / approves via coord_approve / rejects via coord_reject — never auto-modifies.",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_scan_suggestions"
+    },
+    {
+      "description": "Live master handoff (Task #35). Outgoing master passes the role to a named successor without a process restart. Secret-gated by BOJ_MASTER_TOKEN (BOJ_SUPERVISOR_TOKEN fallback). Target must be journeyman or already master — apprentices rejected. Audit-logged so replay reconstructs the transfer.",
+      "inputSchema": {
+        "properties": {
+          "new_peer_id": {
+            "description": "Peer id of the successor (kind-4hex[@context])",
+            "type": "string"
+          },
+          "secret": {
+            "description": "Must match BOJ_MASTER_TOKEN env var on the server",
+            "type": "string"
+          },
+          "token": {
+            "description": "Current master's session token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "new_peer_id",
+          "secret"
+        ],
+        "type": "object"
+      },
+      "name": "coord_transfer_master"
+    },
+    {
+      "description": "Set or update this peer's free-form model/variant label after registration (Task #33). Alphanumeric + `.`/`-`/`_` only, max 32 bytes. Empty clears.",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          },
+          "variant": {
+            "description": "Variant label (e.g. 'opus-4.7', 'flash-2.5', 'leanstral')",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "variant"
+        ],
+        "type": "object"
+      },
+      "name": "coord_set_variant"
+    },
+    {
+      "description": "Set or update this peer's advertised capabilities (Task #34). Any omitted key is cleared.",
+      "inputSchema": {
+        "properties": {
+          "class": {
+            "description": "Capability classes (CSV internally, max 128 bytes).",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "prover_strengths": {
+            "description": "Prover strengths (CSV internally, max 256 bytes).",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tier": {
+            "description": "Advertised capability tier 1..5 (0 = unset).",
+            "maximum": 5,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_set_capabilities"
+    },
+    {
+      "description": "Read another peer's advertised capabilities (Task #34). Used by the routing layer for cold-start dispatch when track_record is thin.",
+      "inputSchema": {
+        "properties": {
+          "peer_id": {
+            "description": "Target peer_id (<kind>-<4hex>[@<context>])",
+            "type": "string"
+          },
+          "token": {
+            "description": "Own session token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "peer_id"
+        ],
+        "type": "object"
+      },
+      "name": "coord_get_peer_capabilities"
+    },
+    {
+      "description": "Read-only snapshot of coord-mcp state: active peer count (with per-kind / per-role breakdown), pending quarantine depth, active claims, track-record fill, and recent reject counts with cooldown flags. Lets other tooling monitor coord health without walking every export individually.",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Session token from coord_register — any active peer may poll.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_health"
+    },
+    {
+      "description": "Heartbeat for a held claim — resets the watchdog TTL (DD-20). Apprentice TTL is 30 s, journeyman 5 min, master no watchdog. Long-running work should ping this periodically so the server doesn't auto-release the claim.",
+      "inputSchema": {
+        "properties": {
+          "task": {
+            "description": "Task identifier previously claimed via coord_claim_task",
+            "type": "string"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "task"
+        ],
+        "type": "object"
+      },
+      "name": "coord_progress"
+    },
+    {
+      "description": "Explicit watchdog sweep — release any claim whose holder has missed its role-based TTL. The sweep also runs implicitly at the top of every coord_claim_task, so this tool is only needed by ops wanting an external tick.",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Session token from coord_register — any active peer may invoke.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_sweep_watchdog"
+    }
+  ],
+  "version": "0.9.0",
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/liblocal_coord_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
+}

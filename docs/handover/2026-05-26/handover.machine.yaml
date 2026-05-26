@@ -75,17 +75,22 @@ prompts:
   cartridge:
     - id: "cartridge-01-open-pr-6"
       file: "prompts/cartridge-01-open-pr-6.adoc"
-      status: "ready"
+      status: "done"
+      completed_pr: "boj-server-cartridges#6"
+      completed_at: "2026-05-26"
       blockers: []
       effort_hours: 0.25
       summary: "Open the rate-limited stack-orchestrator-mcp PR via web UI or retry CLI"
 
     - id: "cartridge-02-phase-3-execute-rollback"
       file: "prompts/cartridge-02-phase-3-execute-rollback.adoc"
-      status: "ready"
+      status: "done"
+      completed_pr: "boj-server-cartridges#8"
+      completed_at: "2026-05-26"
       blockers: ["cartridge-01-open-pr-6", "cartridge-04-lsp-adapter-pattern"]
       effort_hours: 6
       summary: "Port executor.ex + lsp_client.ex to Deno; wire stack_execute_phase + stack_rollback tools"
+      tests_added: 28  # 13 executor + 4 rollback + 10 lsp_client + 1 integration
 
     - id: "cartridge-03-phase-4-verify-idris-abi"
       file: "prompts/cartridge-03-phase-4-verify-idris-abi.adoc"
@@ -96,12 +101,14 @@ prompts:
 
     - id: "cartridge-04-lsp-adapter-pattern"
       file: "prompts/cartridge-04-lsp-adapter-pattern.adoc"
-      status: "ready"
+      status: "partial"
+      completed_count: 1
+      remaining_count: 10
       blockers: []
-      effort_hours: 22  # ~2h per cartridge × 11 cartridges
-      summary: "Template for porting each LSP cartridge's Elixir source to Deno adapter. 11 cartridges to work through."
+      effort_hours: 20  # ~2h per remaining cartridge × 10 cartridges
+      summary: "Template for porting each LSP cartridge's Elixir source to Deno adapter. proof-lsp DONE; 10 remain."
       sub_tasks:
-        - { cartridge: "proof-lsp",     suggested_order: 1, rationale: "smallest, formally-verified-adjacent" }
+        - { cartridge: "proof-lsp",     suggested_order: 1, rationale: "smallest, formally-verified-adjacent", status: "done", completed_pr: "boj-server-cartridges#7", completed_at: "2026-05-26", tests_added: 28 }
         - { cartridge: "iac-lsp",       suggested_order: 2, rationale: "only 2 backends, opentofu/pulumi" }
         - { cartridge: "secrets-lsp",   suggested_order: 3, rationale: "2 backends, simple subprocess model" }
         - { cartridge: "container-lsp", suggested_order: 4, rationale: "3 well-documented backends" }
@@ -123,14 +130,14 @@ prompts:
     - id: "cartridge-06-standards-200-followthrough"
       file: "prompts/cartridge-06-standards-200-followthrough.adoc"
       status: "ready"
-      blockers: ["standards#200 merge"]
+      blockers: []  # standards#200 merged 2026-05-26
       effort_hours: 1
       summary: "SHA-pin canonical schema in boj-server + boj-server-cartridges mirrors"
 
     - id: "cartridge-07-boj-server-158-followthrough"
       file: "prompts/cartridge-07-boj-server-158-followthrough.adoc"
       status: "ready"
-      blockers: ["boj-server#158 merge"]
+      blockers: []  # boj-server#158 merged 2026-05-26 at 13:26 UTC; burn-in clock started
       effort_hours: 4
       summary: "Tray remote-fetch wiring + catalog reload-without-restart + SHA-pin"
 
@@ -144,15 +151,18 @@ prompts:
 
     - id: "earlier-02-cloudflare-token-rotation"
       file: "prompts/earlier-02-cloudflare-token-rotation.adoc"
-      status: "blocked_on_user"
-      blockers: ["user_confirms_rotation"]
+      status: "closed_abandoned"
+      blockers: []
       effort_hours: 2
       summary: "Confirm Cloudflare token rotation, then complete git-history rewrite"
-      risk: "HIGH — leaked token still potentially live in history"
+      resolution: "Token rotated 2026-05-26 (user-confirmed). History rewrite ABANDONED after blast-radius audit: 436 commits would lose signatures (required_signatures ruleset), ~578 downstream pins break, parallel-session merges interfere. Memory project_cloudflare_token_leak_2026_05_21.md holds full rationale + 'what to do if it resurfaces'. Pattern: rotation > rewrite."
 
     - id: "earlier-03-hypatia-scorecard-polystack-ref"
       file: "prompts/earlier-03-hypatia-scorecard-polystack-ref.adoc"
-      status: "ready"
+      status: "in_flight"
+      completed_pr: "hypatia#344"
+      completed_at: "2026-05-26"
+      auto_merge_state: "OPEN with auto-merge ON; CI pending"
       blockers: []
       effort_hours: 0.25
       summary: "Remove dangling polystack reference in Hypatia scorecard manifest"

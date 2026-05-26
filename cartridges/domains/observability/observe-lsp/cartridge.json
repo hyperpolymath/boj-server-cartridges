@@ -1,0 +1,221 @@
+{
+  "$schema": "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "observe-lsp",
+  "version": "0.1.0",
+  "description": "Language Server Protocol implementation for observability query languages and dashboard definitions. Provides IDE integration for PromQL/LogQL completion, Grafana dashboard JSON validation, Jaeger trace queries, and SLO hints across Prometheus, Loki, Grafana, and Jaeger.",
+  "domain": "Observability",
+  "category": "domain",
+  "tier": "Ayo",
+  "protocols": [
+    "LSP"
+  ],
+  "states": [
+    "scaffolded"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://observe-lsp",
+    "content_type": "application/vscode-jsonrpc; charset=utf-8"
+  },
+  "tools": [
+    {
+      "name": "lsp_initialize",
+      "description": "LSP initialize handshake. Returns server capabilities.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "rootUri": {
+            "type": "string",
+            "description": "Workspace root URI"
+          },
+          "capabilities": {
+            "type": "object",
+            "description": "Client LSP capabilities"
+          }
+        },
+        "required": [
+          "rootUri"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_diagnostic",
+      "description": "Run validator on a document and return diagnostics (errors, warnings, hints).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "Document URI"
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "prometheus",
+              "loki",
+              "grafana",
+              "jaeger"
+            ],
+            "description": "Backend provider"
+          }
+        },
+        "required": [
+          "uri",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_hover",
+      "description": "Return documentation or type info at a position.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer"
+              },
+              "character": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "prometheus",
+              "loki",
+              "grafana",
+              "jaeger"
+            ]
+          }
+        },
+        "required": [
+          "uri",
+          "position",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_completion",
+      "description": "Return completion items at a position.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer"
+              },
+              "character": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "prometheus",
+              "loki",
+              "grafana",
+              "jaeger"
+            ]
+          }
+        },
+        "required": [
+          "uri",
+          "position",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_workspace_execute_command",
+      "description": "Execute a domain-specific command.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": [
+              "observe.queryComplete",
+              "observe.dashboardValidate",
+              "observe.sloHint",
+              "observe.traceSearch"
+            ]
+          },
+          "arguments": {
+            "type": "array",
+            "description": "Command-specific arguments"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      }
+    }
+  ],
+  "backends": [
+    {
+      "id": "prometheus",
+      "binary": "promtool",
+      "extensions": [
+        ".promql",
+        ".yaml"
+      ]
+    },
+    {
+      "id": "loki",
+      "binary": "logcli",
+      "extensions": [
+        ".logql"
+      ]
+    },
+    {
+      "id": "grafana",
+      "binary": "grafana-cli",
+      "extensions": [
+        ".json"
+      ]
+    },
+    {
+      "id": "jaeger",
+      "binary": "jaeger",
+      "extensions": [
+        ".json"
+      ]
+    }
+  ],
+  "loopback": {
+    "host": "127.0.0.1",
+    "port": 5186
+  },
+  "source": {
+    "registry": "hyperpolymath/boj-server-cartridges",
+    "path": "cartridges/domains/observability/observe-lsp"
+  }
+}

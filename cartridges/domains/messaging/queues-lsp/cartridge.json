@@ -1,0 +1,212 @@
+{
+  "$schema": "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "queues-lsp",
+  "version": "0.1.0",
+  "description": "Language Server Protocol implementation for message-queue configurations and subject/topic schemas. Provides IDE integration for routing-key linting, subject-pattern completion, dead-letter-queue hints, and consumer-group diagnostics across NATS, RabbitMQ, and Redis Streams.",
+  "domain": "Messaging",
+  "category": "domain",
+  "tier": "Ayo",
+  "protocols": [
+    "LSP"
+  ],
+  "states": [
+    "scaffolded"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://queues-lsp",
+    "content_type": "application/vscode-jsonrpc; charset=utf-8"
+  },
+  "tools": [
+    {
+      "name": "lsp_initialize",
+      "description": "LSP initialize handshake. Returns server capabilities.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "rootUri": {
+            "type": "string",
+            "description": "Workspace root URI"
+          },
+          "capabilities": {
+            "type": "object",
+            "description": "Client LSP capabilities"
+          }
+        },
+        "required": [
+          "rootUri"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_diagnostic",
+      "description": "Run validator on a document and return diagnostics (errors, warnings, hints).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "Document URI"
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "nats",
+              "rabbitmq",
+              "redis_streams"
+            ],
+            "description": "Backend provider"
+          }
+        },
+        "required": [
+          "uri",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_hover",
+      "description": "Return documentation or type info at a position.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer"
+              },
+              "character": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "nats",
+              "rabbitmq",
+              "redis_streams"
+            ]
+          }
+        },
+        "required": [
+          "uri",
+          "position",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_completion",
+      "description": "Return completion items at a position.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer"
+              },
+              "character": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "nats",
+              "rabbitmq",
+              "redis_streams"
+            ]
+          }
+        },
+        "required": [
+          "uri",
+          "position",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_workspace_execute_command",
+      "description": "Execute a domain-specific command.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": [
+              "queues.subjectLint",
+              "queues.routingKeyComplete",
+              "queues.dlqHint",
+              "queues.consumerCheck"
+            ]
+          },
+          "arguments": {
+            "type": "array",
+            "description": "Command-specific arguments"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      }
+    }
+  ],
+  "backends": [
+    {
+      "id": "nats",
+      "binary": "nats",
+      "extensions": [
+        ".conf",
+        ".yaml"
+      ]
+    },
+    {
+      "id": "rabbitmq",
+      "binary": "rabbitmqctl",
+      "extensions": [
+        ".conf",
+        ".json"
+      ]
+    },
+    {
+      "id": "redis_streams",
+      "binary": "redis-cli",
+      "extensions": [
+        ".redis"
+      ]
+    }
+  ],
+  "loopback": {
+    "host": "127.0.0.1",
+    "port": 5187
+  },
+  "source": {
+    "registry": "hyperpolymath/boj-server-cartridges",
+    "path": "cartridges/domains/messaging/queues-lsp"
+  }
+}

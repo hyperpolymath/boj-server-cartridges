@@ -1,0 +1,133 @@
+{
+  "$schema": "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "stack-orchestrator-mcp",
+  "version": "0.1.0",
+  "description": "Multi-stack execution orchestrator. Parses stack.compose.toml, builds dependency graphs, plans phased parallel execution, and dispatches steps to per-domain LSP cartridges (cloud-lsp, container-lsp, database-lsp, k8s-lsp, git-lsp, iac-lsp, observe-lsp, queues-lsp, secrets-lsp, ssg-lsp, proof-lsp). Replaces 'fleet-mcp redesign' working name per ADR-002.",
+  "domain": "Orchestration",
+  "category": "cross-cutting",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "states": [
+    "scaffolded"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://stack-orchestrator-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "stack_parse",
+      "description": "Parse a stack.compose.toml file into structured representation. Returns component graph, dependency edges, and security policies.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path to stack.compose.toml on disk"
+          },
+          "content": {
+            "type": "string",
+            "description": "Inline TOML content (mutually exclusive with path)"
+          }
+        }
+      }
+    },
+    {
+      "name": "stack_plan",
+      "description": "Build an execution plan from a parsed stack. Validates the dependency graph for cycles, topologically sorts components, groups into parallel phases, and routes each step to a target LSP cartridge.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "stack": {
+            "type": "object",
+            "description": "Parsed stack object returned by stack_parse"
+          }
+        },
+        "required": ["stack"]
+      }
+    },
+    {
+      "name": "stack_execute_phase",
+      "description": "Execute a single phase of a plan. Calls into the target LSP cartridges via their loopback ports.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string",
+            "description": "Plan identifier returned by stack_plan"
+          },
+          "phase_index": {
+            "type": "integer",
+            "description": "0-indexed phase to execute"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "If true, no LSPs are invoked; returns the dispatch matrix only"
+          }
+        },
+        "required": ["plan_id", "phase_index"]
+      }
+    },
+    {
+      "name": "stack_rollback",
+      "description": "Reverse-execute the steps of a partially-executed plan, respecting the rollback_strategy declared in the stack.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          },
+          "to_phase": {
+            "type": "integer",
+            "description": "Roll back to (and including) this phase. -1 = rollback to clean state."
+          }
+        },
+        "required": ["plan_id"]
+      }
+    },
+    {
+      "name": "stack_verify",
+      "description": "Run the [verification] block of the stack against the deployed components.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string"
+          }
+        },
+        "required": ["plan_id"]
+      }
+    }
+  ],
+  "coordinated_lsps": [
+    "cloud-lsp",
+    "container-lsp",
+    "database-lsp",
+    "k8s-lsp",
+    "git-lsp",
+    "iac-lsp",
+    "observe-lsp",
+    "queues-lsp",
+    "secrets-lsp",
+    "ssg-lsp",
+    "proof-lsp"
+  ],
+  "loopback": {
+    "host": "127.0.0.1",
+    "port": 5190
+  },
+  "source": {
+    "registry": "hyperpolymath/boj-server-cartridges",
+    "path": "cartridges/cross-cutting/orchestration/stack-orchestrator-mcp"
+  }
+}

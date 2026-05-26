@@ -1,0 +1,240 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+:toc:
+:icons: font
+
+= ADR-002 — Stack-orchestrator is a *new* cartridge, not a redesign of `fleet-mcp`
+
+== Status
+
+Accepted, 2026-05-26.
+
+Supersedes the working-name "fleet-mcp redesign" in the cartridge-extraction
+initiative session memory (`session_2026_05_26_cartridge_extraction.md` #11).
+
+== Context
+
+The cartridge-extraction initiative inherited a working name "fleet-mcp redesign"
+for the port of `polystack/poly-orchestrator-lsp` (215 files, 47 tests, parses
+`stack.compose.toml`). The initiative's session memory tracked this as "PR 7",
+later "PR 11", with the assumption that the existing `fleet-mcp` cartridge
+would be redesigned to absorb the orchestration semantics.
+
+On inspection, this is wrong. The two systems do different things:
+
+[cols="1,3,3"]
+|===
+| Aspect | Existing `cross-cutting/fleet/fleet-mcp` | `poly-orchestrator-lsp`
+
+| Purpose
+| Gitbot-fleet gate-compliance tracker
+| Multi-stack execution planner
+
+| Domain object
+| Bot × gate × pass/fail
+| Stack (`stack.compose.toml`) × phases × component deps
+
+| Tool surface (existing)
+| `fleet_record_gate`, `fleet_query_compliance`, ...
+| `orchestrator_plan_stack`, `orchestrator_execute_phase`, ...
+
+| Lineage
+| Hyperpolymath gitbot-fleet — internal CI state
+| Polystack stack-compose — user-facing multi-LSP orchestration
+
+| Caller
+| `gitbot-fleet` repo workflows
+| End users authoring `stack.compose.toml`
+|===
+
+The "fleet" in `fleet-mcp` refers to the *fleet of bots*. The "fleet" in
+"poly-orchestrator" sometimes appears as fleet-of-components or
+fleet-of-LSP-servers. The collision is in the English word, not the
+concept.
+
+== Decision
+
+. *Keep `cartridges/cross-cutting/fleet/fleet-mcp` unchanged*. It serves
+  gitbot-fleet compliance tracking and the consumers depend on its name +
+  tool surface.
+
+. *Port `poly-orchestrator-lsp` as a new cartridge*, not a redesign of
+  `fleet-mcp`. Working name: *`stack-orchestrator-mcp`* (alt: `orchestrator-mcp`,
+  `compose-mcp` — see §Naming below).
+
+. The new cartridge lives at
+  `cartridges/cross-cutting/orchestration/stack-orchestrator-mcp/`. This
+  introduces a new cross-cutting category `orchestration/` alongside
+  `agentic/`, `build/`, `debug/`, `fleet/`, `health/`, `nesy/`.
+
+. The new cartridge is *not* a 1:1 port of the Elixir LSP. The Elixir
+  implementation is a *language server* (LSP protocol over JSON-RPC); the
+  new cartridge is an *MCP server* (Anthropic MCP protocol). The
+  orchestration semantics (parse stack, topo-sort, build phases, dispatch
+  to per-domain LSPs) carry over; the transport changes.
+
+. The new cartridge *coordinates* the existing 11 LSP cartridges (proof-lsp,
+  cloud-lsp, container-lsp, database-lsp, k8s-lsp, git-lsp, iac-lsp,
+  observe-lsp, queues-lsp, secrets-lsp, ssg-lsp) plus any future ones. It
+  does not replace them. Each domain LSP keeps its own loopback port and
+  its own backend implementation.
+
+== Naming
+
+Three candidates, ordered by preference:
+
+. *`stack-orchestrator-mcp`* (recommended). Explicit about both inputs
+  (stack) and capability (orchestration). Slightly long but searchable.
+
+. `orchestrator-mcp`. Shorter. Ambiguous against any future job-orchestrator
+  / event-orchestrator / agent-orchestrator cartridges.
+
+. `compose-mcp`. Echoes `docker-compose` / `stack.compose.toml`. Short.
+  Possible collision with the verb "compose" in agentic contexts.
+
+Decision: `stack-orchestrator-mcp`. The "stack" prefix anchors the cartridge
+to the `stack.compose.toml` input format, avoiding the orchestrator ambiguity.
+
+== Architecture
+
+[plantuml]
+....
+[stack.compose.toml] -down-> [stack-orchestrator-mcp]
+[stack-orchestrator-mcp] -down-> [Planner: topo-sort + phases]
+[Planner: topo-sort + phases] -down-> [Executor: phase-by-phase]
+[Executor: phase-by-phase] -right-> [cloud-lsp]
+[Executor: phase-by-phase] -right-> [container-lsp]
+[Executor: phase-by-phase] -right-> [database-lsp]
+[Executor: phase-by-phase] -right-> [...]
+[Executor: phase-by-phase] -down-> [VerisimDB: state]
+....
+
+=== Tool surface (initial)
+
+[cols="1,3"]
+|===
+| Tool | Purpose
+
+| `stack_parse`
+| Parse a `stack.compose.toml` into a structured representation. Returns
+  the component graph + dependency edges + security policies. Equivalent
+  of `PolyOrchestrator.Orchestrator.StackParser.parse/1`.
+
+| `stack_plan`
+| Build an execution plan: validate graph (no cycles), topological sort,
+  group into parallel phases, route each step to a target LSP cartridge.
+  Equivalent of `PolyOrchestrator.Orchestrator.Planner.build_plan/1`.
+
+| `stack_execute_phase`
+| Execute a single phase of a plan. Returns per-step status. Calls into
+  the target LSP cartridges via their loopback ports (or via the
+  BoJ catalog dispatcher).
+
+| `stack_rollback`
+| Reverse-execute the steps of a (partially-executed) plan, respecting
+  the rollback_strategy declared in the stack.
+
+| `stack_verify`
+| Run the `[verification]` block of the stack — typically post-execution
+  health checks against the deployed components.
+|===
+
+=== Idris2 ABI (formal correctness)
+
+The Elixir source has `ABI-FFI-README.md` documenting an existing
+Idris2 ABI surface. The cartridge port should preserve and extend this.
+
+Key invariants to express formally:
+
+. *Dependency graph is acyclic* (precondition for topological sort).
+. *Phase parallelism is correct* — components within a phase have no
+  mutual dependencies, so concurrent execution is safe.
+. *Rollback is the inverse of forward execution* — for each step `S_i`
+  there exists `S_i^{-1}` such that `S_i^{-1} ∘ S_i = id` on the
+  affected state.
+. *Security policies propagate* — every component inherits the union of
+  policies declared at the stack and at its dependency ancestors.
+
+These promote the cartridge from `Ayo` to `Shield` tier per the tier
+policy.
+
+=== State management
+
+The Elixir implementation uses `VerisimDB.Client` for persistent state.
+The cartridge port has two options:
+
+[cols="1,3,3"]
+|===
+| | Option A: keep VerisimDB | Option B: ETS-backed via BoJ catalog
+
+| Pros
+| 1:1 port; existing semantics
+| One less external dependency; integrates with cartridge runtime
+
+| Cons
+| Adds VerisimDB to the cartridge runtime requirements
+| Re-implementation; less proven
+|===
+
+Recommendation: *Option A* for v0.1.0 (faithful port), *Option B* for
+v0.2.0 (if VerisimDB proves heavy as a hard dep).
+
+== Implementation phases
+
+Phase 0 (this ADR): *DONE*. Scope, naming, architecture, source archive
+  decisions.
+
+Phase 1: *Cartridge scaffold* (PR after this ADR). Same shape as the 11
+  LSP scaffolds — `cartridge.json` (MCP + REST), `mod.js`, `README.adoc`,
+  `_source-archive/`, `.gitkeep` placeholders. Sequential loopback port
+  (5190 after the LSP scaffolds at 5179-5189).
+
+Phase 2: *Parse + plan tools* — port `stack_parser.ex` + `planner.ex` to
+  Deno + JSON-Schema validation. ~600 LOC Elixir → ~400 LOC Deno.
+
+Phase 3: *Execute + rollback tools* — port `executor.ex` + dispatch to
+  domain LSPs. Requires the LSP cartridge adapters (from the separate
+  per-cartridge adapter PRs).
+
+Phase 4: *Verify + Idris2 ABI* — formal correctness proofs, tier
+  promotion to `Shield`.
+
+Phases 2-4 are multi-session work, sized per phase.
+
+== Consequences
+
+*Positive:*
+
+* Clear separation between fleet (gitbot compliance) and orchestration
+  (stack execution); each cartridge has one job.
+* New `orchestration/` cross-cutting category is reusable for any future
+  orchestration cartridges (job orchestrator, event orchestrator, etc.).
+* The existing fleet-mcp keeps its name; no breakage for gitbot-fleet.
+
+*Negative / costs:*
+
+* The session memory ("PR 7: fleet-mcp redesign") becomes a misnomer.
+  Updated in the session memory at the same time as this ADR lands.
+* Adds a 7th cross-cutting category, which crosses the implicit
+  "small-set" threshold of cross-cutting categories. Trade-off is
+  semantic clarity vs registry-tree growth.
+
+*Open questions deferred:*
+
+* Whether `stack-orchestrator-mcp` should be split into separate
+  `stack-orchestrator-mcp` (planning) + `stack-executor-mcp` (execution).
+  Tentative answer: no — they share state and the seam is artificial.
+* Whether to expose orchestration as both MCP and LSP. Tentative
+  answer: MCP-only initially; LSP for editor IDE integration could be
+  added later as `stack-orchestrator-lsp`.
+
+== References
+
+* `polystack/poly-orchestrator-lsp/` — source (archived in the cartridge
+  scaffold under `_source-archive/`).
+* https://github.com/hyperpolymath/standards/pull/200[standards#200] —
+  canonical cartridge format.
+* `cartridges/cross-cutting/fleet/fleet-mcp/` — existing gitbot-fleet
+  compliance tracker (unaffected by this decision).
+* `session_2026_05_26_cartridge_extraction.md` — initiative session
+  memory.

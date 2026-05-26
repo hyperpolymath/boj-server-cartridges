@@ -1,0 +1,123 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+:toc:
+:icons: font
+
+= stack-orchestrator-mcp — Multi-stack execution orchestrator
+
+Scaffolded cross-cutting cartridge that coordinates the 11 domain LSP
+cartridges to execute multi-component stacks defined in
+`stack.compose.toml`.
+
+This cartridge was previously tracked under the working name
+"fleet-mcp redesign" in the cartridge-extraction initiative. The naming
+was wrong (see https://github.com/hyperpolymath/boj-server-cartridges/blob/main/docs/decisions/ADR-002-stack-orchestrator-vs-fleet-mcp.adoc[ADR-002]) — the existing `fleet-mcp` is a separate
+gitbot-fleet compliance tracker, and stack orchestration is a distinct
+concern. This cartridge is a *new* cartridge, not a redesign.
+
+== State
+
+*Status:* `scaffolded` (per `cartridge.json#/states[0]`).
+
+Manifest declares the MCP tool surface (`stack_parse`, `stack_plan`,
+`stack_execute_phase`, `stack_rollback`, `stack_verify`) and the list of
+coordinated LSP cartridges. The adapter / abi / ffi / panels directories
+carry `.gitkeep` placeholders.
+
+== Source lineage
+
+The original implementation is a production Elixir LSP server at
+`polystack/poly-orchestrator-lsp/` (215 files, 47 tests). Key modules
+preserved verbatim under `_source-archive/elixir-lib/`:
+
+[cols="2,4"]
+|===
+| Module | Role
+
+| `orchestrator/stack_parser.ex`
+| TOML parsing → component graph + security policies
+
+| `orchestrator/planner.ex`
+| Topological sort + phase grouping + LSP routing
+
+| `orchestrator/executor.ex`
+| Phase-by-phase execution + LSP dispatch
+
+| `orchestrator/lsp_client.ex`
+| Generic LSP client for dispatching to domain LSPs
+
+| `verisimdb/client.ex`
+| Persistent state store
+
+| `lsp/server.ex` + handlers
+| LSP protocol surface (not relevant for the MCP port; archived for
+  reference)
+|===
+
+Sample input format: `_source-archive/test-stack.compose.toml` (a
+4-component test stack: cloud → database → container, with parallel
+observability).
+
+`ABI-FFI-README.md` is preserved as a starting point for the Idris2
+ABI work in the `Shield`-tier promotion.
+
+== Port plan
+
+. *Phase 1 — Scaffold* (this PR). Cartridge directory + manifest +
+   archived source + ADR.
+
+. *Phase 2 — Parse + plan* (next PR, multi-session). Port
+   `stack_parser.ex` + `planner.ex` to Deno. Implement `stack_parse` +
+   `stack_plan` tools. ~600 LOC Elixir → ~400 LOC Deno.
+
+. *Phase 3 — Execute + rollback* (depends on phase 2 + LSP cartridge
+   adapter impls). Port `executor.ex` + `lsp_client.ex`. Implement
+   `stack_execute_phase` + `stack_rollback`.
+
+. *Phase 4 — Verify + Idris2 ABI* (`Shield` promotion). Formal
+   correctness proofs for dependency-acyclicity, phase-parallelism,
+   rollback-inversion, security-propagation. Per ADR-002 §Idris2 ABI.
+
+== Architecture
+
+----
+stack.compose.toml
+       ↓
+stack-orchestrator-mcp  ← (this cartridge)
+       ↓
+   Planner (topo-sort + phases)
+       ↓
+   Executor (phase-by-phase)
+       ↓
+  ┌────┴───────────────────────────────┐
+  ↓     ↓     ↓     ↓     ↓     ↓     ↓
+cloud  cont  db    k8s   git   iac  observe...
+-lsp   -lsp -lsp  -lsp  -lsp  -lsp  -lsp
+----
+
+The orchestrator does not duplicate domain logic — each LSP cartridge
+owns its domain. The orchestrator only handles the coordination
+problem: dependency resolution, parallelism, error propagation,
+rollback.
+
+== Cartridge facts
+
+[cols="1,5"]
+|===
+| Name             | `stack-orchestrator-mcp`
+| Version          | `0.1.0`
+| Domain           | `Orchestration`
+| Category         | `cross-cutting`
+| Cross-cutting cat | `orchestration` (new, see ADR-002)
+| Tier             | `Ayo` (target `Shield` after Idris2 ABI)
+| Protocols        | `MCP`, `REST`
+| Loopback         | `127.0.0.1:5190`
+| Coordinated LSPs | 11 (proof + cloud + container + database + k8s + git + iac + observe + queues + secrets + ssg)
+|===
+
+== References
+
+* link:../../../../docs/decisions/ADR-002-stack-orchestrator-vs-fleet-mcp.adoc[ADR-002 — naming + architecture decision]
+* https://github.com/hyperpolymath/standards/pull/200[standards#200 — canonical cartridge format]
+* link:../../../../docs/decisions/ADR-001-taxonomy.adoc[ADR-001 — hybrid taxonomy]
+* `cartridges/cross-cutting/fleet/fleet-mcp/` — the unrelated gitbot-fleet compliance tracker

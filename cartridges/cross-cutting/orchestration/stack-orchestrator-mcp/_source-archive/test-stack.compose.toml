@@ -1,0 +1,71 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Test stack for poly-orchestrator-lsp
+
+[metadata]
+name = "test-stack"
+version = "1.0.0"
+description = "Simple test stack for orchestrator"
+author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
+
+[orchestration]
+max_parallel = 3
+timeout_ms = 300000
+retry_count = 2
+
+[security]
+policies = ["least-privilege", "encrypted-at-rest"]
+
+# Component 1: Cloud infrastructure
+[[components]]
+id = "cloud-server"
+type = "cloud.provision"
+lsp_server = "poly-cloud-lsp"
+
+[components.config]
+provider = "aws"
+region = "us-east-1"
+instance_type = "t3.micro"
+ami = "ami-0c55b159cbfafe1f0"
+
+# Component 2: Database (depends on cloud-server)
+[[components]]
+id = "database"
+type = "database.provision"
+lsp_server = "poly-db-lsp"
+depends_on = ["cloud-server"]
+
+[components.config]
+engine = "postgresql"
+version = "15"
+storage_gb = 20
+host = "${cloud-server.public_ip}"
+
+# Component 3: Container (depends on database)
+[[components]]
+id = "app-container"
+type = "container.build"
+lsp_server = "poly-container-lsp"
+depends_on = ["database"]
+
+[components.config]
+image = "myapp:latest"
+ports = [8080, 8443]
+
+[components.config.env]
+DATABASE_URL = "postgresql://${database.endpoint}"
+
+# Component 4: Observability (can run in parallel with container)
+[[components]]
+id = "monitoring"
+type = "observability.setup"
+lsp_server = "poly-observability-lsp"
+depends_on = ["cloud-server"]
+
+[components.config]
+tool = "prometheus"
+scrape_interval = "15s"
+targets = ["${cloud-server.public_ip}:9090"]
+
+# Verification and rollback sections commented out due to parser bug
+# [verification]
+# [rollback]

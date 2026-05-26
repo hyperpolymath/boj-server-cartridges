@@ -1,0 +1,68 @@
+// SPDX-License-Identifier: MPL-2.0
+:icons: font
+
+= Earlier 01 — Duplicate-reconciliation queue (decisions 4–11)
+
+== Goal
+
+Resume the duplicate-reconciliation pass that was suspended when the
+cartridge-extraction initiative diverted the session. Decisions 1–3
+were taken; 4–11 remain pending.
+
+== Context
+
+Original task: examine every subdirectory of
+`/home/hyperpolymath/developer/repos` against top-level repos to find
+duplicates (2 levels deep) — items that exist both as a top-level
+repo and inside another directory — and reconcile each by deciding
+canonical location.
+
+Of ~235 duplicates found, the audit classified them:
+
+* ~216 were `repos-monorepo` submodules — intentional mirror.
+* Some were `developer-ecosystem` curated entries — intentional.
+* Some were tiny capability-pointer stubs (1–7 files) inside other
+  repos — keep both.
+* ~10 needed real decisions; only 3 were taken before the divert.
+
+Suspended decisions (4–11) are listed below. For each, the original
+suspended-work memo at `/tmp/reconciliation_candidates.txt` (if still
+present) holds the per-pair diff context. If absent, re-run the pass.
+
+== Decisions remaining
+
+. *vex-tools cluster.* Multiple `vex-tools-*` candidates with overlapping content; pick the canonical.
+. *filesoup vs file-soup.* Likely a renaming artefact; one is the canonical.
+. *wordpress-tools / project-wharf.* Cross-domain duplication of similar tooling.
+. *bofj-kitt vs affinescript.* Possible historical fork or rename.
+. *ipv6-tools.* Standalone vs embedded under network-tooling-collection.
+. *Orphan top-level dirs (6):* `a2ml`, `k9`, `awesome-projects`, `idaptik`, `isers`, `julia-libraries`. Each needs: are they stale clones, intended top-level, or candidates for consolidation?
+
+== Concrete steps (per decision)
+
+. `ls -la <left>` and `ls -la <right>`; `git log -5 --oneline` on each.
+. *Salvage-before-delete check* (see `feedback_salvage_before_delete.md`): any unique commits / branches / divergent files in the loser? If yes, patch them to `~/Documents/salvaged-patches/YYYY-MM-DD_<repo>_<topic>_<sha>.patch` first.
+. Decide canonical location. Default: top-level if the repo has its own GitHub remote; nested if it's a working-copy mirror inside a parent project.
+. Remove the loser. If it has any GitHub remote, *don't* delete via `gh repo delete` — the user wants explicit confirmation before destroying GitHub repos.
+. Update any references in `developer-ecosystem` / `repos-monorepo` / `awesome-*` manifests.
+. Memory: append the decision to `project_estate_consolidation_2026_05_*.md` or open one if it doesn't exist.
+
+== Acceptance criteria
+
+* All 8 decisions taken (or explicitly deferred with reasoning).
+* No silent file deletions; salvage check performed for each.
+* Memory updated with each decision + rationale.
+
+== Pitfalls
+
+* *Don't presume the loser.* The newer commit doesn't always win — sometimes the older repo is the canonical-by-convention.
+* *Forks are not duplicates.* See `feedback_no_scaffold_sweeps_on_forks.md` — `.fork == true` repos track upstream + host PRs only; never delete them as duplicates.
+* *Parallel sessions* can be touching these repos — see `feedback_parallel_session_branch_drift.md`. Re-check `git branch --show-current` before any change.
+
+== References
+
+* `feedback_salvage_before_delete.md`
+* `feedback_no_scaffold_sweeps_on_forks.md`
+* `feedback_parallel_session_branch_drift.md`
+* `feedback_audit_fetch_before_trusting_local.md`
+* Session `session_2026_05_26_cartridge_extraction.md` §"Suspended work"

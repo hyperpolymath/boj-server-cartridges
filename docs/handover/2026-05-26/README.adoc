@@ -1,0 +1,112 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+:toc: left
+:icons: font
+
+= Cartridge initiative + carry-over work — handover (2026-05-26)
+
+This directory hands the work-in-progress to a fresh agent (or future-you).
+The work is in **multiple non-trivial chunks**, each documented as a
+self-contained prompt under `prompts/`. The structured machine-readable
+mirror is at `handover.machine.yaml`.
+
+== Quick map
+
+[cols="1,4,1"]
+|===
+| Track | Component | Prompt
+
+| Cartridge
+| Open the rate-limited stack-orchestrator-mcp PR (#6)
+| link:prompts/cartridge-01-open-pr-6.adoc[01]
+
+| Cartridge
+| Phase 3 — execute + rollback dispatch
+| link:prompts/cartridge-02-phase-3-execute-rollback.adoc[02]
+
+| Cartridge
+| Phase 4 — verify + Idris2 ABI (Shield tier)
+| link:prompts/cartridge-03-phase-4-verify-idris-abi.adoc[03]
+
+| Cartridge
+| LSP-adapter implementation pattern (template for all 11)
+| link:prompts/cartridge-04-lsp-adapter-pattern.adoc[04]
+
+| Cartridge
+| boj-server `cartridges/` removal (PR 5)
+| link:prompts/cartridge-05-boj-server-cartridges-removal.adoc[05]
+
+| Cartridge
+| standards#200 merge follow-through (SHA-pin + sweep)
+| link:prompts/cartridge-06-standards-200-followthrough.adoc[06]
+
+| Cartridge
+| boj-server#158 merge follow-through (tray remote-fetch wiring)
+| link:prompts/cartridge-07-boj-server-158-followthrough.adoc[07]
+
+| Earlier
+| Duplicate-reconciliation queue (decisions 4–11)
+| link:prompts/earlier-01-duplicate-reconciliation.adoc[E1]
+
+| Earlier
+| Cloudflare token-leak rotation + history rewrite
+| link:prompts/earlier-02-cloudflare-token-rotation.adoc[E2]
+
+| Earlier
+| Hypatia scorecard polystack reference cleanup
+| link:prompts/earlier-03-hypatia-scorecard-polystack-ref.adoc[E3]
+|===
+
+== State as of 2026-05-26
+
+=== Done this initiative (5 PRs merged + 1 ready)
+
+* `boj-server-cartridges#1` — 125-cartridge populate ✅
+* `boj-server-cartridges#2` — minter tool ✅
+* `boj-server-cartridges#3` — proof-lsp pilot scaffold ✅
+* `boj-server-cartridges#4` — 4 LSP scaffolds (cloud/container/database/k8s) ✅
+* `boj-server-cartridges#5` — 6 LSP scaffolds (git/iac/observe/queues/secrets/ssg) ✅
+* `boj-server-cartridges#6` — stack-orchestrator-mcp scaffold + ADR-002 + Phase 2 ports — *branch pushed, PR-create blocked on GitHub secondary rate-limit*
+
+=== Open elsewhere
+
+* `standards#200` — canonical cartridge format spec (OPEN, auto-merge ON)
+* `boj-server#158` — configurable cartridges_root + canonical schema mirror + category sweep (OPEN, auto-merge ON)
+
+=== Cartridge tree state
+
+* `cartridges/domains/*` — 30 domain folders, 113 cartridges
+* `cartridges/cross-cutting/*` — 7 categories (agentic 5, build 1, debug 1, fleet 1, health 1, nesy 2, orchestration 1) — 12 cartridges
+* `cartridges/templates/gossamer-mcp` — scaffold template
+
+== How to use this
+
+Each prompt is **self-contained** — a fresh agent can pick one up cold,
+read it, and start working without further context. The structure is:
+
+. *Goal* — one-paragraph problem statement.
+. *Context* — key files, PRs, ADRs to read first.
+. *Concrete steps* — numbered checklist.
+. *Acceptance criteria* — definition of done.
+. *Pitfalls* — gotchas surfaced during the original session.
+. *References* — memory entries + standing policies.
+
+Reload the
+`session_2026_05_26_cartridge_extraction.md` memory entry for the wider
+session narrative; prompts deliberately don't repeat what that captures.
+
+== Standing constraints (all prompts assume these)
+
+* GPG-signing absolute — every commit must be signed with key
+  `4A03639C1EB1F86C7F0C97A91835A14A2867091E`, email
+  `6759885+hyperpolymath@users.noreply.github.com`.
+* Auto-merge on every PR — `gh pr merge <n> --auto --squash --delete-branch`
+  immediately after `gh pr create`.
+* Throttle PR bursts — see `feedback_github_secondary_rate_limit_burst.md`.
+  ≥5 PRs in <30 min triggers secondary rate-limit.
+* No new TypeScript except approved exemptions — AffineScript or Deno are
+  the targets.
+* No Jekyll — `casket-ssg` is the replacement.
+* No Python except SaltStack — Deno/AffineScript for new tooling.
+* All commits must validate against estate-wide standards (Hypatia,
+  governance, language policy).

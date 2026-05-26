@@ -1,0 +1,97 @@
+// SPDX-License-Identifier: MPL-2.0
+:icons: font
+
+= Cartridge 03 — Phase 4: verify + Idris2 ABI for stack-orchestrator-mcp (Shield-tier promotion)
+
+== Goal
+
+Land the `stack_verify` MCP tool *and* the Idris2 ABI surface formalising
+the orchestrator's correctness invariants. Promotion from `Ayo` to
+`Shield` tier follows immediately on successful Idris2 type-check.
+
+== Prerequisites
+
+* Phase 3 (`cartridge-02-phase-3-execute-rollback.adoc`) must be merged
+  first. Without an executor there's nothing meaningful to verify.
+
+== Context
+
+* Source `_source-archive/ABI-FFI-README.md` documents the existing
+  Idris2 ABI surface from polystack. Start by re-reading this — it
+  defines the verbatim type shapes already proved.
+* Tier policy: `Shield` requires a *type-checked Idris2 module* covering
+  the cartridge's correctness invariants. See `cartridges/templates/`
+  for the directory layout the abi/ subdir should match.
+
+== Invariants to formalise (per ADR-002 §Idris2 ABI)
+
+. *Acyclic dependency graph.* `validateGraph` returns `Right ()` only
+  for `DAG`-typed inputs. Formal statement: for every `Stack`, if
+  `validateGraph (depGraph s) = Right ()`, then `topologicalSort
+  (depGraph s)` totalises.
+
+. *Phase parallelism is correct.* Components within a `Phase.parallel`
+  group have *no mutual dependencies*. Formal statement: for every
+  phase `p` and every parallel group `g ⊆ p.components`, for every pair
+  `(c_i, c_j) ∈ g × g`, `c_j.id ∉ c_i.depends_on`.
+
+. *Rollback is the inverse of forward execution.* For each forward step
+  `S_i` there exists `S_i^{-1}` such that `S_i^{-1} ∘ S_i = id` on the
+  affected state. Concretely: rolling back an executed plan returns the
+  domain LSPs to their pre-execution states.
+
+. *Security policies propagate.* Every component inherits the union of
+  policies declared at stack-level and at its ancestors in the
+  dependency graph.
+
+== Concrete steps
+
+. Create `abi/idris2/` with:
+.. `Orchestrator.idr` — top-level module declaring `Stack`, `Plan`,
+   `ExecutionResult` data types.
+.. `Orchestrator/DAG.idr` — acyclicity proof + topological-sort
+   totalisation.
+.. `Orchestrator/Phase.idr` — phase-parallelism well-formedness.
+.. `Orchestrator/Rollback.idr` — rollback-inversion lemma.
+.. `Orchestrator/Security.idr` — policy-propagation lemma.
+. Wire FFI bindings so Deno can call into the Idris2 surface (or use
+  pure-Idris2 verification at build-time only, with Deno consuming the
+  *checked* properties as axioms — depends on whether you can run
+  Idris2 in the cartridge runtime).
+. Implement `stack_verify` in `adapter/verify.ts` — runs the
+  `[verification]` block of the stack against the deployed components.
+. Update manifest:
+.. `tier` from `Ayo` to `Shield`.
+.. `states[]` add `phase-4-shield-tier`.
+.. `protocols[]` add `Verify` (per standards#200 protocol enum).
+. Tests: per-invariant Idris2 type-check + at least one negative
+  example (cycle, bad rollback, leaked policy).
+
+== Acceptance criteria
+
+* `idris2 --check abi/idris2/Orchestrator.idr` passes (no holes, no
+  metavariables).
+* `stack_verify` MCP tool wired + invoked end-to-end in tests.
+* Manifest `tier = "Shield"` validates against
+  `schemas/cartridge-v1.json`.
+* Negative examples reject the right invariants (e.g. introducing a
+  cycle produces an Idris2 type error).
+
+== Pitfalls
+
+* *Idris2 toolchain* — current version is 0.7.0+. The polystack ABI was
+  written against the polystack `ABI-FFI-README.md` constraints; check
+  whether those constraints still hold.
+* *Don't formalise more than necessary.* Each invariant should map to
+  one concrete safety property. Adding decorative formality slows the
+  promotion without buying user-facing assurance.
+* *Shield-tier guardrails* — once the manifest declares Shield, all
+  changes to the abi/ subdir trigger heavier review. Plan the work as a
+  single PR; piecemeal Shield work invites tier regression.
+
+== References
+
+* `_source-archive/ABI-FFI-README.md`
+* `docs/decisions/ADR-002-stack-orchestrator-vs-fleet-mcp.adoc` §Idris2 ABI
+* `cartridges/templates/gossamer-mcp/abi/` — empty in template; reference shape only
+* Estate-wide Idris2 examples: `polystack/poly-orchestrator-lsp/contractiles/`

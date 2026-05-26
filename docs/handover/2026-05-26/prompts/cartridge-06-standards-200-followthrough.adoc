@@ -1,0 +1,49 @@
+// SPDX-License-Identifier: MPL-2.0
+:icons: font
+
+= Cartridge 06 — standards#200 merge follow-through
+
+== Goal
+
+After `standards#200` merges, propagate the SHA-pinned canonical
+cartridge format to all consumers (boj-server, boj-server-cartridges,
+any future consumers). The PR itself ships the canonical schema +
+ADR + format spec; this prompt is about the *downstream sweep*.
+
+== Prerequisites
+
+* `standards#200` merged. Capture the merge commit SHA.
+
+== Context
+
+* The canonical schema lives at `standards/cartridges/cartridge-v1.json` with `$id: "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json"`.
+* boj-server and boj-server-cartridges currently carry *mirrors* of the schema in their own `schemas/cartridge-v1.json` + an unpinned `SCHEMA-MIRROR.md`.
+* Mirror policy: when standards#200 merges, mirrors SHOULD be SHA-pinned to the merge commit + content SHA-256.
+
+== Concrete steps
+
+. Capture merge SHA: `gh pr view 200 --repo hyperpolymath/standards --json mergeCommit`.
+. Capture content SHA-256: `gh api repos/hyperpolymath/standards/contents/cartridges/cartridge-v1.json --jq .sha` (or use `git show <merge-commit>:cartridges/cartridge-v1.json | sha256sum`).
+. In `hyperpolymath/boj-server` and `hyperpolymath/boj-server-cartridges`:
+.. Update `schemas/cartridge-v1.json` to byte-for-byte match the canonical content.
+.. Create or update `schemas/PINNED-SHA` with the merge commit SHA + content SHA-256.
+.. Update `schemas/SCHEMA-MIRROR.md` referencing the pinned SHA.
+. Open PRs (one per consumer); auto-merge per policy.
+. (Stretch) Add a CI check that diffs each mirror against canonical + alerts on drift. Pattern lives in `standards/.github/workflows/governance-reusable.yml` — could become a `schema-drift-reusable.yml`.
+
+== Acceptance criteria
+
+* `schemas/cartridge-v1.json` in both consumers matches canonical byte-for-byte.
+* `schemas/PINNED-SHA` exists in both consumers with valid SHA + SHA-256.
+* CI drift-check (if added) passes against canonical.
+
+== Pitfalls
+
+* *Don't reformat the JSON during the pin.* Byte-for-byte match is the point. JSON formatters (e.g. `prettier`, `jq`) can subtly reorder keys.
+* *Validate every cartridge in boj-server-cartridges* against the pinned schema after the pin — the manifest sweep done in `boj-server#158` was against an earlier draft; the merged spec may have small differences.
+
+== References
+
+* `standards#200` — the canonical spec
+* `docs/decisions/ADR-002-stack-orchestrator-vs-fleet-mcp.adoc` — references `https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json`
+* `schemas/SCHEMA-MIRROR.md` in both consumers — pinning ceremony

@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: MPL-2.0
+:icons: font
+
+= Earlier 03 — Hypatia scorecard polystack reference cleanup
+
+== Goal
+
+Remove or update the dangling reference to the now-archived `polystack`
+repo in Hypatia's scorecard target manifest.
+
+== Context
+
+During the cartridge-extraction initiative, `polystack` was archived
+and its contents migrated to the new `boj-server-cartridges` repo +
+preserved in `_source-archive/` subdirs of the 11 LSP cartridges.
+
+The Hypatia repo's scorecard target manifest still references it:
+
+[source]
+----
+hypatia/data/verisim/dispatch/scorecard-target-manifest.json:159
+----
+
+This will fail (or skip silently) every Hypatia scan run.
+
+== Concrete steps
+
+. Read `hypatia/data/verisim/dispatch/scorecard-target-manifest.json` around line 159.
+. Decide:
+.. *Remove the entry* if polystack's targets are now covered by the cartridge cartridges' own Hypatia scans.
+.. *Update the entry* to point at `hyperpolymath/boj-server-cartridges` if the targets should follow the new home.
+.. *Add new entries* for the 11 LSP cartridges if scorecard wants to track each individually.
+. Open a PR on Hypatia with `--auto --squash --delete-branch`.
+. Verify the next Hypatia scorecard run picks up the change.
+
+== Acceptance criteria
+
+* No remaining polystack references in
+  `hypatia/data/verisim/dispatch/scorecard-target-manifest.json`.
+* Hypatia scorecard scan completes without errors related to the
+  removed target.
+
+== Pitfalls
+
+* The manifest may have *several* polystack references, not just one
+  at line 159 — grep the whole file.
+* Other Hypatia data files may also reference polystack — broaden the
+  grep scope: `cd hypatia && git grep polystack`.
+
+== References
+
+* `session_2026_05_26_cartridge_extraction.md` § "Suspended work"
+* `hypatia/data/verisim/dispatch/scorecard-target-manifest.json:159`

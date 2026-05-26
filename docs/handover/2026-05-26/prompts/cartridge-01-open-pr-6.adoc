@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: MPL-2.0
+:icons: font
+
+= Cartridge 01 — Open the rate-limited PR for stack-orchestrator-mcp
+
+== Goal
+
+Open the pull request for branch `feat/fleet-mcp-adr-redesign` on
+`hyperpolymath/boj-server-cartridges`. The branch has *two commits* already
+pushed (signed, ready) but `gh pr create` was blocked by GitHub's
+secondary rate-limit at session-end. Open the PR via web UI or retry the
+CLI once the cool-down clears (~1 hour from the original 2026-05-26 17:00 UTC trigger).
+
+== Context
+
+* Branch: `feat/fleet-mcp-adr-redesign`
+* Commits: `cdf7424` (scaffold + ADR-002) + `00708f0` (Phase 2 parser + planner, 23 tests green)
+* Web UI URL: `https://github.com/hyperpolymath/boj-server-cartridges/compare/main...feat/fleet-mcp-adr-redesign`
+* Memory: `feedback_github_secondary_rate_limit_burst.md` — why the burst hit + how to avoid
+
+== Concrete steps
+
+. Confirm branch state: `git fetch origin && git log --oneline origin/feat/fleet-mcp-adr-redesign`. Expect 2 commits ahead of main.
+. Try the web UI first — it does not appear subject to the same secondary limit. Paste the title/body from the previous attempt or use the README's auto-suggested PR description.
+. If the CLI is preferred, retry `gh pr create --base main --head feat/fleet-mcp-adr-redesign ...` after waiting at least 60 min from the original block time. Use a *minimal* body to avoid retriggering.
+. Immediately after open: `gh pr merge <n> --auto --squash --delete-branch` per the auto-merge standing policy.
+. Verify CI passes (it should — this is a docs/code PR with no estate-wide implications).
+
+== Acceptance criteria
+
+* PR is OPEN with auto-merge enabled.
+* Both commits visible in the PR diff.
+* CI green (or queued; auto-merge will wait).
+* Session memory `session_2026_05_26_cartridge_extraction.md` updated to mark item #11 as MERGED once it lands.
+
+== Pitfalls
+
+* *Do not retry `gh pr create` in a tight loop.* Hammers the
+  secondary rate-limit further. One attempt, evaluate, wait if blocked.
+* *Do not push more commits to the branch* expecting the PR to grow —
+  any further work should wait until PR #6 lands so subsequent PRs branch
+  from main cleanly.
+* *Squash-merge changes the commit SHA.* Don't pile follow-ups onto this
+  branch after the PR opens (see boj-server `.claude/CLAUDE.md` §PR
+  Workflow).
+
+== References
+
+* `docs/decisions/ADR-002-stack-orchestrator-vs-fleet-mcp.adoc`
+* `feedback_github_secondary_rate_limit_burst.md`
+* `feedback_always_automerge_prs.md`
+* `feedback_all_commits_gpg_signed.md`

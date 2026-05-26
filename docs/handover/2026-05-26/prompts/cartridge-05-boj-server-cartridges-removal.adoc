@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: MPL-2.0
+:icons: font
+
+= Cartridge 05 — Remove `cartridges/` directory from boj-server
+
+== Goal
+
+Delete the 125-cartridge bundle currently shipping inside the
+`hyperpolymath/boj-server` repository now that `boj-server-cartridges`
+is canonical. Boj-server should fetch cartridges on demand via the
+catalog refactor landed in `boj-server#158`.
+
+== Prerequisites
+
+. `boj-server#158` MUST be merged AND burned in (at least a week in prod, or however the operator deems sufficient). Removing the bundle prematurely strands deployments that haven't picked up the refactor.
+. `boj-server-cartridges` repo must be public + discoverable.
+. tray's remote-fetch wiring (deferred from #158) should ideally be done — see `cartridge-07-boj-server-158-followthrough.adoc`.
+
+== Concrete steps
+
+. In `hyperpolymath/boj-server`, on a fresh branch:
+.. `git rm -r cartridges/`
+.. Verify no remaining references: `git grep -F 'cartridges/' -- ':!docs' ':!*.md'`. Any code-path references must be updated to use the catalog API or the new `BOJ_CARTRIDGES_PATH` env var.
+.. Update `elixir/lib/boj_rest/catalog.ex` documentation to reflect that `./cartridges` is no longer a default first-class location.
+.. Update `README.adoc` to point users at `hyperpolymath/boj-server-cartridges` for cartridge content.
+. Bump boj-server version per its versioning policy.
+. Open PR with body explaining: "PR 5 of cartridge-extraction initiative. Removes bundled cartridges; runtime now fetches on demand."
+. Auto-merge per standing policy.
+
+== Acceptance criteria
+
+* `cartridges/` directory is gone from boj-server.
+* No code-path references survive (`git grep` clean).
+* CI green on boj-server (which means tests that previously read from `cartridges/` either skip or now consume from a configured catalog).
+* Repository size shrinks measurably (was ~MB-scale for the bundled cartridges).
+
+== Pitfalls
+
+* *Tests that hard-coded `./cartridges/*` paths* will fail. Migrate them to a fixture in `test/fixtures/cartridges/` or stand up a test catalog.
+* *The Idris2 ABI registry at `src/abi/Boj/Catalogue.idr`* refers to cartridges; check whether it depended on bundled-cartridge content.
+* *Tray's cartridge-source subscription* (`tray/src/main.rs` lines ~79-83) may have hard-coded the bundled path. Verify the remote-fetch path works first.
+
+== References
+
+* `boj-server#158` — the catalog refactor that made this possible
+* `session_2026_05_26_cartridge_extraction.md` item #6 — pending PR 5
+* `feedback_always_automerge_prs.md`

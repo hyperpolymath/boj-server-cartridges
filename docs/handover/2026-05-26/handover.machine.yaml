@@ -1,0 +1,186 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+#
+# Machine-readable mirror of README.adoc.
+# Schema: ad-hoc, but stable enough for agent ingestion.
+# Sibling: README.adoc (human-readable), prompts/*.adoc (per-task).
+
+handover:
+  date: "2026-05-26"
+  repo: "hyperpolymath/boj-server-cartridges"
+  session_memory: "session_2026_05_26_cartridge_extraction.md"
+  spdx: "MPL-2.0"
+  format_version: "1"
+
+standing_constraints:
+  - id: gpg_signing
+    description: "Every commit must be signed with key 4A03639C1EB1F86C7F0C97A91835A14A2867091E"
+    memory: "feedback_all_commits_gpg_signed.md"
+    email: "6759885+hyperpolymath@users.noreply.github.com"
+  - id: auto_merge
+    description: "Every PR gets `gh pr merge <n> --auto --squash --delete-branch` immediately after `gh pr create`"
+    memory: "feedback_always_automerge_prs.md"
+  - id: pr_burst_throttle
+    description: "≥5 PRs in <30 min triggers GitHub secondary rate-limit. Throttle bursts or use web UI compare URL."
+    memory: "feedback_github_secondary_rate_limit_burst.md"
+  - id: language_policy
+    description: "No new TypeScript. No Python except SaltStack. No Jekyll — use casket-ssg. Target Deno + AffineScript."
+    memory: "feedback_estate_lang_policy_2026_05_25.md"
+
+state_at_handover:
+  cartridge_initiative:
+    merged_prs:
+      - { repo: "boj-server-cartridges", number: 1, title: "Initial 125-cartridge populate" }
+      - { repo: "boj-server-cartridges", number: 2, title: "Cartridge minter tool" }
+      - { repo: "boj-server-cartridges", number: 3, title: "proof-lsp pilot scaffold" }
+      - { repo: "boj-server-cartridges", number: 4, title: "4 LSP scaffolds (batch 1)" }
+      - { repo: "boj-server-cartridges", number: 5, title: "6 LSP scaffolds (batch 2)" }
+    open_prs:
+      - { repo: "standards", number: 200, title: "Canonical cartridge format spec", state: "OPEN" }
+      - { repo: "boj-server", number: 158, title: "Configurable cartridges_root + schema mirror + category sweep", state: "OPEN" }
+    pushed_branches_awaiting_pr:
+      - repo: "boj-server-cartridges"
+        branch: "feat/fleet-mcp-adr-redesign"
+        commits:
+          - { sha: "cdf7424", subject: "feat(orchestration): ADR-002 + scaffold stack-orchestrator-mcp (was: fleet-mcp redesign)" }
+          - { sha: "00708f0", subject: "feat(orchestration): port stack_parser + planner to Deno (Phase 2)" }
+        blocker: "GitHub secondary rate-limit on PR create. Web UI works."
+        web_ui_compare_url: "https://github.com/hyperpolymath/boj-server-cartridges/compare/main...feat/fleet-mcp-adr-redesign"
+    cartridge_tree:
+      domains:
+        count: 30
+        cartridges_count: 113
+      cross_cutting:
+        count: 7
+        cartridges_count: 12
+        categories: [agentic, build, debug, fleet, health, nesy, orchestration]
+      templates:
+        cartridges_count: 1
+        names: [gossamer-mcp]
+    loopback_ports_assigned:
+      - { cartridge: "proof-lsp",              port: 5179 }
+      - { cartridge: "cloud-lsp",              port: 5180 }
+      - { cartridge: "container-lsp",          port: 5181 }
+      - { cartridge: "database-lsp",           port: 5182 }
+      - { cartridge: "k8s-lsp",                port: 5183 }
+      - { cartridge: "git-lsp",                port: 5184 }
+      - { cartridge: "iac-lsp",                port: 5185 }
+      - { cartridge: "observe-lsp",            port: 5186 }
+      - { cartridge: "queues-lsp",             port: 5187 }
+      - { cartridge: "secrets-lsp",            port: 5188 }
+      - { cartridge: "ssg-lsp",                port: 5189 }
+      - { cartridge: "stack-orchestrator-mcp", port: 5190 }
+
+prompts:
+  cartridge:
+    - id: "cartridge-01-open-pr-6"
+      file: "prompts/cartridge-01-open-pr-6.adoc"
+      status: "ready"
+      blockers: []
+      effort_hours: 0.25
+      summary: "Open the rate-limited stack-orchestrator-mcp PR via web UI or retry CLI"
+
+    - id: "cartridge-02-phase-3-execute-rollback"
+      file: "prompts/cartridge-02-phase-3-execute-rollback.adoc"
+      status: "ready"
+      blockers: ["cartridge-01-open-pr-6", "cartridge-04-lsp-adapter-pattern"]
+      effort_hours: 6
+      summary: "Port executor.ex + lsp_client.ex to Deno; wire stack_execute_phase + stack_rollback tools"
+
+    - id: "cartridge-03-phase-4-verify-idris-abi"
+      file: "prompts/cartridge-03-phase-4-verify-idris-abi.adoc"
+      status: "ready"
+      blockers: ["cartridge-02-phase-3-execute-rollback"]
+      effort_hours: 12
+      summary: "Land stack_verify + Idris2 ABI; promote tier Ayo → Shield"
+
+    - id: "cartridge-04-lsp-adapter-pattern"
+      file: "prompts/cartridge-04-lsp-adapter-pattern.adoc"
+      status: "ready"
+      blockers: []
+      effort_hours: 22  # ~2h per cartridge × 11 cartridges
+      summary: "Template for porting each LSP cartridge's Elixir source to Deno adapter. 11 cartridges to work through."
+      sub_tasks:
+        - { cartridge: "proof-lsp",     suggested_order: 1, rationale: "smallest, formally-verified-adjacent" }
+        - { cartridge: "iac-lsp",       suggested_order: 2, rationale: "only 2 backends, opentofu/pulumi" }
+        - { cartridge: "secrets-lsp",   suggested_order: 3, rationale: "2 backends, simple subprocess model" }
+        - { cartridge: "container-lsp", suggested_order: 4, rationale: "3 well-documented backends" }
+        - { cartridge: "k8s-lsp",       suggested_order: 5, rationale: "3 backends, depends on container-lsp infra" }
+        - { cartridge: "queues-lsp",    suggested_order: 6, rationale: "3 backends" }
+        - { cartridge: "git-lsp",       suggested_order: 7, rationale: "4 backends, all CLI-driven" }
+        - { cartridge: "cloud-lsp",     suggested_order: 8, rationale: "4 backends, auth-heavy" }
+        - { cartridge: "observe-lsp",   suggested_order: 9, rationale: "4 backends, query-language-heavy" }
+        - { cartridge: "database-lsp",  suggested_order: 10, rationale: "6 backends, most surface area" }
+        - { cartridge: "ssg-lsp",       suggested_order: 11, rationale: "6 backends incl. casket-ssg replacement, most substantive" }
+
+    - id: "cartridge-05-boj-server-cartridges-removal"
+      file: "prompts/cartridge-05-boj-server-cartridges-removal.adoc"
+      status: "ready"
+      blockers: ["cartridge-07-boj-server-158-followthrough"]
+      effort_hours: 1
+      summary: "Remove cartridges/ from boj-server after #158 burns in"
+
+    - id: "cartridge-06-standards-200-followthrough"
+      file: "prompts/cartridge-06-standards-200-followthrough.adoc"
+      status: "ready"
+      blockers: ["standards#200 merge"]
+      effort_hours: 1
+      summary: "SHA-pin canonical schema in boj-server + boj-server-cartridges mirrors"
+
+    - id: "cartridge-07-boj-server-158-followthrough"
+      file: "prompts/cartridge-07-boj-server-158-followthrough.adoc"
+      status: "ready"
+      blockers: ["boj-server#158 merge"]
+      effort_hours: 4
+      summary: "Tray remote-fetch wiring + catalog reload-without-restart + SHA-pin"
+
+  earlier:
+    - id: "earlier-01-duplicate-reconciliation"
+      file: "prompts/earlier-01-duplicate-reconciliation.adoc"
+      status: "ready"
+      blockers: []
+      effort_hours: 3
+      summary: "Resume duplicate-reconciliation pass — decisions 4-11 remain"
+
+    - id: "earlier-02-cloudflare-token-rotation"
+      file: "prompts/earlier-02-cloudflare-token-rotation.adoc"
+      status: "blocked_on_user"
+      blockers: ["user_confirms_rotation"]
+      effort_hours: 2
+      summary: "Confirm Cloudflare token rotation, then complete git-history rewrite"
+      risk: "HIGH — leaked token still potentially live in history"
+
+    - id: "earlier-03-hypatia-scorecard-polystack-ref"
+      file: "prompts/earlier-03-hypatia-scorecard-polystack-ref.adoc"
+      status: "ready"
+      blockers: []
+      effort_hours: 0.25
+      summary: "Remove dangling polystack reference in Hypatia scorecard manifest"
+
+dependency_graph:
+  edges:
+    - { from: "cartridge-04-lsp-adapter-pattern", to: "cartridge-02-phase-3-execute-rollback", relation: "blocks" }
+    - { from: "cartridge-01-open-pr-6",           to: "cartridge-02-phase-3-execute-rollback", relation: "blocks" }
+    - { from: "cartridge-02-phase-3-execute-rollback", to: "cartridge-03-phase-4-verify-idris-abi", relation: "blocks" }
+    - { from: "cartridge-07-boj-server-158-followthrough", to: "cartridge-05-boj-server-cartridges-removal", relation: "blocks" }
+    - { from: "standards#200 merge",              to: "cartridge-06-standards-200-followthrough", relation: "blocks" }
+    - { from: "boj-server#158 merge",             to: "cartridge-07-boj-server-158-followthrough", relation: "blocks" }
+
+key_files_reference:
+  adrs:
+    - "docs/decisions/ADR-001-taxonomy.adoc"
+    - "docs/decisions/ADR-002-stack-orchestrator-vs-fleet-mcp.adoc"
+  schemas:
+    canonical: "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json"
+    mirrors:
+      - "boj-server-cartridges/schemas/cartridge-v1.json"
+      - "boj-server/schemas/cartridge-v1.json"
+  templates:
+    - "cartridges/templates/gossamer-mcp/"
+  tools:
+    - "tools/cartridge-minter/mint.ts"
+    - "tools/migrate_cartridges.py"
+  example_phase_2_adapter:
+    - "cartridges/cross-cutting/orchestration/stack-orchestrator-mcp/adapter/parser.ts"
+    - "cartridges/cross-cutting/orchestration/stack-orchestrator-mcp/adapter/planner.ts"
+    - "cartridges/cross-cutting/orchestration/stack-orchestrator-mcp/adapter/types.ts"

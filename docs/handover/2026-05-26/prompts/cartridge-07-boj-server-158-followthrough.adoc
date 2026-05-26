@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: MPL-2.0
+:icons: font
+
+= Cartridge 07 — boj-server#158 merge follow-through (tray remote-fetch + catalog reload)
+
+== Goal
+
+After `boj-server#158` merges, complete the items *explicitly deferred*
+in that PR: tray's remote-fetch wiring, `BojRest.Catalog`
+reload-without-restart, and the SHA-pin against `standards#200` once
+that lands.
+
+== Prerequisites
+
+* `boj-server#158` merged.
+
+== Context
+
+`boj-server#158` landed three preparatory changes (configurable
+`cartridges_root` env, canonical schema mirror, `category` field sweep
+on 125 cartridges). The PR description lists three deliberate
+deferrals:
+
+. *Tray remote-fetch wiring.* The Rust tray (`tray/src/main.rs` lines
+  ~79-83 + `tray/src/server.rs` line ~80) has a cartridge-source
+  subscription using a GitHub URL or registry ID with a download
+  timeout. It does NOT currently know how to fetch from
+  `hyperpolymath/boj-server-cartridges` and populate the local catalog.
+
+. *`BojRest.Catalog` reload-without-restart.* Today the GenServer
+  reads `cartridges/*/cartridge.json` at boot. After a remote fetch
+  installs new cartridges, the catalog must be notified to re-read
+  without a process restart.
+
+. *Strict SHA-pin against standards#200.* The schema mirror in
+  `schemas/cartridge-v1.json` should pin to the merged standards
+  commit (see `cartridge-06-standards-200-followthrough.adoc`).
+
+== Concrete steps
+
+. *Tray remote-fetch:*
+.. Wire the cartridge-source download path to actually pull a tarball
+   (or `git clone --depth 1`) of `hyperpolymath/boj-server-cartridges`
+   into the configured `BOJ_CARTRIDGES_PATH`.
+.. Honour the download timeout already in the source struct.
+.. Verify content hash against the cartridge's `source.sha256` (per
+   canonical schema).
+. *Catalog reload:*
+.. Add a `BojRest.Catalog.reload/0` GenServer call that re-walks the
+   cartridges root and rebuilds the ETS table atomically.
+.. Add a `POST /catalog/reload` HTTP endpoint guarded by an auth
+   token (or restrict to loopback bind per ADR-0004).
+.. Wire tray to call the endpoint after a successful fetch.
+. *SHA-pin:* per `cartridge-06`.
+
+== Acceptance criteria
+
+* Tray can populate `BOJ_CARTRIDGES_PATH` from a remote registry on
+  demand.
+* `POST /catalog/reload` picks up the new cartridges without a restart.
+* Schema mirror SHA-pinned (or covered by `cartridge-06`).
+* All three deliverables landable independently — file three PRs unless
+  there's a strong coupling argument for one.
+
+== Pitfalls
+
+* *Reload atomicity.* Don't tear down the ETS table mid-request.
+  Build the new table, atomically swap.
+* *Loopback-only invariant.* The reload endpoint MUST respect ADR-0004
+  §1 — back-side bind is loopback unless `BOJ_BIND_IP` is overridden.
+  Don't expose `/catalog/reload` on a public interface.
+* *Tray + Elixir + Idris2.* Tray is Rust, the catalog is Elixir, the
+  ABI is Idris2. Three runtimes coordinating means three failure modes
+  — keep each layer's contract narrow + well-tested.
+
+== References
+
+* `boj-server#158` — what's already merged
+* `boj-server/elixir/lib/boj_rest/catalog.ex` — current GenServer
+* `boj-server/tray/src/main.rs` + `server.rs` — tray cartridge-source
+* `docs/integration/http-capability-gateway-boj-contract.md` §1 — loopback invariant

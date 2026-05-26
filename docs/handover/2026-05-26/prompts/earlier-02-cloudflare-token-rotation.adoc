@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: MPL-2.0
+:icons: font
+
+= Earlier 02 — Cloudflare token-leak rotation + history rewrite
+
+== Goal
+
+Confirm rotation of the leaked Cloudflare API token, then complete the
+git-history rewrite that's currently paused pending rotation
+confirmation.
+
+== Context
+
+* Token ID: `689fa59a165c47cc61095d984c453205`
+* Leak location: `standards/avow-protocol/deploy-repos.sh:5` commit `5f2f8b2`
+* Token status: **UNVERIFIED** at Cloudflare as of session-end 2026-05-26.
+* Code fix PR `standards#161` MERGED 2026-05-26 — removed the literal token from the file.
+* History rewrite is PAUSED pending rotation confirmation.
+
+Memory: `project_cloudflare_token_leak_2026_05_21.md`.
+
+== Concrete steps
+
+. **ASK** the user explicitly: "Was Cloudflare token `689fa59a...` rotated?"
+   Do not proceed without an unambiguous yes.
+. If yes:
+.. Confirm the new token works for whatever workflow depended on the old one.
+.. Plan the history rewrite. The commit `5f2f8b2` lives in
+   `hyperpolymath/standards` history; rewriting it changes the SHA of
+   that commit + every commit after. This invalidates downstream pins.
+.. Audit which downstream wrappers pin to a SHA in the affected range
+   (see `estate-template-propagation-pattern` memory).
+.. Coordinate with the user on a rewrite window. Push needs `--force`
+   and protected-branch override. Get explicit user authorisation
+   (memory `feedback_all_commits_gpg_signed.md` says never to force-push
+   without explicit user instruction).
+.. Execute `git filter-repo --replace-text <map>` or equivalent. Push
+   the rewritten history.
+.. Re-pin downstream wrappers that referenced the rewritten range.
+. If no:
+.. Do nothing. Token may still be live and exploitable. The user must
+   rotate first.
+
+== Acceptance criteria
+
+* User has confirmed (in this session, in writing) that the token was
+  rotated.
+* History rewrite executed cleanly with no breakage of downstream
+  workflows.
+* Downstream SHA pins updated to post-rewrite commits.
+* `project_cloudflare_token_leak_2026_05_21.md` memory updated to
+  reflect closure.
+
+== Pitfalls
+
+* *Never assume rotation.* Without user confirmation, the token may
+  still be live. The code-fix PR removes it from `main` going forward
+  but does NOT remove it from git history; an attacker who cloned the
+  repo before the code-fix can still extract the literal value.
+* *Force-pushes are destructive.* Coordinate downstream consumers.
+  Pre-rewrite, take a snapshot of all branch heads in the standards
+  repo.
+* *GPG re-signing.* After history rewrite, the rewritten commits are
+  unsigned (the filter-repo tool strips signatures). They must be
+  re-signed if estate policy requires it (it does — see
+  `feedback_all_commits_gpg_signed.md`).
+
+== References
+
+* `project_cloudflare_token_leak_2026_05_21.md`
+* `standards#161` — the code fix
+* `feedback_all_commits_gpg_signed.md`
+* `estate-template-propagation-pattern` (memory)

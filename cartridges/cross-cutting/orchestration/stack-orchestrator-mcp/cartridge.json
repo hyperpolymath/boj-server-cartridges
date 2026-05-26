@@ -13,7 +13,7 @@
     "REST"
   ],
   "states": [
-    "scaffolded"
+    "phase-2-parser-planner"
   ],
   "auth": {
     "method": "none",

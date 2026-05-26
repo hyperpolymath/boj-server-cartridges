@@ -1,0 +1,205 @@
+{
+  "$schema": "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "iac-lsp",
+  "version": "0.1.0",
+  "description": "Language Server Protocol implementation for Infrastructure-as-Code tooling. Provides IDE integration for HCL/policy linting, resource graph diagnostics, plan-preview hovers, and state-drift hints across OpenTofu and Pulumi.",
+  "domain": "Infrastructure",
+  "category": "domain",
+  "tier": "Ayo",
+  "protocols": [
+    "LSP"
+  ],
+  "states": [
+    "scaffolded"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://iac-lsp",
+    "content_type": "application/vscode-jsonrpc; charset=utf-8"
+  },
+  "tools": [
+    {
+      "name": "lsp_initialize",
+      "description": "LSP initialize handshake. Returns server capabilities.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "rootUri": {
+            "type": "string",
+            "description": "Workspace root URI"
+          },
+          "capabilities": {
+            "type": "object",
+            "description": "Client LSP capabilities"
+          }
+        },
+        "required": [
+          "rootUri"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_diagnostic",
+      "description": "Run validator on a document and return diagnostics (errors, warnings, hints).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "Document URI"
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "opentofu",
+              "pulumi"
+            ],
+            "description": "Backend provider"
+          }
+        },
+        "required": [
+          "uri",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_hover",
+      "description": "Return documentation or type info at a position.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer"
+              },
+              "character": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "opentofu",
+              "pulumi"
+            ]
+          }
+        },
+        "required": [
+          "uri",
+          "position",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_completion",
+      "description": "Return completion items at a position.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer"
+              },
+              "character": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "opentofu",
+              "pulumi"
+            ]
+          }
+        },
+        "required": [
+          "uri",
+          "position",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_workspace_execute_command",
+      "description": "Execute a domain-specific command.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": [
+              "iac.lint",
+              "iac.planPreview",
+              "iac.driftCheck",
+              "iac.policyValidate"
+            ]
+          },
+          "arguments": {
+            "type": "array",
+            "description": "Command-specific arguments"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      }
+    }
+  ],
+  "backends": [
+    {
+      "id": "opentofu",
+      "binary": "tofu",
+      "extensions": [
+        ".tf",
+        ".tofu",
+        ".hcl"
+      ]
+    },
+    {
+      "id": "pulumi",
+      "binary": "pulumi",
+      "extensions": [
+        ".ts",
+        ".py",
+        ".go",
+        ".yaml"
+      ]
+    }
+  ],
+  "loopback": {
+    "host": "127.0.0.1",
+    "port": 5185
+  },
+  "source": {
+    "registry": "hyperpolymath/boj-server-cartridges",
+    "path": "cartridges/domains/infrastructure/iac-lsp"
+  }
+}

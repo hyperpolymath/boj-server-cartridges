@@ -1,0 +1,224 @@
+{
+  "$schema": "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "git-lsp",
+  "version": "0.1.0",
+  "description": "Language Server Protocol implementation for git hosting platforms. Provides IDE integration for PR/MR description linting, issue cross-reference completion, branch name conventions, and CI workflow validation across GitHub, GitLab, Gitea, and Bitbucket.",
+  "domain": "Development",
+  "category": "domain",
+  "tier": "Ayo",
+  "protocols": [
+    "LSP"
+  ],
+  "states": [
+    "scaffolded"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://git-lsp",
+    "content_type": "application/vscode-jsonrpc; charset=utf-8"
+  },
+  "tools": [
+    {
+      "name": "lsp_initialize",
+      "description": "LSP initialize handshake. Returns server capabilities.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "rootUri": {
+            "type": "string",
+            "description": "Workspace root URI"
+          },
+          "capabilities": {
+            "type": "object",
+            "description": "Client LSP capabilities"
+          }
+        },
+        "required": [
+          "rootUri"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_diagnostic",
+      "description": "Run validator on a document and return diagnostics (errors, warnings, hints).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "Document URI"
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "github",
+              "gitlab",
+              "gitea",
+              "bitbucket"
+            ],
+            "description": "Backend provider"
+          }
+        },
+        "required": [
+          "uri",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_hover",
+      "description": "Return documentation or type info at a position.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer"
+              },
+              "character": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "github",
+              "gitlab",
+              "gitea",
+              "bitbucket"
+            ]
+          }
+        },
+        "required": [
+          "uri",
+          "position",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_completion",
+      "description": "Return completion items at a position.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer"
+              },
+              "character": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "github",
+              "gitlab",
+              "gitea",
+              "bitbucket"
+            ]
+          }
+        },
+        "required": [
+          "uri",
+          "position",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_workspace_execute_command",
+      "description": "Execute a domain-specific command.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": [
+              "git.lintDescription",
+              "git.crossRefCompletion",
+              "git.branchConventionCheck",
+              "git.workflowValidate"
+            ]
+          },
+          "arguments": {
+            "type": "array",
+            "description": "Command-specific arguments"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      }
+    }
+  ],
+  "backends": [
+    {
+      "id": "github",
+      "binary": "gh",
+      "extensions": [
+        ".md",
+        ".yml"
+      ]
+    },
+    {
+      "id": "gitlab",
+      "binary": "glab",
+      "extensions": [
+        ".md",
+        ".yml"
+      ]
+    },
+    {
+      "id": "gitea",
+      "binary": "tea",
+      "extensions": [
+        ".md",
+        ".yml"
+      ]
+    },
+    {
+      "id": "bitbucket",
+      "binary": "bb",
+      "extensions": [
+        ".md",
+        ".yml"
+      ]
+    }
+  ],
+  "loopback": {
+    "host": "127.0.0.1",
+    "port": 5184
+  },
+  "source": {
+    "registry": "hyperpolymath/boj-server-cartridges",
+    "path": "cartridges/domains/development/git-lsp"
+  }
+}

@@ -3,6 +3,18 @@
 
 = Cartridge 04 — LSP adapter implementation pattern (template for all 11)
 
+[NOTE]
+====
+**STATUS: 1 of 11 DONE 2026-05-26.** `proof-lsp` adapter landed as PR #7
+(28 tests; framing + dispatch + 4 backends + integration smoke). The pattern
+is proven; use the merged `cartridges/domains/formal-verification/proof-lsp/adapter/`
+as the template for the remaining 10. **Remaining adapters (in suggested order):**
+container-lsp, database-lsp, k8s-lsp, cloud-lsp, git-lsp, observe-lsp,
+queues-lsp, iac-lsp, secrets-lsp, ssg-lsp. Each ~2h of focused work;
+throttle PR bursts (~5 in 30min) to avoid GitHub's secondary content-creation
+rate-limit.
+====
+
 == Goal
 
 Implement the Deno LSP adapter for **one** of the 11 scaffolded LSP

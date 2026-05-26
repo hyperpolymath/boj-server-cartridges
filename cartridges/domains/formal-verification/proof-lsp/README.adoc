@@ -11,12 +11,42 @@ the same domain).
 
 == State
 
-*Status:* `scaffolded` (per `cartridge.json#/states[0]`).
+*Status:* `adapter-implemented` (per `cartridge.json#/states`).
 
 The cartridge directory exists, the manifest declares the LSP capability
-surface, and the source lineage is archived under `_source-archive/`. The
-adapter (`adapter/`), Idris2 ABI (`abi/`), Zig FFI (`ffi/`), and panels
-(`panels/`) are *empty* — to be filled in a follow-up PR.
+surface, the source lineage is archived under `_source-archive/`, and the
+Deno adapter lives in `adapter/`. The Idris2 ABI (`abi/`), Zig FFI
+(`ffi/`), and panels (`panels/`) are still empty — to be filled when this
+cartridge promotes from `Ayo` to `Shield` tier.
+
+=== Adapter shape
+
+[source]
+----
+adapter/
+├── deno.json          # pinned imports + test/check tasks
+├── types.ts           # Result<T,E>, LSP message types
+├── server.ts          # Content-Length framing + JSON-RPC dispatch
+├── handlers/
+│   ├── initialize.ts        # server capabilities + backend detection
+│   ├── diagnostic.ts        # textDocument/diagnostic
+│   ├── hover.ts             # textDocument/hover
+│   ├── completion.ts        # textDocument/completion
+│   └── executeCommand.ts    # workspace/executeCommand (4 commands)
+├── backends/
+│   ├── base.ts              # Backend trait + subprocess helpers
+│   ├── coq.ts               # coqc lint + Coq tactic completions
+│   ├── lean.ts              # lean --make lint + Lean tactic completions
+│   ├── isabelle.ts          # PIDE placeholder + Isabelle keywords
+│   ├── agda.ts              # agda lint with location parsing
+│   └── registry.ts          # buildBackends() + detectByExtension()
+├── server_test.ts     # 13 unit tests
+├── backends_test.ts   # 14 unit tests
+└── integration_test.ts  # spawns adapter, round-trips initialize
+----
+
+Run tests with `deno test --allow-read --allow-run --allow-env` from the
+`adapter/` directory.
 
 == Source lineage
 
@@ -43,24 +73,17 @@ port effort. They are not built by this cartridge.
 
 == Port plan
 
-The actual port from Elixir to the cartridge runtime is a separate PR (or
-sequence of PRs), large enough that scaffolding and adapter-implementation
-land separately rather than together. Outline:
-
-. *adapter/server.ts* — Deno LSP framing (header-and-content message loop over
-  stdio), routing to per-backend dispatchers. Replaces `lsp/server.ex`.
-. *adapter/handlers/* — Deno per-method handlers (`textDocument/diagnostic`,
-  `textDocument/hover`, `textDocument/completion`,
-  `workspace/executeCommand`). Replaces `lsp/handlers/*.ex`.
-. *adapter/backends/* — per-proof-assistant subprocess managers (Coq, Lean,
-  Isabelle, Agda). Replaces `adapters/*.ex`. The Elixir supervision tree
-  collapses to Deno workers + an internal supervisor object; the OTP
-  guarantees become explicit error-handling boundaries.
-. *ffi/zig/* — native helpers where Deno's process / IO surface is
-  insufficient (e.g. proof-state delta diffing on large goal lists, if
-  measured slow).
-. *abi/idris2/* — formal ABI for the LSP request/response contract. Required
-  if/when this cartridge promotes from `Ayo` to `Shield` tier.
+. *adapter/server.ts* — DONE. Deno LSP framing + JSON-RPC dispatch.
+. *adapter/handlers/* — DONE. All five handlers wired.
+. *adapter/backends/* — DONE (skeletal). Subprocess wiring + simple output
+  parsing for Coq/Lean/Agda; Isabelle is a PIDE-placeholder until an
+  isabelle-server channel is added. Per-backend hover currently returns
+  null; goal extraction + interactive tactic application are the next
+  fidelity bumps (see `_source-archive/elixir-lib/lsp/handlers/hover.ex`
+  + `adapters/{coq,lean,agda}.ex` `get_goals/3` for the reference logic).
+. *ffi/zig/* — not started. Add only when measured slow.
+. *abi/idris2/* — required for promotion from `Ayo` to `Shield` tier; not
+  started.
 
 == Cartridge facts
 

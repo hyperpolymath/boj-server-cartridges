@@ -20,3 +20,6 @@
 
 # Cartridge-side runtime
 **/*.log
+
+# Deno per-adapter lockfiles (regenerated on demand)
+**/deno.lock

@@ -12,7 +12,8 @@
     "LSP"
   ],
   "states": [
-    "scaffolded"
+    "scaffolded",
+    "adapter-implemented"
   ],
   "auth": {
     "method": "none",

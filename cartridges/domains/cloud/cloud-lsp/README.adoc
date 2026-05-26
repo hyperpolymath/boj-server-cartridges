@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+:toc:
+:icons: font
+
+= cloud-lsp — Cloud Language Server cartridge
+
+Scaffolded cartridge for a Language Server Protocol implementation covering
+*aws*, *azure*, *gcp*, *digitalocean*.
+
+== State
+
+*Status:* `scaffolded` (per `cartridge.json#/states[0]`).
+
+The cartridge directory exists, the manifest declares the LSP capability
+surface, and the source lineage is archived under `_source-archive/`. The
+adapter (`adapter/`), Idris2 ABI (`abi/`), Zig FFI (`ffi/`), and panels
+(`panels/`) are *empty* — to be filled in a follow-up PR.
+
+== Source lineage
+
+The original implementation is an Elixir LSP server living in the now-archived
+`polystack/poly-cloud/lsp/` (1640 LOC across 12 modules):
+
+----
+adapters/aws.ex                         — 201 LOC
+adapters/azure.ex                       — 253 LOC
+adapters/behaviour.ex                   — 106 LOC
+adapters/digitalocean.ex                — 232 LOC
+adapters/gcp.ex                         — 228 LOC
+adapters/supervisor.ex                  — 29 LOC
+lsp/handlers/completion.ex              — 98 LOC
+lsp/handlers/diagnostics.ex             — 102 LOC
+lsp/handlers/hover.ex                   — 103 LOC
+lsp/server.ex                           — 231 LOC
+poly_cloud_lsp/application.ex           — 21 LOC
+poly_cloud_lsp.ex                       — 36 LOC
+----
+
+These files are preserved verbatim in `_source-archive/elixir-lib/` for the
+port effort. They are not built by this cartridge.
+
+== Port plan
+
+. *adapter/server.ts* — Deno LSP framing (header-and-content message loop over
+  stdio), routing to per-backend dispatchers.
+. *adapter/handlers/* — Deno per-method handlers (`textDocument/diagnostic`,
+  `textDocument/hover`, `textDocument/completion`,
+  `workspace/executeCommand`).
+. *adapter/backends/* — per-provider subprocess managers (aws, azure, gcp, digitalocean).
+  The Elixir supervision tree collapses to Deno workers + an internal
+  supervisor object; OTP guarantees become explicit error-handling boundaries.
+. *ffi/zig/* — native helpers where Deno's process / IO surface is
+  insufficient.
+. *abi/idris2/* — formal ABI for the LSP request/response contract. Required
+  if/when this cartridge promotes from `Ayo` to `Shield` tier.
+
+== Cartridge facts
+
+[cols="1,5"]
+|===
+| Name        | `cloud-lsp`
+| Version     | `0.1.0`
+| Domain      | `Cloud`
+| Category    | `domain`
+| Tier        | `Ayo`
+| Protocols   | `LSP`
+| Loopback    | `127.0.0.1:5180`
+| Backends    | aws, azure, gcp, digitalocean
+|===
+
+== References
+
+* https://github.com/hyperpolymath/standards/pull/200[standards#200 — canonical cartridge format]
+* https://github.com/hyperpolymath/boj-server-cartridges/blob/main/docs/decisions/ADR-001-taxonomy.adoc[ADR-001 — hybrid taxonomy]
+* https://github.com/hyperpolymath/boj-server-cartridges/pull/3[boj-server-cartridges#3 — proof-lsp pilot scaffold (this cartridge follows the same shape)]

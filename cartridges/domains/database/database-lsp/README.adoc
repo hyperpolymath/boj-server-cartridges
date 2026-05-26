@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+:toc:
+:icons: font
+
+= database-lsp — Database Language Server cartridge
+
+Scaffolded cartridge for a Language Server Protocol implementation covering
+*postgresql*, *mysql*, *sqlite*, *redis*, *mongodb*, *neo4j*.
+
+== State
+
+*Status:* `scaffolded` (per `cartridge.json#/states[0]`).
+
+The cartridge directory exists, the manifest declares the LSP capability
+surface, and the source lineage is archived under `_source-archive/`. The
+adapter (`adapter/`), Idris2 ABI (`abi/`), Zig FFI (`ffi/`), and panels
+(`panels/`) are *empty* — to be filled in a follow-up PR.
+
+== Source lineage
+
+The original implementation is an Elixir LSP server living in the now-archived
+`polystack/poly-db/lsp/` (1635 LOC across 13 modules):
+
+----
+adapters/behaviour.ex                   — 112 LOC
+adapters/mongodb.ex                     — 199 LOC
+adapters/mysql.ex                       — 214 LOC
+adapters/neo4j.ex                       — 188 LOC
+adapters/postgresql.ex                  — 207 LOC
+adapters/redis.ex                       — 175 LOC
+adapters/sqlite.ex                      — 183 LOC
+lsp/handlers/completion.ex              — 43 LOC
+lsp/handlers/diagnostics.ex             — 36 LOC
+lsp/handlers/hover.ex                   — 50 LOC
+lsp/server.ex                           — 153 LOC
+poly_db_lsp/application.ex              — 35 LOC
+poly_db_lsp.ex                          — 40 LOC
+----
+
+These files are preserved verbatim in `_source-archive/elixir-lib/` for the
+port effort. They are not built by this cartridge.
+
+== Port plan
+
+. *adapter/server.ts* — Deno LSP framing (header-and-content message loop over
+  stdio), routing to per-backend dispatchers.
+. *adapter/handlers/* — Deno per-method handlers (`textDocument/diagnostic`,
+  `textDocument/hover`, `textDocument/completion`,
+  `workspace/executeCommand`).
+. *adapter/backends/* — per-provider subprocess managers (postgresql, mysql, sqlite, redis, mongodb, neo4j).
+  The Elixir supervision tree collapses to Deno workers + an internal
+  supervisor object; OTP guarantees become explicit error-handling boundaries.
+. *ffi/zig/* — native helpers where Deno's process / IO surface is
+  insufficient.
+. *abi/idris2/* — formal ABI for the LSP request/response contract. Required
+  if/when this cartridge promotes from `Ayo` to `Shield` tier.
+
+== Cartridge facts
+
+[cols="1,5"]
+|===
+| Name        | `database-lsp`
+| Version     | `0.1.0`
+| Domain      | `Database`
+| Category    | `domain`
+| Tier        | `Ayo`
+| Protocols   | `LSP`
+| Loopback    | `127.0.0.1:5182`
+| Backends    | postgresql, mysql, sqlite, redis, mongodb, neo4j
+|===
+
+== References
+
+* https://github.com/hyperpolymath/standards/pull/200[standards#200 — canonical cartridge format]
+* https://github.com/hyperpolymath/boj-server-cartridges/blob/main/docs/decisions/ADR-001-taxonomy.adoc[ADR-001 — hybrid taxonomy]
+* https://github.com/hyperpolymath/boj-server-cartridges/pull/3[boj-server-cartridges#3 — proof-lsp pilot scaffold (this cartridge follows the same shape)]

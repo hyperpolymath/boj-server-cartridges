@@ -1,0 +1,211 @@
+{
+  "$schema": "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "container-lsp",
+  "version": "0.1.0",
+  "description": "Language Server Protocol implementation for container runtimes. Provides IDE integration for Containerfile/Dockerfile linting, base-image hints, layer-size diagnostics, and security policy checks across Docker, Podman, and nerdctl.",
+  "domain": "Container",
+  "category": "domain",
+  "tier": "Ayo",
+  "protocols": [
+    "LSP"
+  ],
+  "states": [
+    "scaffolded"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://container-lsp",
+    "content_type": "application/vscode-jsonrpc; charset=utf-8"
+  },
+  "tools": [
+    {
+      "name": "lsp_initialize",
+      "description": "LSP initialize handshake. Returns server capabilities.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "rootUri": {
+            "type": "string",
+            "description": "Workspace root URI"
+          },
+          "capabilities": {
+            "type": "object",
+            "description": "Client LSP capabilities"
+          }
+        },
+        "required": [
+          "rootUri"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_diagnostic",
+      "description": "Run validator on a document and return diagnostics (errors, warnings, hints).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "Document URI"
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "docker",
+              "podman",
+              "nerdctl"
+            ],
+            "description": "Backend provider"
+          }
+        },
+        "required": [
+          "uri",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_hover",
+      "description": "Return documentation or type info at a position.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer"
+              },
+              "character": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "docker",
+              "podman",
+              "nerdctl"
+            ]
+          }
+        },
+        "required": [
+          "uri",
+          "position",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_text_document_completion",
+      "description": "Return completion items at a position.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer"
+              },
+              "character": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "docker",
+              "podman",
+              "nerdctl"
+            ]
+          }
+        },
+        "required": [
+          "uri",
+          "position",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "lsp_workspace_execute_command",
+      "description": "Execute a domain-specific command.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": [
+              "container.lint",
+              "container.buildPreview",
+              "container.scanLayers",
+              "container.checkBase"
+            ]
+          },
+          "arguments": {
+            "type": "array",
+            "description": "Command-specific arguments"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      }
+    }
+  ],
+  "backends": [
+    {
+      "id": "docker",
+      "binary": "docker",
+      "extensions": [
+        "Dockerfile",
+        "Containerfile"
+      ]
+    },
+    {
+      "id": "podman",
+      "binary": "podman",
+      "extensions": [
+        "Containerfile"
+      ]
+    },
+    {
+      "id": "nerdctl",
+      "binary": "nerdctl",
+      "extensions": [
+        "Containerfile"
+      ]
+    }
+  ],
+  "loopback": {
+    "host": "127.0.0.1",
+    "port": 5181
+  },
+  "source": {
+    "registry": "hyperpolymath/boj-server-cartridges",
+    "path": "cartridges/domains/container/container-lsp"
+  }
+}

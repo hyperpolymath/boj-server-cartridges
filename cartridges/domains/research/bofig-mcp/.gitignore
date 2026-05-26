@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: MPL-2.0
+*.swp
+*.swo
+*~
+.DS_Store
+node_modules/
+dist/
+build/
+target/
+.deno
+deno.lock

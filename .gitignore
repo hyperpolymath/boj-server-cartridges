@@ -1,0 +1,22 @@
+# Build artefacts (lead-dot AND no-dot variants both seen in zig)
+**/zig-cache/
+**/.zig-cache/
+**/zig-out/
+**/.zig-out/
+**/node_modules/
+**/.cache/
+**/_build/
+**/target/
+**/dist/
+
+# OS junk
+.DS_Store
+*.swp
+*~
+
+# Local env
+.env.local
+*.local.json
+
+# Cartridge-side runtime
+**/*.log

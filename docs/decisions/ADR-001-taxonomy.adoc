@@ -1,0 +1,89 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= ADR-001: Cartridge taxonomy — Hybrid (domains + cross-cutting + templates)
+:adr-status: Accepted
+:adr-date: 2026-05-26
+
+== Status
+
+*Accepted* 2026-05-26 (initial repo commit).
+
+== Context
+
+This repository holds 125 cartridges (and growing). A flat layout
+(`cartridges/<name>/`) makes related cartridges hard to discover; a strictly
+role-keyed layout (`cartridges/mcp/<name>/`) doesn't reflect that "a domain
+has multiple cartridges across roles" is the dominant grouping pattern.
+
+The canonical cartridge spec lives in
+link:https://github.com/hyperpolymath/standards/blob/main/cartridges/CARTRIDGE-FORMAT.adoc[standards/cartridges/CARTRIDGE-FORMAT.adoc]
+(see also link:https://github.com/hyperpolymath/standards/blob/main/docs/decisions/ADR-002-cartridge-format-canonical-home.adoc[standards ADR-002]).
+
+== Decision
+
+Use a *Hybrid* taxonomy:
+
+[source]
+----
+cartridges/
+├── domains/<domain>/<cartridge-name>/      ← e.g. domains/cloud/aws-mcp/
+├── cross-cutting/<category>/<cartridge-name>/  ← e.g. cross-cutting/agentic/agent-mcp/
+└── templates/<template-name>/              ← e.g. templates/gossamer-mcp/
+----
+
+The cartridge's own `cartridge.json` carries the authoritative `category`
+field (`domain` | `cross-cutting` | `template`) per the canonical schema. The
+directory layout mirrors that field.
+
+=== Why each bucket
+
+* *domains/* — cartridges with a specific functional domain (cloud, database,
+  ci-cd, observability, …). Multiple cartridges may share a domain (e.g.
+  `database-mcp` + 11 provider-specific cartridges). They sit as siblings.
+
+* *cross-cutting/* — cartridges that do not belong to a single functional
+  domain. Initial categories: `agentic` (5), `nesy` (2), `build` (1, generic
+  BSP), `debug` (1, generic DAP), `fleet` (1, orchestration), `health` (1).
+  More categories may be added (e.g. `format`, `lint`) as cartridges arrive.
+
+* *templates/* — canonical scaffolds. `gossamer-mcp` is the reference
+  template; the minter tool (separate PR) consumes templates from here.
+
+=== Domain normalisation
+
+Initial migration normalised mixed-casing variants from boj-server's manifests:
+`Cloud`/`cloud` → `cloud`, `Database`/`database` → `database`,
+`Container Orchestration`/`container` → `container`, `Package Management`/`Registry`
+→ `registry`, etc. 30 normalised domains result from the 125 initial cartridges.
+
+== Consequences
+
+*Positive:*
+
+* Related cartridges are co-located; navigating to "all database cartridges"
+  is one `ls`.
+* Adding the 8 server-role variants per domain (mcp/lsp/dap/bsp/format/lint/
+  build/debug/nesy/agentic) doesn't trigger a re-layout — they all land in
+  the same `domains/<X>/` directory.
+* The `category` field in `cartridge.json` is the source of truth; the
+  directory layout is a presentation choice that can evolve.
+
+*Negative:*
+
+* Two-level paths inside a domain (`domains/cloud/aws-mcp/`) are longer
+  than flat. Mitigated by tab-completion and grouping benefit.
+
+== Alternatives considered
+
+* *Flat* (`cartridges/<name>/`) — simplest to grep; chosen against because
+  domain grouping is the dominant query pattern at 125+ cartridges.
+* *Collections + individual* (`collections/databases/postgres-mcp/` +
+  `individual/ssg-mcp/`) — captures "individual vs collection" phrasing but
+  introduces an axis ("is this a collection?") that's hard to apply
+  consistently. Most domains end up "collection-like" once they grow.
+
+== Migration
+
+Initial population: 2026-05-26 via `tools/migrate_cartridges.py` (preserved
+in `tools/` for reference and future re-runs if boj-server adds cartridges
+before its `cartridges/` dir is finally removed).

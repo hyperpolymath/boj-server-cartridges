@@ -1,0 +1,70 @@
+// SPDX-License-Identifier: MPL-2.0
+:icons: font
+
+= Cartridge 02 — Phase 3: execute + rollback for stack-orchestrator-mcp
+
+== Goal
+
+Port `polystack/poly-orchestrator-lsp/lib/orchestrator/executor.ex` +
+`lsp_client.ex` to Deno, exposing the `stack_execute_phase` and
+`stack_rollback` MCP tools declared in
+`cartridges/cross-cutting/orchestration/stack-orchestrator-mcp/cartridge.json`.
+This is *Phase 3* of the ADR-002 plan.
+
+== Prerequisites
+
+. PR #6 (the scaffold + ADR-002 + Phase 2) MUST be merged before starting.
+  Phase 3 builds on top of `adapter/parser.ts` + `adapter/planner.ts`.
+. At least one LSP cartridge adapter must be implemented (see
+  `cartridge-04-lsp-adapter-pattern.adoc`) so there's something to
+  dispatch to.
+
+== Context
+
+* Source files to port (archived in `_source-archive/elixir-lib/orchestrator/`):
+** `executor.ex` — phase-by-phase execution loop, retries, timeouts
+** `lsp_client.ex` — generic LSP client (JSON-RPC over stdio) used to talk to each domain LSP
+* Target: `adapter/executor.ts` + `adapter/lsp_client.ts` + tests
+* Manifest tools to implement:
+** `stack_execute_phase` — execute one phase, dispatching parallel groups concurrently to target LSP cartridges
+** `stack_rollback` — reverse-execute a partially-executed plan, respecting `rollback.strategy`
+
+== Concrete steps
+
+. Re-read `_source-archive/elixir-lib/orchestrator/executor.ex` to learn the dispatch + retry semantics.
+. Write `adapter/lsp_client.ts`:
+.. Spawn the target LSP cartridge's adapter as a child process (or connect to its loopback port if already running).
+.. JSON-RPC over stdio (or HTTP for loopback) with `initialize` + `textDocument/diagnostic` (or a custom `workspace/executeCommand` for execution side-effects).
+.. Surface timeouts + retries from `orchestration.timeout_ms` and `orchestration.retry_count` in the parsed stack.
+. Write `adapter/executor.ts`:
+.. `executePhase(plan, phaseIndex, opts)` — dispatch each parallel group, await all, advance to next group.
+.. `dryRun` mode — return the dispatch matrix without actually invoking LSPs.
+.. Wire status transitions on each `ComponentStep.status`.
+. Write `adapter/rollback.ts` consuming `buildRollbackPlan` from `planner.ts`.
+. Tests:
+.. Mock `lsp_client.ts` with a stub that records dispatched calls — verify execution order respects parallel groups.
+.. Test retry behaviour on simulated transient failure.
+.. Test rollback inverts forward execution.
+. Advance manifest `states[]` to include `phase-3-execute-rollback`.
+
+== Acceptance criteria
+
+* `stack_execute_phase` MCP tool is wired (manifest `tools[]` entry no longer just nominal).
+* `stack_rollback` MCP tool wired.
+* `deno test --allow-read --allow-env --allow-run --allow-net` passes.
+* At least one end-to-end test driving against a real (or mocked) LSP cartridge.
+* `manifest.states` includes `phase-3-execute-rollback`.
+
+== Pitfalls
+
+* *Idempotency:* `stack_execute_phase` must be idempotent on retry — design `ComponentStep.outputs` to be replayable. The original Elixir version relies on VerisimDB for this; the Deno port must either use VerisimDB or document a replacement.
+* *Concurrency limits:* respect `orchestration.max_parallel` from the stack metadata.
+* *Failure semantics:* a single component failure in a parallel group should not cancel siblings mid-flight — let them complete, then surface aggregate status.
+* *LSP cartridge boot:* if the dispatcher spawns LSP cartridges on-demand, ensure clean shutdown on rollback.
+
+== References
+
+* `_source-archive/elixir-lib/orchestrator/executor.ex`
+* `_source-archive/elixir-lib/orchestrator/lsp_client.ex`
+* `_source-archive/elixir-lib/verisimdb/client.ex` — state persistence pattern
+* `docs/decisions/ADR-002-stack-orchestrator-vs-fleet-mcp.adoc` §Architecture

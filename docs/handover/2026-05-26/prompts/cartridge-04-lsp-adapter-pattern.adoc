@@ -1,0 +1,151 @@
+// SPDX-License-Identifier: MPL-2.0
+:icons: font
+
+= Cartridge 04 — LSP adapter implementation pattern (template for all 11)
+
+== Goal
+
+Implement the Deno LSP adapter for **one** of the 11 scaffolded LSP
+cartridges by porting its archived Elixir source. The work is the same
+shape across all 11; pick one, port it, then this prompt becomes the
+template for the rest.
+
+== Scope per cartridge
+
+Each cartridge currently has:
+
+[source]
+----
+cartridges/domains/<X>/<cartridge-name>/
+├── cartridge.json        # schema-validated manifest, state="scaffolded"
+├── mod.js                # manifest export + start() error stub
+├── README.adoc           # port plan
+├── adapter/.gitkeep      # ← *empty, to be filled by this work*
+├── abi/.gitkeep          # ← Shield-tier only
+├── ffi/.gitkeep          # ← optional, if Deno perf insufficient
+├── panels/.gitkeep       # ← UI panels, optional
+└── _source-archive/elixir-lib/
+    ├── poly_<name>_lsp.ex
+    ├── poly_<name>_lsp/application.ex
+    ├── adapters/{behaviour.ex, <backend1>.ex, <backend2>.ex, ...}
+    └── lsp/{server.ex, handlers/{completion.ex, diagnostics.ex, hover.ex}}
+----
+
+Cartridge map (which polystack source ports to which cartridge dir,
+with the 11 entries the LSP scaffolds already populated):
+
+[cols="2,1,3,2"]
+|===
+| Polystack source | Loopback | Cartridge path | Backends
+
+| poly-proof
+| 5179
+| cartridges/domains/formal-verification/proof-lsp/
+| coq, lean, isabelle, agda
+
+| poly-cloud
+| 5180
+| cartridges/domains/cloud/cloud-lsp/
+| aws, azure, gcp, digitalocean
+
+| poly-container
+| 5181
+| cartridges/domains/container/container-lsp/
+| docker, podman, nerdctl
+
+| poly-db
+| 5182
+| cartridges/domains/database/database-lsp/
+| postgresql, mysql, sqlite, redis, mongodb, neo4j
+
+| poly-k8s
+| 5183
+| cartridges/domains/container/k8s-lsp/
+| kubectl, helm, kustomize
+
+| poly-git
+| 5184
+| cartridges/domains/development/git-lsp/
+| github, gitlab, gitea, bitbucket
+
+| poly-iac
+| 5185
+| cartridges/domains/infrastructure/iac-lsp/
+| opentofu, pulumi
+
+| poly-observability
+| 5186
+| cartridges/domains/observability/observe-lsp/
+| prometheus, loki, grafana, jaeger
+
+| poly-queue
+| 5187
+| cartridges/domains/messaging/queues-lsp/
+| nats, rabbitmq, redis_streams
+
+| poly-secret
+| 5188
+| cartridges/domains/security/secrets-lsp/
+| vault, sops
+
+| poly-ssg
+| 5189
+| cartridges/domains/web/ssg-lsp/
+| hugo, mdbook, zola, hakyll, franklin, casket-ssg
+(jekyll source archived but NOT in the new manifest per the no-Jekyll policy)
+|===
+
+== Suggested starting cartridge
+
+*proof-lsp* — smallest surface area, 4 well-known backends (Coq/Lean/Isabelle/Agda), formally-verified-adjacent so a clean
+testing target. The pattern proven here applies to the other 10.
+
+== Concrete steps (per cartridge)
+
+. Re-read `_source-archive/elixir-lib/poly_<name>_lsp.ex` and `lsp/server.ex` for the LSP framing.
+. Re-read `_source-archive/elixir-lib/adapters/<backend>.ex` for each
+   backend to learn its subprocess invocation, output parsing, and
+   error-handling semantics.
+. Create `adapter/`:
+.. `server.ts` — LSP framing: read `Content-Length: <n>\r\n\r\n<json>` over stdio, dispatch by method, write framed response. Match the Phase 2 type style: `Result<T,E>`-returning helpers.
+.. `handlers/initialize.ts` — return server capabilities (which LSP methods this cartridge supports).
+.. `handlers/diagnostic.ts` — `textDocument/diagnostic` → backend.lint(uri) → diagnostics[]
+.. `handlers/hover.ts` — `textDocument/hover` → backend.info(uri, position) → hover content
+.. `handlers/completion.ts` — `textDocument/completion` → backend.complete(uri, position) → completion items
+.. `handlers/executeCommand.ts` — `workspace/executeCommand` for cartridge-specific commands per the manifest
+.. `backends/base.ts` — backend trait: `lint(uri)`, `info(uri, pos)`, `complete(uri, pos)`, `executeCommand(cmd, args)`.
+.. `backends/<backend>.ts` — one file per backend, subprocess management for that backend's binary
+. Create `adapter/deno.json` — pinned imports, test task (`deno test --allow-read --allow-run --allow-env`).
+. Create `adapter/*_test.ts` — unit tests per handler + per backend stub. Smoke test driving an actual subprocess for at least one backend.
+. Update manifest:
+.. `states[]` add `adapter-implemented`.
+.. (optional) Bump `version` to `0.2.0`.
+. Delete the now-redundant `.gitkeep` in `adapter/`.
+. Update `mod.js` `start()` to instantiate `adapter/server.ts` instead of throwing.
+
+== Acceptance criteria
+
+* `deno check adapter/server.ts adapter/handlers/*.ts adapter/backends/*.ts` passes.
+* `deno test --allow-read --allow-run --allow-env` passes.
+* Smoke test launches the adapter, sends `initialize`, receives server capabilities.
+* Cartridge `mod.js` `start()` succeeds (was throwing — now boots the adapter).
+* Manifest declares `adapter-implemented` in `states`.
+
+== Pitfalls
+
+* *Backend binary availability.* Tests must skip gracefully when the backend binary is absent. Use `Deno.which()` (or equivalent) and `t.skip()` on missing binaries.
+* *LSP framing newlines.* `Content-Length` framing uses `\r\n` not `\n`. Get this wrong and the server hangs.
+* *Per-backend output parsing varies enormously.* Don't try to abstract too early — each backend's stdout/stderr format is its own dialect. The Elixir behaviour module shows the *minimal* common interface.
+* *Concurrency.* The Elixir version uses one GenServer per backend, supervised. The Deno port should use one Worker (or async task) per backend to preserve the isolation.
+* *Auto-merge:* like every PR, set `--auto --squash --delete-branch` immediately. But throttle: don't try to file all 11 LSP adapter PRs in one burst (see secondary rate-limit memo).
+
+== Bookkeeping
+
+After each LSP adapter lands, update `session_2026_05_26_cartridge_extraction.md` § item 10 with the cartridge's status (`adapter-implemented`). 11 cartridges to work through; each merit ~2 hours of focused work plus testing.
+
+== References
+
+* `cartridges/domains/formal-verification/proof-lsp/` — pilot scaffold (start here)
+* `cartridges/domains/formal-verification/proof-mcp/adapter/` — *MCP* adapter (different protocol; reference only for Deno setup style)
+* `_source-archive/elixir-lib/` — the source to port (different inside each cartridge)
+* `cartridges/cross-cutting/orchestration/stack-orchestrator-mcp/adapter/` — Phase 2 example of a Deno adapter (parser + planner only, not full LSP)

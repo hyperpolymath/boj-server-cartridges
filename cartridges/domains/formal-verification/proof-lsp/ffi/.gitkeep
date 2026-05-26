@@ -1,0 +1,1 @@
+// ffi/ — Zig FFI bindings. Add only if Deno IO surface measures slow.

@@ -1,0 +1,99 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+:toc:
+:icons: font
+
+= proof-lsp — Proof Assistant Language Server cartridge
+
+Scaffolded cartridge for a Language Server Protocol implementation covering
+*Coq*, *Lean*, *Isabelle*, and *Agda*. Companion to `proof-mcp` (MCP slice of
+the same domain).
+
+== State
+
+*Status:* `scaffolded` (per `cartridge.json#/states[0]`).
+
+The cartridge directory exists, the manifest declares the LSP capability
+surface, and the source lineage is archived under `_source-archive/`. The
+adapter (`adapter/`), Idris2 ABI (`abi/`), Zig FFI (`ffi/`), and panels
+(`panels/`) are *empty* — to be filled in a follow-up PR.
+
+== Source lineage
+
+The original implementation is an Elixir LSP server living in the now-archived
+`polystack/poly-proof/lsp/` (1552 LOC across 12 modules):
+
+----
+poly_proof_lsp.ex                       — top-level module (34 LOC)
+poly_proof_lsp/application.ex           — OTP entry (22 LOC)
+adapters/behaviour.ex                   — backend trait (99 LOC)
+adapters/agda.ex                        — Agda adapter (150 LOC)
+adapters/coq.ex                         — Coq adapter (150 LOC)
+adapters/isabelle.ex                    — Isabelle adapter (152 LOC)
+adapters/lean.ex                        — Lean adapter (144 LOC)
+adapters/supervisor.ex                  — supervision tree (29 LOC)
+lsp/server.ex                           — LSP framing/dispatch (222 LOC)
+lsp/handlers/completion.ex              — completion handler (196 LOC)
+lsp/handlers/diagnostics.ex             — diagnostics handler (180 LOC)
+lsp/handlers/hover.ex                   — hover handler (174 LOC)
+----
+
+These files are preserved verbatim in `_source-archive/elixir-lib/` for the
+port effort. They are not built by this cartridge.
+
+== Port plan
+
+The actual port from Elixir to the cartridge runtime is a separate PR (or
+sequence of PRs), large enough that scaffolding and adapter-implementation
+land separately rather than together. Outline:
+
+. *adapter/server.ts* — Deno LSP framing (header-and-content message loop over
+  stdio), routing to per-backend dispatchers. Replaces `lsp/server.ex`.
+. *adapter/handlers/* — Deno per-method handlers (`textDocument/diagnostic`,
+  `textDocument/hover`, `textDocument/completion`,
+  `workspace/executeCommand`). Replaces `lsp/handlers/*.ex`.
+. *adapter/backends/* — per-proof-assistant subprocess managers (Coq, Lean,
+  Isabelle, Agda). Replaces `adapters/*.ex`. The Elixir supervision tree
+  collapses to Deno workers + an internal supervisor object; the OTP
+  guarantees become explicit error-handling boundaries.
+. *ffi/zig/* — native helpers where Deno's process / IO surface is
+  insufficient (e.g. proof-state delta diffing on large goal lists, if
+  measured slow).
+. *abi/idris2/* — formal ABI for the LSP request/response contract. Required
+  if/when this cartridge promotes from `Ayo` to `Shield` tier.
+
+== Cartridge facts
+
+[cols="1,5"]
+|===
+| Name        | `proof-lsp`
+| Version     | `0.1.0`
+| Domain      | `Formal Verification`
+| Category    | `domain`
+| Tier        | `Ayo`
+| Protocols   | `LSP`
+| Loopback    | `127.0.0.1:5179`
+| Sibling     | `proof-mcp` (MCP slice of the same domain)
+|===
+
+== Why a separate cartridge for LSP
+
+`proof-mcp` is consumed by AI agents (loads obligations, returns
+verified/failed). `proof-lsp` is consumed by editors (returns diagnostics,
+hovers, completions in real time as the user types).
+
+Both wrap the same proof-assistant binaries but expose them through different
+protocols, with different latency/UX requirements, and different state
+lifecycles. Keeping them as separate cartridges:
+
+* lets editor users avoid pulling the MCP slice and vice versa;
+* lets the LSP cartridge be upgraded for editor responsiveness without
+  destabilising agent workflows;
+* matches the role-suffix taxonomy defined in
+  https://github.com/hyperpolymath/standards/pull/200[standards#200].
+
+== References
+
+* https://github.com/hyperpolymath/standards/pull/200[standards#200 — canonical cartridge format]
+* https://github.com/hyperpolymath/boj-server-cartridges/blob/main/docs/decisions/ADR-001-taxonomy.adoc[ADR-001 — hybrid taxonomy]
+* `cartridges/domains/formal-verification/proof-mcp/` — MCP sibling

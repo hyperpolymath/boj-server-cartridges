@@ -3,6 +3,16 @@
 
 = Cartridge 02 — Phase 3: execute + rollback for stack-orchestrator-mcp
 
+[NOTE]
+====
+**STATUS: DONE 2026-05-26.** Landed as PR #8 (commit on `main`). 51 tests
+green (executor + rollback + lsp_client + integration against real proof-lsp).
+Manifest state advanced to `phase-3-execute-rollback`. Deferred per design:
+VerisimDB-backed persistence (in-memory only); per-LSP `execute_component`
+handler (each domain LSP's follow-up). This document is preserved as
+historical context. **Skip on a re-run; pick up `cartridge-03-phase-4-verify-idris-abi.adoc` instead.**
+====
+
 == Goal
 
 Port `polystack/poly-orchestrator-lsp/lib/orchestrator/executor.ex` +

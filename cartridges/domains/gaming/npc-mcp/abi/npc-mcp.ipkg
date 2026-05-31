@@ -1,0 +1,10 @@
+package npc-mcp
+
+version = 0.1.0
+authors = "Joshua Jewell"
+
+modules = NpcMcp.Protocol
+        , NpcMcp.Perception
+        , NpcMcp.Persona
+
+sourcedir = "."

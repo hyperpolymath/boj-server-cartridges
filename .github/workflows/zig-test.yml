@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: MPL-2.0
+# Builds and tests the Zig FFI of any cartridge whose ffi/ changed. Adapted
+# from boj-server's zig-test.yml for this repo's hybrid taxonomy: cartridges
+# live under cartridges/domains/<domain>/<name> and cartridges/cross-cutting/
+# <category>/<name>, so the cartridge-root glob is one level deeper than the
+# old flat cartridges/<name> layout.
+name: Zig Cartridge Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cartridges/**/ffi/**'
+      - '.github/workflows/zig-test.yml'
+  pull_request:
+    paths:
+      - 'cartridges/**/ffi/**'
+      - '.github/workflows/zig-test.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  zig-test:
+    name: Build and test Zig cartridge FFI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
+
+      - name: Build and test changed cartridges
+        run: |
+          set -euo pipefail
+          # Determine changed cartridges (by ffi dir) — on push, diff against
+          # the previous commit; on PR, against the base ref.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="${{ github.base_ref }}"
+            git fetch origin "$BASE_REF" --depth=1
+            DIFF_BASE="origin/$BASE_REF"
+          else
+            DIFF_BASE="HEAD~1"
+          fi
+
+          # A cartridge root is the directory that holds ffi/. Strip the trailing
+          # ffi/... segment from each changed path; works for any nesting depth
+          # (domains/<d>/<name>/ffi, cross-cutting/<c>/<name>/ffi, …).
+          changed="$(git diff --name-only "$DIFF_BASE...HEAD" -- 'cartridges/**/ffi/**' \
+            | sed 's|/ffi/.*||' | sort -u)"
+
+          if [ -z "$changed" ]; then
+            echo "No cartridge FFI changes detected."
+            exit 0
+          fi
+
+          for cart in $changed; do
+            echo "::group::$cart"
+            if [ -f "$cart/ffi/build.zig" ]; then
+              ( cd "$cart/ffi" && zig build test --summary all )
+            else
+              echo "no ffi/build.zig — skipping"
+            fi
+            echo "::endgroup::"
+          done

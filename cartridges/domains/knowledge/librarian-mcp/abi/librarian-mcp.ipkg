@@ -1,0 +1,8 @@
+package librarian-mcp
+
+version = 0.1.0
+authors = "Joshua Jewell"
+
+modules = Librarian.Protocol
+
+sourcedir = "."

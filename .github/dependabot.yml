@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MPL-2.0
+# Dependabot for boj-server-cartridges. The cartridges are Zig + Idris2 (no
+# package manager Dependabot tracks); the only ecosystem here is the GitHub
+# Actions used by CI, so that is all we subscribe to.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    groups:
+      actions:
+        patterns:
+          - "*"

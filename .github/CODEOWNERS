@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: MPL-2.0
+# Code ownership for boj-server-cartridges.
+# These owners are automatically requested for review on PRs.
+
+* @hyperpolymath/maintainers

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "librarian-mcp",
+  "version": "0.1.0",
+  "description": "Document RAG cartridge -- holds books and long-form text on BoJ and serves the most relevant passages to models. Extracts text (plain, Markdown, or pdftotext-extractable PDFs), chunks with overlap and page references, embeds (offline hash backend or delegated HuggingFace feature-extraction via ml-mcp), and answers semantic queries with brute-force cosine over a persistent, ownable on-disk index.",
+  "domain": "Knowledge",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST", "gRPC", "GraphQL"],
+  "auth": {
+    "method": "none",
+    "notes": "Reads are unauthenticated and never denied. Writes (ingest, delete) are gated by an adapter switch and bounded by per-call size limits. The hf embedding backend reuses ml-mcp's HuggingFace credentials."
+  },
+  "config": {
+    "BOJ_LIBRARIAN_HOME": "Collections root on disk (default $HOME/.local/share/boj/librarian)."
+  },
+  "tools": [
+    {
+      "name": "librarian_query",
+      "description": "Search a document collection for the passages most relevant to a query. Returns passages with page references and similarity scores. Read-only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "collection": { "type": "string", "description": "Collection name to search" },
+          "query": { "type": "string", "description": "Natural-language query" },
+          "k": { "type": "integer", "description": "Number of passages to return (default 5)" },
+          "max_chars": { "type": "integer", "description": "Maximum characters per passage (default 600)" }
+        },
+        "required": ["collection", "query"]
+      }
+    },
+    {
+      "name": "librarian_list_collections",
+      "description": "List the document collections held on this server. Read-only.",
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "librarian_collection_info",
+      "description": "Report the metadata of one collection: source, model, dimensions, chunk and page counts. Read-only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "collection": { "type": "string", "description": "Collection name" }
+        },
+        "required": ["collection"]
+      }
+    },
+    {
+      "name": "librarian_ingest",
+      "description": "Add a document to a collection: extract, chunk, embed, and store it. Accepts plain text or a PDF path. Gated write.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "collection": { "type": "string", "description": "Target collection name (created if absent)" },
+          "text": { "type": "string", "description": "Document text or Markdown (omit if using pdf_path)" },
+          "pdf_path": { "type": "string", "description": "Path to a PDF (extracted via pdftotext)" },
+          "source_name": { "type": "string", "description": "Human-readable source label stored with each passage" },
+          "chunk_words": { "type": "integer", "description": "Target words per chunk (default 220)" },
+          "overlap": { "type": "integer", "description": "Overlap words between chunks (default 45)" },
+          "backend": { "type": "string", "enum": ["hf", "hash"], "description": "Embedding backend (default hf)" }
+        },
+        "required": ["collection", "source_name"]
+      }
+    },
+    {
+      "name": "librarian_delete_collection",
+      "description": "Delete a collection and its index. Gated write.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "collection": { "type": "string", "description": "Collection name to delete" }
+        },
+        "required": ["collection"]
+      }
+    }
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/liblibrarian_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
+}

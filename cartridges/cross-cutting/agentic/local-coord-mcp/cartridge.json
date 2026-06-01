@@ -18,6 +18,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "description": "Localhost multi-instance coordination — peer discovery, message passing, and task claiming for parallel AI sessions on the same machine",
   "domain": "ai",
+  "category": "cross-cutting",
   "federation": "none",
   "name": "local-coord-mcp",
   "protocols": [

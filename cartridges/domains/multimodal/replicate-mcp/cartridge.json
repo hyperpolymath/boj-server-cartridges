@@ -7,6 +7,7 @@
   "status": "stub",
   "description": "Replicate hosted ML models — image generation (Stable Diffusion, FLUX), video (Veo, Kling), upscaling, vision (LLaVA), audio (MusicGen). Async prediction model with polling.",
   "domain": "multimodal",
+  "category": "domain",
   "tier": "Teranga",
   "protocols": ["MCP", "REST"],
   "auth": { "method": "api_token", "env_var": "REPLICATE_API_TOKEN", "credential_source": "Replicate account → API tokens." },

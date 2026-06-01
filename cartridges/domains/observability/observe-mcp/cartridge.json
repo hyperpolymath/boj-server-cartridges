@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Unified observability — metrics, logs, traces (Prometheus, Grafana, Loki, Jaeger)",
   "domain": "observability",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

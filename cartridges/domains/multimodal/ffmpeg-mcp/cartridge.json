@@ -7,6 +7,7 @@
   "status": "stub",
   "description": "Local FFmpeg gateway — probe metadata, transcode formats, extract audio, extract frames, concatenate, trim. Glue between whisper / replicate / browser screenshots. Local-only — requires host ffmpeg binary; not Worker-compatible.",
   "domain": "multimodal",
+  "category": "domain",
   "tier": "Teranga",
   "protocols": ["MCP", "REST"],
   "auth": { "method": "none", "env_var": null, "credential_source": "No auth — operates on local files. Sandbox via FFMPEG_ALLOWED_PATHS env if exposing to multi-tenant deployments." },

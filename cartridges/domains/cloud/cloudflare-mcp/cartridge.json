@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Cloudflare API v4 cartridge -- DNS record management, zone settings, and SSL/TLS configuration",
   "domain": "Cloud",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

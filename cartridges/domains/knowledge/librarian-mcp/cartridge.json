@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Document RAG cartridge -- holds books and long-form text on BoJ and serves the most relevant passages to models. Extracts text (plain, Markdown, or pdftotext-extractable PDFs), chunks with overlap and page references, embeds (offline hash backend or delegated HuggingFace feature-extraction via ml-mcp), and answers semantic queries with brute-force cosine over a persistent, ownable on-disk index.",
   "domain": "Knowledge",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": ["MCP", "REST", "gRPC", "GraphQL"],
   "auth": {

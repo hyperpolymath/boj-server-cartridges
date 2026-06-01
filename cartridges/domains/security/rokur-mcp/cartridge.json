@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Rokur — Svalinn secrets GUI authorisation layer",
   "domain": "security",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

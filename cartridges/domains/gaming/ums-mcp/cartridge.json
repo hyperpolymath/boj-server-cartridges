@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Universal Map Specification — level editor and validator",
   "domain": "gaming",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

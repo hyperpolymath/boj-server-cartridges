@@ -7,6 +7,7 @@
   "status": "stub",
   "description": "Qdrant vector DB — Rust-native; payloads + filtering; sparse + dense vectors; self-host or Qdrant Cloud.",
   "domain": "vector",
+  "category": "domain",
   "tier": "Teranga",
   "protocols": ["MCP", "REST", "gRPC"],
   "auth": { "method": "api_key", "env_var": "QDRANT_API_KEY", "credential_source": "Qdrant Cloud dashboard or self-hosted bearer." },

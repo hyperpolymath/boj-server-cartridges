@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Generic Language Server Protocol (LSP 3.17) gateway. Spawns any LSP server as a persistent subprocess, manages the JSON-RPC 2.0 over stdio session, and exposes text document operations (open, change, hover, completion, goto-definition, references, diagnostics, formatting) as MCP tools.",
   "domain": "Language Tools",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

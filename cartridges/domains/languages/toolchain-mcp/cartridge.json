@@ -7,6 +7,7 @@
   "status": "ffi_only",
   "description": "Toolchain orchestrator. Mints, provisions, and configures language toolchains composed from lsp-mcp, dap-mcp, lang-mcp, and bsp-mcp. Integrates with PanLL panels via Groove and supports collaborative Burble sessions for pair-debugging and pair-programming workflows.",
   "domain": "Language Tools",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

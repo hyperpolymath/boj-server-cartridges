@@ -5,6 +5,7 @@
   "name": "npc-mcp",
   "version": "0.1.0",
   "domain": "Game Servers",
+  "category": "domain",
   "tier": "Ayo",
   "description": "Embeds an AI presence inside a Minecraft server via a Fabric mod companion. Exposes a layered perception stack and curated command tools so an MCP client can act as an unseen participant in the game world. The paired Fabric mod dials out to the host: it POSTs world events to npc_ingest_event and polls npc_drain_commands for queued actions, so the cartridge itself holds no socket.",
   "protocols": ["MCP", "REST"],

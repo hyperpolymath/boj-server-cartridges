@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Infrastructure-as-Code gateway. Manages Terraform/OpenTofu plan→apply→destroy lifecycle with state machine enforcement.",
   "domain": "Infrastructure",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

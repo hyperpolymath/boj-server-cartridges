@@ -7,6 +7,7 @@
   "status": "stub",
   "description": "Weaviate vector DB — hybrid (vector + BM25 + filter) search, schema-driven classes, modular vectorisers; self-host or cloud.",
   "domain": "vector",
+  "category": "domain",
   "tier": "Teranga",
   "protocols": ["MCP", "REST", "gRPC", "GraphQL"],
   "auth": { "method": "api_key", "env_var": "WEAVIATE_API_KEY", "credential_source": "Weaviate Cloud Console or self-hosted instance bearer." },

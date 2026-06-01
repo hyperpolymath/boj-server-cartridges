@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 defmodule PolyOrchestrator.LSP.MixProject do
@@ -90,7 +90,7 @@ defmodule PolyOrchestrator.LSP.MixProject do
     [
       name: "poly_orchestrator_lsp",
       files: ~w(lib .formatter.exs mix.exs README.md LICENSE CHANGELOG.md),
-      licenses: ["PMPL-1.0-or-later"],
+      licenses: ["MPL-2.0"],
       links: %{
         "GitHub" => @source_url,
         "stapeln" => "https://github.com/hyperpolymath/stapeln",

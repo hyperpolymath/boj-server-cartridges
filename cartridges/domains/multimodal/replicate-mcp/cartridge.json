@@ -10,7 +10,7 @@
   "category": "domain",
   "tier": "Teranga",
   "protocols": ["MCP", "REST"],
-  "auth": { "method": "api_token", "env_var": "REPLICATE_API_TOKEN", "credential_source": "Replicate account → API tokens." },
+  "auth": { "method": "api-key", "notes_method": "api_token", "env_var": "REPLICATE_API_TOKEN", "credential_source": "Replicate account → API tokens." },
   "api": { "base_url": "local://replicate-mcp", "content_type": "application/json" },
   "tools": [
     { "name": "media_authenticate", "description": "Store Replicate API token.", "inputSchema": { "type": "object", "properties": { "api_token": { "type": "string" } }, "required": ["api_token"] } },

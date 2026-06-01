@@ -14,6 +14,9 @@
 #   * tools/category-batch-fix/main.ts — one-shot Deno script used to
 #     close issue #18 (mechanical category-field backfill across 126
 #     manifests). Kept in-tree as a precedent for similar batch fixes.
+#   * tools/auth-method-batch-fix/main.ts — one-shot Deno script used to
+#     close issue #19 (mechanical auth.method enum mapping across 28
+#     manifests). Kept in-tree as a precedent for similar batch fixes.
 #
 # Unblock condition: migrate each to AffineScript once it has MCP / LSP /
 # Deno-CLI bindings (tracked estate-wide with the boj-server adapter set).
@@ -27,3 +30,4 @@
 *tools/validate-cartridges/main.ts
 *tools/validate-cartridges/main_test.ts
 *tools/category-batch-fix/main.ts
+*tools/auth-method-batch-fix/main.ts

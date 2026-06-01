@@ -10,7 +10,7 @@
   "category": "domain",
   "tier": "Teranga",
   "protocols": ["MCP", "REST"],
-  "auth": { "method": "api_key", "env_var": "ELEVENLABS_API_KEY", "credential_source": "ElevenLabs account → Profile → API Keys." },
+  "auth": { "method": "api-key", "notes_method": "api_key", "env_var": "ELEVENLABS_API_KEY", "credential_source": "ElevenLabs account → Profile → API Keys." },
   "api": { "base_url": "local://elevenlabs-mcp", "content_type": "application/json" },
   "tools": [
     { "name": "audio_authenticate", "description": "Store ElevenLabs API key.", "inputSchema": { "type": "object", "properties": { "api_key": { "type": "string" } }, "required": ["api_key"] } },

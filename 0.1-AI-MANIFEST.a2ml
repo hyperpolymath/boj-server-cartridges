@@ -75,15 +75,17 @@ invariants:
 ci_gates:
   - id: "cartridge-schema"
     workflow: ".github/workflows/cartridge-schema.yml"
-    mode: "audit"
-    upgrade_to_strict_when: "audits/cartridge-schema-2026-06-01.md drift inventory hits zero failing manifests"
+    mode: "strict"
+    flipped_to_strict_at: "2026-06-01"
+    baseline: "139 total / 139 passing / 0 failing"
   - id: "governance"
     workflow: ".github/workflows/governance.yml"
     source: "hyperpolymath/standards/.github/workflows/governance-reusable.yml@main"
 
 known_drift:
   inventory: "audits/cartridge-schema-2026-06-01.md"
+  status: "cleared 2026-06-01"
   remediation_tracking:
-    - "boj-server-cartridges#18 (category drift)"
-    - "boj-server-cartridges#19 (no schema validation in downstream catalog.ex)"
-    - "boj-server-cartridges#20 (runtime/canonical drift, 125 flat vs 139 taxonomied)"
+    - "boj-server-cartridges#18 — category drift — CLOSED"
+    - "boj-server-cartridges#19 — auth.method enum drift — CLOSED (canonical side; consumer-side tracked at boj-server#183)"
+    - "boj-server-cartridges#20 — missing fields + name-pattern renames — CLOSED"

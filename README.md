@@ -12,7 +12,7 @@ Machine-readable summary: [`0.1-AI-MANIFEST.a2ml`](0.1-AI-MANIFEST.a2ml).
 
 ## Status
 
-🟢 **v0.1 — schema-validation foundation landed 2026-06-01.** Initial migration of cartridges from `boj-server/cartridges/` (snapshot 2026-05-26) is complete; Boj-server's catalog refactor to fetch from here has merged. Schema validator + CI gate are live in audit mode; a drift inventory has been captured (139 manifests, 12 passing, 127 failing — see [`audits/cartridge-schema-2026-06-01.md`](audits/cartridge-schema-2026-06-01.md)). Remediation is tracked under #18 / #19 / #20.
+🟢 **v0.1 — schema-validation strict gate live 2026-06-01.** Initial migration of cartridges from `boj-server/cartridges/` (snapshot 2026-05-26) is complete; Boj-server's catalog refactor to fetch from here has merged. Schema validator + CI gate run in **strict mode**: 139 manifests, **139 passing, 0 failing** (see [`audits/cartridge-schema-2026-06-01.md`](audits/cartridge-schema-2026-06-01.md)). Drift-remediation campaigns #18 / #19 / #20 are CLOSED.
 
 ## What is a cartridge?
 
@@ -73,9 +73,9 @@ The pinned mirror is verified against `schemas/PINNED-SHA` on every CI run, then
 |---|---|
 | `deno task audit` | Walks all manifests, prints a one-line summary per cartridge; exit 0 regardless. |
 | `deno task audit-verbose` | As `audit`, but expands every schema violation per cartridge. |
-| `deno task strict` | Fails the run on any violation. Used once the drift inventory is closed. |
+| `deno task strict` | Fails the run on any violation. **Active in CI as of 2026-06-01.** |
 
-CI ([`.github/workflows/cartridge-schema.yml`](.github/workflows/cartridge-schema.yml)) runs the validator in `audit` mode today and will flip to `strict` once the drift inventory is closed. The current drift baseline lives at [`audits/cartridge-schema-2026-06-01.md`](audits/cartridge-schema-2026-06-01.md); recurring fixes are tracked under #18 (missing `category`), #19 (`auth.method` enum mismatches: `bearer_token` and `api_key` vs canonical `api-key`), and #20 (canonical-only cartridges + other missing top-level fields).
+CI ([`.github/workflows/cartridge-schema.yml`](.github/workflows/cartridge-schema.yml)) runs the validator in **strict** mode — any manifest that fails schema validation blocks the PR. Audit output is still tee'd into the workflow summary for browsability. The drift-remediation campaigns (#18 missing `category`, #19 `auth.method` enum mismatches, #20 canonical-only / missing top-level fields / name-pattern renames) all closed alongside this gate flip; [`audits/cartridge-schema-2026-06-01.md`](audits/cartridge-schema-2026-06-01.md) records the 139/139 passing baseline.
 
 Canonical schema home: [hyperpolymath/standards](https://github.com/hyperpolymath/standards/tree/main/cartridges).
 

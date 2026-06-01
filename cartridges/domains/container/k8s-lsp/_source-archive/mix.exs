@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 defmodule PolyK8s.LSP.MixProject do
@@ -84,7 +84,7 @@ defmodule PolyK8s.LSP.MixProject do
     [
       name: "poly_k8s_lsp",
       files: ~w(lib .formatter.exs mix.exs README.adoc LICENSE CHANGELOG.md),
-      licenses: ["PMPL-1.0-or-later"],
+      licenses: ["MPL-2.0"],
       links: %{
         "GitHub" => @source_url,
         "poly-k8s-mcp" => "https://github.com/hyperpolymath/poly-k8s-mcp"

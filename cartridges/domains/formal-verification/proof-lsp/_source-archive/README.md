@@ -4,7 +4,7 @@
 
 [![Production Ready](https://img.shields.io/badge/status-production--ready-brightgreen.svg)](https://github.com/hyperpolymath/poly-proof-lsp)
 [![Version: 1.0.0](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/hyperpolymath/poly-proof-lsp/releases)
-[![License: PMPL-1.0](https://img.shields.io/badge/License-PMPL--1.0-blue.svg)](https://github.com/hyperpolymath/palimpsest-license)
+[![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-brightgreen.svg)](https://www.mozilla.org/en-US/MPL/2.0/)
 [![Elixir 1.17+](https://img.shields.io/badge/elixir-1.17+-purple.svg)](https://elixir-lang.org/)
 
 ## Overview
@@ -141,7 +141,7 @@ See [USAGE.md](USAGE.md) for more detailed troubleshooting steps.
 
 ## License
 
-PMPL-1.0-or-later
+MPL-2.0
 
 ## Author
 

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 defmodule PolyQueue.LSP.MixProject do
@@ -81,7 +81,7 @@ defmodule PolyQueue.LSP.MixProject do
     [
       name: "poly_queue_lsp",
       files: ~w(lib .formatter.exs mix.exs README.adoc LICENSE CHANGELOG.md),
-      licenses: ["PMPL-1.0-or-later"],
+      licenses: ["MPL-2.0"],
       links: %{
         "GitHub" => @source_url
       }

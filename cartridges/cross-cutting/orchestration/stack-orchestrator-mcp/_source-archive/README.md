@@ -2,7 +2,7 @@
 
 **Orchestration layer for 12 hyperpolymath LSP servers with stapeln integration**
 
-[![License](https://img.shields.io/badge/license-PMPL--1.0--or--later-blue.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/license-MPL--2.0-brightgreen.svg)](./LICENSE)
 [![Elixir](https://img.shields.io/badge/elixir-1.17+-purple.svg)](https://elixir-lang.org/)
 [![OTP](https://img.shields.io/badge/OTP-27+-red.svg)](https://www.erlang.org/)
 [![Tests](https://img.shields.io/badge/tests-47%2F47%20passing-brightgreen.svg)](#)
@@ -223,7 +223,7 @@ iex -S mix
 
 ## License
 
-PMPL-1.0-or-later (Palimpsest License)
+MPL-2.0 (Mozilla Public License 2.0)
 
 ## Authors
 

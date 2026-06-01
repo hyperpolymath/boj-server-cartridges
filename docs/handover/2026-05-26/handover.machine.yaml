@@ -189,7 +189,7 @@ key_files_reference:
     - "cartridges/templates/gossamer-mcp/"
   tools:
     - "tools/cartridge-minter/mint.ts"
-    - "tools/migrate_cartridges.py"
+    - "tools/migrate_cartridges.rs"
   example_phase_2_adapter:
     - "cartridges/cross-cutting/orchestration/stack-orchestrator-mcp/adapter/parser.ts"
     - "cartridges/cross-cutting/orchestration/stack-orchestrator-mcp/adapter/planner.ts"

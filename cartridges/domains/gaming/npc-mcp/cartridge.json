@@ -4,25 +4,40 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "npc-mcp",
   "version": "0.1.0",
+  "description": "Embeds an AI presence inside a Minecraft server via a Fabric mod companion. Exposes a layered perception stack and curated command tools so an MCP client can act as an unseen participant in the game world. The paired Fabric mod dials out to the host: it POSTs world events to npc_ingest_event and polls npc_drain_commands for queued actions, so the cartridge itself holds no socket.",
   "domain": "Game Servers",
   "category": "domain",
   "tier": "Ayo",
-  "description": "Embeds an AI presence inside a Minecraft server via a Fabric mod companion. Exposes a layered perception stack and curated command tools so an MCP client can act as an unseen participant in the game world. The paired Fabric mod dials out to the host: it POSTs world events to npc_ingest_event and polls npc_drain_commands for queued actions, so the cartridge itself holds no socket.",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "none",
-    "notes": "Perception reads are unauthenticated. Command tools (npc_say, npc_give, npc_execute_command) are gated by the loaded persona; with no persona loaded they fail closed."
+    "notes": "Perception reads are unauthenticated. Command tools (npc_say, npc_give, npc_execute_command) are gated by the loaded persona; with no persona loaded they fail closed.",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://npc-mcp",
+    "content_type": "application/json"
   },
   "tools": [
     {
       "name": "npc_get_narrative_context",
       "description": "Get the current narrative context: who is online, what they are doing, the atmosphere of the world. Read-only.",
-      "inputSchema": { "type": "object", "properties": {} }
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "name": "npc_get_world_state",
       "description": "Get a structured snapshot of the current Minecraft world state (players, server vitals). Read-only.",
-      "inputSchema": { "type": "object", "properties": {} }
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "name": "npc_get_recent_events",
@@ -30,7 +45,10 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "count": { "type": "integer", "description": "How many recent events to return (default 20)" }
+          "count": {
+            "type": "integer",
+            "description": "How many recent events to return (default 20)"
+          }
         }
       }
     },
@@ -40,19 +58,38 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "v": { "type": "integer" },
-          "type": { "type": "string" },
-          "ts": { "type": "integer" },
-          "id": { "type": "string" },
-          "payload": { "type": "object" }
+          "v": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string"
+          },
+          "ts": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object"
+          }
         },
-        "required": ["v", "type", "ts", "id", "payload"]
+        "required": [
+          "v",
+          "type",
+          "ts",
+          "id",
+          "payload"
+        ]
       }
     },
     {
       "name": "npc_drain_commands",
       "description": "Return and clear the queue of protocol v1 command envelopes awaiting delivery, newline-delimited. The Fabric mod polls this and executes each command in-game.",
-      "inputSchema": { "type": "object", "properties": {} }
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "name": "npc_say",
@@ -60,11 +97,21 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "message": { "type": "string" },
-          "target": { "type": "string", "default": "@a" },
-          "whisper": { "type": "boolean", "default": false }
+          "message": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string",
+            "default": "@a"
+          },
+          "whisper": {
+            "type": "boolean",
+            "default": false
+          }
         },
-        "required": ["message"]
+        "required": [
+          "message"
+        ]
       }
     },
     {
@@ -73,17 +120,29 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "target": { "type": "string" },
+          "target": {
+            "type": "string"
+          },
           "item": {
             "type": "object",
             "properties": {
-              "id": { "type": "string" },
-              "count": { "type": "integer" }
+              "id": {
+                "type": "string"
+              },
+              "count": {
+                "type": "integer"
+              }
             },
-            "required": ["id", "count"]
+            "required": [
+              "id",
+              "count"
+            ]
           }
         },
-        "required": ["target", "item"]
+        "required": [
+          "target",
+          "item"
+        ]
       }
     },
     {
@@ -92,9 +151,13 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "command": { "type": "string" }
+          "command": {
+            "type": "string"
+          }
         },
-        "required": ["command"]
+        "required": [
+          "command"
+        ]
       }
     },
     {
@@ -103,8 +166,15 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string" },
-          "allowed_tools": { "type": "array", "items": { "type": "string" } }
+          "name": {
+            "type": "string"
+          },
+          "allowed_tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         }
       }
     }

@@ -84,6 +84,6 @@ Initial migration normalised mixed-casing variants from boj-server's manifests:
 
 == Migration
 
-Initial population: 2026-05-26 via `tools/migrate_cartridges.py` (preserved
+Initial population: 2026-05-26 via `tools/migrate_cartridges.rs` (preserved
 in `tools/` for reference and future re-runs if boj-server adds cartridges
 before its `cartridges/` dir is finally removed).

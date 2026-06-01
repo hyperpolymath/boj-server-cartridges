@@ -8,7 +8,8 @@
     "credential_source": null,
     "description": "Per-instance session token issued on coord_register. All subsequent calls require this token.",
     "env_var": null,
-    "method": "session-token"
+    "method": "api-key",
+    "notes_method": "session-token"
   },
   "bind": {
     "address": "127.0.0.1",

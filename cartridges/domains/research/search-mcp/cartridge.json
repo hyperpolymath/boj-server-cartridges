@@ -14,7 +14,8 @@
     "REST"
   ],
   "auth": {
-    "method": "api_key",
+    "method": "api-key",
+    "notes_method": "api_key",
     "env_var": "SEARCH_API_KEY",
     "credential_source": "per-provider env var (TAVILY_API_KEY / BRAVE_SEARCH_API_KEY / EXA_API_KEY / PERPLEXITY_API_KEY); see operation 'authenticate'."
   },

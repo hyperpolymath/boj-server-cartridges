@@ -17,6 +17,9 @@
 #   * tools/auth-method-batch-fix/main.ts — one-shot Deno script used to
 #     close issue #19 (mechanical auth.method enum mapping across 28
 #     manifests). Kept in-tree as a precedent for similar batch fixes.
+#   * tools/missing-fields-batch-fix/main.ts — one-shot Deno script used
+#     to close the mechanical subset of issue #20 (backfills protocols,
+#     api, auth.env_var, auth.credential_source, tools[*].inputSchema).
 #
 # Unblock condition: migrate each to AffineScript once it has MCP / LSP /
 # Deno-CLI bindings (tracked estate-wide with the boj-server adapter set).
@@ -31,3 +34,4 @@
 *tools/validate-cartridges/main_test.ts
 *tools/category-batch-fix/main.ts
 *tools/auth-method-batch-fix/main.ts
+*tools/missing-fields-batch-fix/main.ts

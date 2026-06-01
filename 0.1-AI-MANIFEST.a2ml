@@ -1,0 +1,89 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+---
+### [META]
+id: "boj-server-cartridges"
+level: 0
+parent: null
+version: "0.1"
+
+---
+### [AI_MANIFEST]
+description: |
+  Canonical home of BoJ cartridges. Hosts (boj-server, panll, others)
+  fetch cartridges from here on-demand into a host-local cache. This
+  repository ships the source tree, the schema, and the validator that
+  guards both.
+
+role: "registry"
+canonical_for: "BoJ cartridge manifests"
+
+canonical_locations:
+  cartridges: "cartridges/"
+  schema: "schemas/cartridge-v1.json"
+  schema_pin: "schemas/PINNED-SHA"
+  schema_doc: "schemas/SCHEMA-MIRROR.md"
+  validator: "tools/validate-cartridges/"
+  audits: "audits/"
+  taxonomy_adr: "docs/decisions/ADR-001-taxonomy.adoc"
+
+upstream:
+  schema_canonical: "hyperpolymath/standards@cartridges/cartridge-v1.json"
+  schema_canonical_commit: "7c2b81556791e97172da866b560147ec541797eb"
+
+downstream_consumers:
+  - id: "boj-server"
+    role: "runtime"
+    fetcher_script: "scripts/fetch-cartridges.sh"
+    catalog_module: "elixir/lib/boj_rest/catalog.ex"
+  - id: "panll"
+    role: "host"
+
+taxonomy:
+  layout: "hybrid"
+  domains_root: "cartridges/domains/<domain>/<name>"
+  cross_cutting_root: "cartridges/cross-cutting/<category>/<name>"
+  templates_root: "cartridges/templates/<name>"
+
+role_suffixes:
+  - mcp
+  - lsp
+  - dap
+  - bsp
+  - debug
+  - format
+  - lint
+  - build
+  - nesy
+  - agentic
+  - fleet
+
+trust_tiers:
+  - id: "Teranga"
+    description: "Core / always-available"
+  - id: "Shield"
+    description: "Security-critical / elevated-trust"
+  - id: "Ayo"
+    description: "Community-contributed"
+
+invariants:
+  - "Every cartridge.json validates against schemas/cartridge-v1.json (audit-mode today; strict-mode once drift is fixed)"
+  - "schemas/cartridge-v1.json content-SHA-256 matches schemas/PINNED-SHA; CI fails loudly on silent drift"
+  - "Cartridges live under cartridges/domains/<domain>/, cartridges/cross-cutting/<category>/, or cartridges/templates/"
+  - "Cartridge names end in a canonical role suffix"
+
+ci_gates:
+  - id: "cartridge-schema"
+    workflow: ".github/workflows/cartridge-schema.yml"
+    mode: "audit"
+    upgrade_to_strict_when: "audits/cartridge-schema-2026-06-01.md drift inventory hits zero failing manifests"
+  - id: "governance"
+    workflow: ".github/workflows/governance.yml"
+    source: "hyperpolymath/standards/.github/workflows/governance-reusable.yml@main"
+
+known_drift:
+  inventory: "audits/cartridge-schema-2026-06-01.md"
+  remediation_tracking:
+    - "boj-server-cartridges#18 (category drift)"
+    - "boj-server-cartridges#19 (no schema validation in downstream catalog.ex)"
+    - "boj-server-cartridges#20 (runtime/canonical drift, 125 flat vs 139 taxonomied)"

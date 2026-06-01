@@ -1,9 +1,9 @@
 # Cartridge manifest validation report
 Schema: schemas/cartridge-v1.json
-Manifests: 139 total / 12 passing / 127 failing
+Manifests: 139 total / 13 passing / 126 failing
 
 ## Top recurring issues
-- 127× category: required field missing
+- 126× category: required field missing
 - 21× auth.method: value "bearer_token"
 - 8× api: required field missing
 - 8× auth.env_var: required field missing
@@ -491,7 +491,4 @@ Manifests: 139 total / 12 passing / 127 failing
 - `auth.method` — value "api_key" not in enum ["none","api-key","oauth2","vault"]
 
 ### cartridges/domains/web/ssg-mcp/cartridge.json
-- `category` — required field missing
-
-### cartridges/templates/gossamer-mcp/cartridge.json
 - `category` — required field missing

@@ -41,6 +41,10 @@ jobs:
           fi
           echo "Schema mirror matches pinned SHA-256: $pinned"
 
+      - name: Validator unit tests
+        working-directory: tools/validate-cartridges
+        run: deno task test
+
       - name: Validate all cartridge manifests (audit mode)
         working-directory: tools/validate-cartridges
         run: deno task audit | tee "$GITHUB_STEP_SUMMARY"

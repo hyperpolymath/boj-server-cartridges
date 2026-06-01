@@ -35,6 +35,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "description": "007 agent meta-language cartridge — exposes the full oo7 CLI surface (parse/run/trace/build/test/lint/verify/contractile verbs/canonical-proof-suite/groove/self-assess) plus on-enter and on-exit lifecycle hooks that register the session as a coord peer, load the 6a2 methodology pack (STATE, META, ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK), and perform drift checks on exit.",
   "domain": "dezig",
+  "category": "domain",
   "federation": "none",
   "memory_autolift": {
     "base_tags": [

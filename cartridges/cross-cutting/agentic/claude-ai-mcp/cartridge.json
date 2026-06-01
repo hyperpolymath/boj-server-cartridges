@@ -7,6 +7,7 @@
   "status": "ffi_only",
   "description": "Anthropic Messages API cartridge -- send messages to Claude models, count tokens, manage multi-turn conversations",
   "domain": "AI",
+  "category": "cross-cutting",
   "tier": "Ayo",
   "protocols": [
     "MCP",

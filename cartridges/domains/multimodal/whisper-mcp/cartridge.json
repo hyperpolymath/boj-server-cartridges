@@ -7,6 +7,7 @@
   "status": "stub",
   "description": "Speech-to-text via OpenAI Whisper API + local whisper.cpp fallback. Transcription, language detection, optional translation to English.",
   "domain": "multimodal",
+  "category": "domain",
   "tier": "Teranga",
   "protocols": ["MCP", "REST"],
   "auth": { "method": "optional_api_key", "env_var": "OPENAI_API_KEY", "credential_source": "Required for API backend; local whisper.cpp backend needs no auth." },

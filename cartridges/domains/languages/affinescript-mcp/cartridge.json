@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "AffineScript language cartridge -- type checking, parsing, formatting, linting, compiling, hover/goto-def/completion queries, error explanation, stdlib browsing, and syntax reference for the AffineScript language (substructural type system with affine/linear types, algebraic effects)",
   "domain": "Languages",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

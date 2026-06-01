@@ -7,6 +7,7 @@
   "status": "stub",
   "description": "Text-to-speech via ElevenLabs API — high-quality voices, multilingual, voice cloning (premium tier), streaming output.",
   "domain": "multimodal",
+  "category": "domain",
   "tier": "Teranga",
   "protocols": ["MCP", "REST"],
   "auth": { "method": "api_key", "env_var": "ELEVENLABS_API_KEY", "credential_source": "ElevenLabs account → Profile → API Keys." },

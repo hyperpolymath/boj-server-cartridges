@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "GitHub REST API — repos, issues, PRs, search",
   "domain": "development",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

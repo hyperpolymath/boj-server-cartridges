@@ -7,6 +7,7 @@
   "status": "stub",
   "description": "LLM advisor cartridge for the ECHIDNA formal verification engine. Provides free-form consultation (consult) and structured proof-tactic generation (suggest_tactics) by routing to Anthropic Claude via ANTHROPIC_API_KEY.",
   "domain": "Formal Verification",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "REST"

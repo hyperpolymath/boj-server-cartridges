@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: MPL-2.0
-# Cartridge manifest validation — runs the audit-mode validator on every
-# push / PR. AUDIT MODE: does not fail the job. Flip to --strict once the
-# drift inventory in audits/cartridge-schema-2026-06-01.md is cleared.
+# Cartridge manifest validation — runs the validator on every push / PR.
+# STRICT MODE: fails the job on any manifest that doesn't validate against
+# the pinned schema. Flipped from audit to strict on 2026-06-01 after the
+# drift inventory reached 139/139 passing.
 
 name: Cartridge Schema
 
@@ -45,6 +46,11 @@ jobs:
         working-directory: tools/validate-cartridges
         run: deno task test
 
-      - name: Validate all cartridge manifests (audit mode)
+      - name: Validate all cartridge manifests (strict)
         working-directory: tools/validate-cartridges
-        run: deno task audit | tee "$GITHUB_STEP_SUMMARY"
+        run: |
+          set -euo pipefail
+          # Tee audit output into the step summary so the report is browsable
+          # even on success, then run strict to enforce zero violations.
+          deno task audit | tee "$GITHUB_STEP_SUMMARY"
+          deno task strict

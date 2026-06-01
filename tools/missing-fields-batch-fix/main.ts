@@ -31,7 +31,10 @@ const ROLE_TO_PROTO: Record<string, string> = {
   fleet: "Fleet",
 };
 
-const SKIP_NAMES = new Set(["boj-health", "origenemcp", "opendatamcp"]);
+// Historical: the renames in PR closing #20 (boj-health→boj-health-mcp,
+// origenemcp→origene-mcp, opendatamcp→opendata-mcp) cleared the
+// name-pattern stragglers. Set is intentionally empty now.
+const SKIP_NAMES = new Set<string>([]);
 
 type Manifest = Record<string, unknown>;
 

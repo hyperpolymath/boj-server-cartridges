@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+title: "boj-server-cartridges: canonical BoJ cartridge registry"
+message: "If you cite this software, please cite the Zenodo DOI once minted."
+type: software
+authors:
+  - given-names: Jonathan
+    family-names: Jewell
+    email: jonathan.jewell@gmail.com
+    # PLACEHOLDER: insert ORCID once registered, e.g.
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+repository-code: "https://github.com/hyperpolymath/boj-server-cartridges"
+url: "https://github.com/hyperpolymath/boj-server-cartridges"
+abstract: >
+  Canonical registry of BoJ cartridges: self-contained MCP / LSP / DAP /
+  BSP / debug / format / lint / build / nesy / agentic / fleet server
+  units consumed on-demand by hosts (boj-server, panll, others). Ships a
+  SHA-pinned mirror of the canonical cartridge schema together with a
+  zero-dependency Deno validator; a strict-mode CI gate has been live
+  since 2026-06-01 and blocks any manifest that fails schema validation.
+keywords:
+  - mcp
+  - lsp
+  - cartridges
+  - schema-validation
+  - deno
+  - json-schema
+license: MPL-2.0
+# === PLACEHOLDER: paste concept DOI here after first Zenodo mint ===
+# doi: 10.5281/zenodo.0000000
+# === END PLACEHOLDER ===
+version: 0.1.0
+date-released: 2026-06-01

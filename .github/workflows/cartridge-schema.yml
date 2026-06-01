@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: MPL-2.0
+# Cartridge manifest validation — runs the audit-mode validator on every
+# push / PR. AUDIT MODE: does not fail the job. Flip to --strict once the
+# drift inventory in audits/cartridge-schema-2026-06-01.md is cleared.
+
+name: Cartridge Schema
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2
+        with:
+          deno-version: v2.x
+
+      - name: Verify schema mirror SHA-256 matches PINNED-SHA
+        run: |
+          set -euo pipefail
+          actual=$(sha256sum schemas/cartridge-v1.json | awk '{print $1}')
+          pinned=$(awk -F'"' '/content_sha256/ {print $2}' schemas/PINNED-SHA)
+          if [ "$actual" != "$pinned" ]; then
+            echo "::error::schema mirror drift: actual $actual vs pinned $pinned"
+            echo "Update schemas/PINNED-SHA when intentionally bumping the mirror."
+            exit 1
+          fi
+          echo "Schema mirror matches pinned SHA-256: $pinned"
+
+      - name: Validator unit tests
+        working-directory: tools/validate-cartridges
+        run: deno task test
+
+      - name: Validate all cartridge manifests (audit mode)
+        working-directory: tools/validate-cartridges
+        run: deno task audit | tee "$GITHUB_STEP_SUMMARY"

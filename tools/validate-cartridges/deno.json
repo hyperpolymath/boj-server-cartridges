@@ -1,0 +1,8 @@
+{
+  "tasks": {
+    "audit": "deno run --allow-read main.ts",
+    "audit-verbose": "deno run --allow-read main.ts --verbose",
+    "strict": "deno run --allow-read main.ts --strict",
+    "test": "deno test main_test.ts"
+  }
+}

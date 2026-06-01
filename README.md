@@ -8,9 +8,11 @@
 
 Canonical home of **BoJ cartridges**. Hosts (`boj-server`, `panll`, others) fetch cartridges from here on demand into a host-local cache; this repository ships the source tree.
 
+Machine-readable summary: [`0.1-AI-MANIFEST.a2ml`](0.1-AI-MANIFEST.a2ml).
+
 ## Status
 
-🟢 **v0.1 — populated from boj-server 2026-05-26.** Initial migration of 125 cartridges out of `boj-server/cartridges/` into this dedicated repository. Boj-server's catalog refactor to fetch from here is tracked separately.
+🟢 **v0.1 — schema-validation foundation landed 2026-06-01.** Initial migration of cartridges from `boj-server/cartridges/` (snapshot 2026-05-26) is complete; Boj-server's catalog refactor to fetch from here has merged. Schema validator + CI gate are live in audit mode; a drift inventory has been captured (139 manifests, 12 passing, 127 failing — see [`audits/cartridge-schema-2026-06-01.md`](audits/cartridge-schema-2026-06-01.md)). Remediation is tracked under #18 / #19 / #20.
 
 ## What is a cartridge?
 
@@ -61,23 +63,38 @@ A single domain may have multiple cartridges across roles, e.g. `database-mcp` +
 
 ## Schema
 
-`schemas/cartridge-v1.json` mirrors the canonical spec at [hyperpolymath/standards](https://github.com/hyperpolymath/standards/blob/main/cartridges/cartridge-v1.json). The mirror is SHA-pinned via [schemas/SCHEMA-MIRROR.md](schemas/SCHEMA-MIRROR.md).
+`schemas/cartridge-v1.json` mirrors the canonical spec at [hyperpolymath/standards](https://github.com/hyperpolymath/standards/blob/main/cartridges/cartridge-v1.json). The mirror is SHA-pinned via [`schemas/PINNED-SHA`](schemas/PINNED-SHA) (see also [schemas/SCHEMA-MIRROR.md](schemas/SCHEMA-MIRROR.md)).
+
+## Validation
+
+The pinned mirror is verified against `schemas/PINNED-SHA` on every CI run, then every `cartridge.json` is checked against `schemas/cartridge-v1.json` by the in-tree Deno validator under [`tools/validate-cartridges/`](tools/validate-cartridges/):
+
+| Task | Behaviour |
+|---|---|
+| `deno task audit` | Walks all manifests, prints a one-line summary per cartridge; exit 0 regardless. |
+| `deno task audit-verbose` | As `audit`, but expands every schema violation per cartridge. |
+| `deno task strict` | Fails the run on any violation. Used once the drift inventory is closed. |
+
+CI ([`.github/workflows/cartridge-schema.yml`](.github/workflows/cartridge-schema.yml)) runs the validator in `audit` mode today and will flip to `strict` once the drift inventory is closed. The current drift baseline lives at [`audits/cartridge-schema-2026-06-01.md`](audits/cartridge-schema-2026-06-01.md); recurring fixes are tracked under #18 (missing `category`), #19 (`auth.method` enum mismatches: `bearer_token` and `api_key` vs canonical `api-key`), and #20 (canonical-only cartridges + other missing top-level fields).
+
+Canonical schema home: [hyperpolymath/standards](https://github.com/hyperpolymath/standards/tree/main/cartridges).
 
 ## Versioning + on-demand fetch
 
 Each cartridge directory contains its own `cartridge.json` with `version` (semver). Hosts fetch cartridges by name + version; the tray UI (`hyperpolymath/boj-server`) exposes "Add cartridge source" to point at this registry (the canonical default) or any other GitHub URL.
 
-## Inventory (this initial commit)
+## Inventory
 
-- **125 cartridges** copied from `boj-server/cartridges/` (snapshot 2026-05-26).
+- **139 cartridges** total; 14 are canonical-only (not yet wired into a host runtime — see #20).
 - **30 functional domains** + **6 cross-cutting categories** + **1 template**.
-- All cartridges retain their original `cartridge.json` manifests. A separate follow-up PR will add the new required `category` field to each manifest.
+- All cartridges retain their original `cartridge.json` manifests; the `category` field is being backfilled under #18.
 
 ## Contributing
 
-1. Use the **gossamer-mcp** template as your starting point: `cp -r cartridges/templates/gossamer-mcp cartridges/domains/<your-domain>/<your-cartridge-name>` (or use the minter tool once landed).
+1. Use the **gossamer-mcp** template as your starting point: `cp -r cartridges/templates/gossamer-mcp cartridges/domains/<your-domain>/<your-cartridge-name>` (or use the minter tool once landed). The template itself will be updated to be schema-compliant as part of the drift remediation under #18.
 2. Update the manifest to reflect your cartridge's name (role-suffixed), domain, protocols, tools.
-3. Open a PR; auto-merge is enabled by default for this repo.
+3. New cartridges should validate cleanly against `schemas/cartridge-v1.json`: `cd tools/validate-cartridges && deno task audit`.
+4. Open a PR; auto-merge is enabled by default for this repo.
 
 ## License
 

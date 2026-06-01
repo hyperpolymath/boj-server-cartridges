@@ -20,5 +20,10 @@ All notable changes to `boj-server-cartridges` are recorded here. Format follows
 ### Changed
 
 - Drift-remediation campaigns closed in the run-up to the strict gate flip: #18 (`category` field backfill), #19 (`auth.method` enum mismatches), #20 (canonical-only / missing top-level fields / name-pattern renames). Post-remediation baseline: 139 / 139 manifests passing — see [`audits/cartridge-schema-2026-06-01.md`](audits/cartridge-schema-2026-06-01.md).
+- Per-cartridge `cartridge_shim.zig` is now the de facto FFI shim layout (#29 / #31): 97 `build.zig` files rewritten to resolve `b.path("cartridge_shim.zig")` against the local directory (the `adapter/build.zig` case uses `"../ffi/cartridge_shim.zig"`). The canonical shim source remains [`cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig`](cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig) — 112 of 114 in-tree shims are byte-identical to it.
+
+### Fixed
+
+- `browser_mcp_error_recover` now rejects non-Error states with `-2` (#32). The build never previously ran for browser-mcp because of the shim-path issue, so the test logic bug was masked. Fixed alongside the #29 build-path rewrite.
 
 [0.1.0]: https://github.com/hyperpolymath/boj-server-cartridges/releases/tag/v0.1.0

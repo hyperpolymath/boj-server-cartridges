@@ -385,12 +385,16 @@ pub export fn browser_mcp_signal_error(slot_idx: c_int) c_int {
     return transitionState(slot, .err);
 }
 
-/// Recover from error (Error -> Closed). Returns 0 on success.
+/// Recover from error (Error -> Closed). Returns 0 on success,
+/// -1 if invalid slot, -2 if called from any state other than Error
+/// (Connected -> Closed is a valid transition but not a *recovery*;
+/// the caller should use browser_mcp_session_close for that).
 pub export fn browser_mcp_error_recover(slot_idx: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
 
     const slot = getActiveSlot(slot_idx) orelse return -1;
+    if (slot.state != .err) return -2;
     return transitionState(slot, .closed);
 }
 

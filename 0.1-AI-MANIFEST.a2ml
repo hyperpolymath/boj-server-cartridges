@@ -67,10 +67,11 @@ trust_tiers:
     description: "Community-contributed"
 
 invariants:
-  - "Every cartridge.json validates against schemas/cartridge-v1.json (audit-mode today; strict-mode once drift is fixed)"
+  - "Every cartridge.json validates strictly against schemas/cartridge-v1.json; the CI gate (cartridge-schema) blocks merges on any violation"
   - "schemas/cartridge-v1.json content-SHA-256 matches schemas/PINNED-SHA; CI fails loudly on silent drift"
   - "Cartridges live under cartridges/domains/<domain>/, cartridges/cross-cutting/<category>/, or cartridges/templates/"
   - "Cartridge names end in a canonical role suffix"
+  - "Cartridges with a Zig FFI carry their own cartridge_shim.zig beside ffi/build.zig (per-cartridge layout; the gossamer template ships the canonical bytes)"
 
 ci_gates:
   - id: "cartridge-schema"
@@ -89,3 +90,5 @@ known_drift:
     - "boj-server-cartridges#18 — category drift — CLOSED"
     - "boj-server-cartridges#19 — auth.method enum drift — CLOSED (canonical side; consumer-side tracked at boj-server#183)"
     - "boj-server-cartridges#20 — missing fields + name-pattern renames — CLOSED"
+    - "boj-server-cartridges#29 — shim build-path — CLOSED (97 build.zigs rewritten via #31)"
+    - "boj-server-cartridges#32 — browser-mcp error_recover regression — CLOSED (fix bundled into #31)"

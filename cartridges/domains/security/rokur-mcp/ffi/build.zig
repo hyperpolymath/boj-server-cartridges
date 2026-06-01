@@ -9,7 +9,7 @@ pub fn build(b: *std.Build) void {
 
     const shim_mod = b.addModule("cartridge_shim", .{
 
-        .root_source_file = b.path("../../../ffi/zig/src/cartridge_shim.zig"),
+        .root_source_file = b.path("cartridge_shim.zig"),
 
         .target = target,
 

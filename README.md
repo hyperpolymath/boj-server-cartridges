@@ -85,15 +85,19 @@ Each cartridge directory contains its own `cartridge.json` with `version` (semve
 
 ## Inventory
 
-- **139 cartridges** total; 14 are canonical-only (not yet wired into a host runtime — see #20).
+- **139 cartridges** total; 14 are canonical-only (not yet wired into a host runtime).
 - **30 functional domains** + **6 cross-cutting categories** + **1 template**.
-- All cartridges retain their original `cartridge.json` manifests; the `category` field is being backfilled under #18.
+- Every `cartridge.json` validates strictly against `schemas/cartridge-v1.json`.
+
+## FFI / Zig shim layout
+
+Cartridges with a Zig FFI carry their own `cartridge_shim.zig` beside `ffi/build.zig`. Build configs resolve the shim with `b.path("cartridge_shim.zig")` (and `b.path("../ffi/cartridge_shim.zig")` for adapter siblings) — the per-cartridge layout is the de facto pattern (#29 / #31). The canonical shim source is [`cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig`](cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig); 112 of 114 in-tree shims are byte-identical to it. New FFI cartridges should copy that file verbatim unless they need bespoke helpers.
 
 ## Contributing
 
-1. Use the **gossamer-mcp** template as your starting point: `cp -r cartridges/templates/gossamer-mcp cartridges/domains/<your-domain>/<your-cartridge-name>` (or use the minter tool once landed). The template itself will be updated to be schema-compliant as part of the drift remediation under #18.
+1. Use the **gossamer-mcp** template as your starting point: `cp -r cartridges/templates/gossamer-mcp cartridges/domains/<your-domain>/<your-cartridge-name>`.
 2. Update the manifest to reflect your cartridge's name (role-suffixed), domain, protocols, tools.
-3. New cartridges should validate cleanly against `schemas/cartridge-v1.json`: `cd tools/validate-cartridges && deno task audit`.
+3. New cartridges must validate cleanly against `schemas/cartridge-v1.json`: `cd tools/validate-cartridges && deno task strict`.
 4. Open a PR; auto-merge is enabled by default for this repo.
 
 ## License

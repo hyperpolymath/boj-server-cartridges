@@ -7,8 +7,8 @@ The file `cartridge-v1.json` in this directory is a **SHA-pinned mirror** of the
 
 - **Canonical home:** [`hyperpolymath/standards`](https://github.com/hyperpolymath/standards/blob/main/cartridges/cartridge-v1.json)
 - **Canonical URL:** `https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json`
-- **Pinned commit:** _TBD — set on first sync after standards PR lands._ (Tracked via [PINNED-SHA](PINNED-SHA))
-- **Pinned SHA-256 of file:** _TBD — recorded in [PINNED-SHA](PINNED-SHA)._
+- **Pinned commit:** `7c2b81556791e97172da866b560147ec541797eb` (set 2026-06-01; tracked via [PINNED-SHA](PINNED-SHA))
+- **Pinned SHA-256 of file:** `033e2fa8cbee5338fbdd73dfd86ac2a3ca76536af31d0ac4a8184f38a6718997` (recorded in [PINNED-SHA](PINNED-SHA); enforced by `.github/workflows/cartridge-schema.yml`)
 
 ## Why mirror
 

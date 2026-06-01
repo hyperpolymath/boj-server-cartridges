@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MPL-2.0
+# Pinning record for schemas/cartridge-v1.json against the canonical upstream
+# at hyperpolymath/standards/cartridges/cartridge-v1.json.
+#
+# Updated when the local mirror is synced with the canonical schema.
+# See SCHEMA-MIRROR.md for the refresh discipline.
+
+canonical_repo = "hyperpolymath/standards"
+canonical_path = "cartridges/cartridge-v1.json"
+canonical_commit = "7c2b81556791e97172da866b560147ec541797eb"
+canonical_blob_sha = "2cc334e4c15d310e5f427019c04866058479ed9b"
+content_sha256 = "033e2fa8cbee5338fbdd73dfd86ac2a3ca76536af31d0ac4a8184f38a6718997"
+pinned_at = "2026-06-01"
+pinned_by_pr = "hyperpolymath/standards#200"

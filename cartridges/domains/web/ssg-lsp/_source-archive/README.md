@@ -2,7 +2,7 @@
 
 > Language Server Protocol implementation for 60+ static site generators
 
-[![License: PMPL-1.0](https://img.shields.io/badge/License-PMPL--1.0-blue.svg)](https://github.com/hyperpolymath/palimpsest-license)
+[![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-brightgreen.svg)](https://www.mozilla.org/en-US/MPL/2.0/)
 [![Elixir 1.17+](https://img.shields.io/badge/elixir-1.17+-purple.svg)](https://elixir-lang.org/)
 
 ## Overview
@@ -29,4 +29,4 @@ mix compile
 
 ## License
 
-PMPL-1.0-or-later
+MPL-2.0

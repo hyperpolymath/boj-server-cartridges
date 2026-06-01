@@ -1,0 +1,21 @@
+# .governance-allowlist — TypeScript allowlist (estate "no new TypeScript" policy carve-outs).
+# Mechanism: hyperpolymath/standards governance-reusable.yml -> check-ts-allowlist
+# (Layer 2.5, "typed infrastructure file"). See docs/EXEMPTION-MECHANISMS.adoc.
+#
+# These are EXISTING TS-native infrastructure files, not new TypeScript:
+#   * stack-orchestrator-mcp/adapter/*.ts — MCP cartridge adapter; the Model
+#     Context Protocol SDK is TypeScript-native (mirrors boj-server's
+#     MCP-adapter exemptions in its .claude/CLAUDE.md).
+#   * proof-lsp/adapter/**/*.ts — Language Server adapter; the LSP server
+#     tooling (vscode-languageserver) is TypeScript-native.
+#   * tools/cartridge-minter/mint.ts — Deno scaffolding CLI.
+#
+# Unblock condition: migrate each to AffineScript once it has MCP / LSP /
+# Deno-CLI bindings (tracked estate-wide with the boj-server adapter set).
+#
+# NB: the leading '*' absorbs the './' prefix the file-walker emits; the
+# checker's glob '*' expands to '.*' (crosses '/'), so one line per adapter
+# tree covers its nested files.
+*cartridges/cross-cutting/orchestration/stack-orchestrator-mcp/adapter/*.ts
+*cartridges/domains/formal-verification/proof-lsp/adapter/*.ts
+*tools/cartridge-minter/mint.ts

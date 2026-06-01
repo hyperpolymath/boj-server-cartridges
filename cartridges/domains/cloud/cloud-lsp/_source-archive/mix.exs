@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 defmodule PolyCloud.LSP.MixProject do
@@ -84,7 +84,7 @@ defmodule PolyCloud.LSP.MixProject do
     [
       name: "poly_cloud_lsp",
       files: ~w(lib .formatter.exs mix.exs README.adoc LICENSE CHANGELOG.md),
-      licenses: ["PMPL-1.0-or-later"],
+      licenses: ["MPL-2.0"],
       links: %{
         "GitHub" => @source_url
       }

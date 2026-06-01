@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+* text=auto eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.adoc text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.ts text eol=lf
+*.zig text eol=lf
+*.a2ml text eol=lf
+PINNED-SHA text eol=lf

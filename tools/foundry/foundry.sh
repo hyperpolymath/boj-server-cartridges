@@ -51,8 +51,8 @@ else
   read -rp "  domain (e.g. Archive, Comms, Cloud): " DOMAIN
   read -rp "  tier [Teranga|Shield|Ayo] (Ayo): " TIER; TIER="${TIER:-Ayo}"
   read -rp "  kind [$KINDS] (domain): " KIND; KIND="${KIND:-domain}"
-  read -rp "  granted capabilities, comma-sep from [$CAPS] (none): " GRANT
-  read -rp "  of those, which are ephemeral (rest are locked-down): " EPHEM
+  read -rp "  granted capabilities, comma-sep from [$CAPS] (blank = none, maximally inert): " GRANT
+  note "fork-per-request (ADR-0005) ⇒ every grant is ephemeral; ungranted caps are locked-down/denied"
   TOML="$(mktemp --suffix=.minter.toml)"
   {
     echo "name = \"$NAME\""
@@ -61,10 +61,16 @@ else
     echo "domain = \"$DOMAIN\""
     echo "tier = \"$TIER\""
     [ "$KIND" = domain ] || { echo "category = \"cross-cutting\""; echo "cross_cutting_category = \"$KIND\""; }
-    echo "# foundry capability plan (provision stage):"
-    echo "# granted = [$GRANT]  ephemeral = [$EPHEM]  locked-down = the rest of [$CAPS]"
+    # Capability plan consumed by the Provision stage (provision.sh --granted).
+    echo "granted = \"$GRANT\""
   } > "$TOML"
   note "wrote $TOML"
+fi
+
+# In --from mode the grant lives in the descriptor; read it (default: none).
+: "${GRANT:=}"
+if [ -z "$GRANT" ] && grep -qE '^[[:space:]]*granted[[:space:]]*=' "$TOML"; then
+  GRANT="$(sed -nE 's/^[[:space:]]*granted[[:space:]]*=[[:space:]]*"([^"]*)".*/\1/p' "$TOML" | head -1)"
 fi
 
 DEST_NAME="$(grep -E '^name' "$TOML" | head -1 | sed -E 's/.*"([^"]+)".*/\1/')"
@@ -79,21 +85,26 @@ else
   note "(install deno to run end-to-end; the rest of the flow is toolchain-local)"
 fi
 
-# ── 2 · PROVISION (capability grant: locked-down vs ephemeral) ─────────────
+CART_DIR="$(find "$REPO/cartridges" -type d -name "$DEST_NAME" 2>/dev/null | head -1)"
+
+# ── 2 · PROVISION (grant exactly the chosen caps; record the partition) ────
 say "2/4 · provision — grant exactly the capabilities chosen, nothing more"
-note "least authority: ungranted capabilities are statically absent (see proof)"
+if [ -n "$CART_DIR" ]; then
+  "$HERE/stages/provision.sh" "$CART_DIR" --granted "$GRANT"
+  note "least authority: ungranted capabilities are locked-down (provably absent — see proof)"
+else
+  note "cartridge dir not found (Mint did not run — deno absent). Provision recorded plan: granted=[$GRANT]"
+fi
 
 # ── 3 · CONFIGURE (settings already captured in the descriptor) ────────────
 say "3/4 · configure — apply settings (preserves every proof + the grant)"
 
 # ── 4 · HARNESS (the one standard assurance gate) ──────────────────────────
 say "4/4 · harness — run the standard assurance gate"
-CART_DIR="$(find "$REPO/cartridges" -type d -name "$DEST_NAME" 2>/dev/null | head -1)"
 if [ -n "$CART_DIR" ]; then
-  "$HERE/stages/harness.sh" "$CART_DIR" ${GRANT:+--granted "$GRANT"}
+  "$HERE/stages/harness.sh" "$CART_DIR" --granted "$GRANT"
 else
-  note "cartridge dir not found (Mint did not run — deno absent). Harness skipped."
-  note "to gate an existing cartridge: foundry.sh --harness <dir>"
+  note "harness skipped (no minted dir). To gate an existing cartridge: foundry.sh --harness <dir>"
 fi
 
 say "Foundry · done."

@@ -152,3 +152,51 @@ failing "Can't find an implementation for Elem Truthful"
 export
 boundedToFs : Artifact [Truthful, CapBounded, AbiConform, MemSafe] [Fs]
 boundedToFs = harness (configure id (provision [Fs] (mint "demo")))
+
+------------------------------------------------------------------------
+-- Capability partition — the value-level CapBounded that provision.sh emits
+------------------------------------------------------------------------
+-- The operational Provision stage (stages/provision.sh) writes a `capabilities`
+-- block that PARTITIONS a fixed universe into `ephemeral` (granted) and
+-- `locked_down` (denied = universe \ granted). This section models that
+-- partition in the same proof assistant, so the shell stage and the design
+-- proof cannot drift: the same partition law is stated here and machine-checked.
+
+||| Structural equality on capabilities, needed to compute set difference.
+public export
+Eq Capability where
+  Net == Net = True; Fs == Fs = True; Cred == Cred = True
+  Clock == Clock = True; Rand == Rand = True
+  _ == _ = False
+
+||| The framework-fixed capability universe — identical to foundry.sh `CAPS` and
+||| provision.sh's default universe.
+public export
+universe : List Capability
+universe = [Net, Fs, Cred, Clock, Rand]
+
+||| Locked-down = universe minus the grant. Under fork-per-request (ADR-0005)
+||| every grant is ephemeral, so a capability is either granted (ephemeral) or
+||| locked-down — never both, and nothing escapes the universe. Mirrors exactly
+||| `locked_down = universe \ ephemeral` in provision.sh.
+public export
+lockedDown : (granted : List Capability) -> List Capability
+lockedDown granted = filter (\c => not (c `elem` granted)) universe
+
+||| INERTNESS EXTREMES, machine-checked by reduction. Granting nothing locks the
+||| ENTIRE universe — the maximally-inert / obleeny limit (inertness = 1.0 in
+||| provision.sh). Granting everything locks nothing (inertness = 0.0).
+public export
+grantNothingLocksAll : lockedDown [] = Foundry.universe
+grantNothingLocksAll = Refl
+
+public export
+grantAllLocksNothing : lockedDown Foundry.universe = []
+grantAllLocksNothing = Refl
+
+||| A representative interior point: granting [Fs] locks down exactly the other
+||| four (here in universe order; provision.sh emits the same SET sorted, with
+||| inertness 4/5 = 0.8 — asserted in test/test-foundry.sh).
+public export
+grantFsLocksRest : lockedDown [Fs] = [Net, Cred, Clock, Rand]
+grantFsLocksRest = Refl

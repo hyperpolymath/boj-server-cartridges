@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# Foundry gate — exercise the cartridge-maker's Provision stage + the harness
+# CapBounded check (capability partition, escalation + tampered-partition
+# failure paths). Pure bash + jq, so it's cheap and needs no idris/deno/zig.
+# The Foundry DESIGN proof (proof/Foundry.idr) is type-checked by proofs.yml.
+name: Foundry Gate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/foundry/**'
+      - 'tools/cartridge-minter/**'
+      - '.github/workflows/foundry.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/foundry/**'
+      - 'tools/cartridge-minter/**'
+      - '.github/workflows/foundry.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: foundry-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  provision-harness:
+    name: Provision + harness (CapBounded) tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: jq version
+        run: jq --version
+      - name: Run Foundry provision/harness tests
+        run: bash tools/foundry/test/test-foundry.sh

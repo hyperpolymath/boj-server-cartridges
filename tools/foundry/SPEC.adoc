@@ -44,8 +44,9 @@ Three principles make that possible:
 | *Mint* | Scaffolds from `cartridges/templates/<kind>` via the existing
   `tools/cartridge-minter` + a `minter.toml` descriptor. | `AbiConform`,
   `MemSafe` (inherited from the proven template)
-| *Provision* | Grants an *exact* capability set (least authority); marks each
-  grant locked-down or ephemeral. | `CapBounded`
+| *Provision* | Grants an *exact* capability set (least authority) and records it
+  as a *partition* of the universe — `ephemeral` (granted) vs `locked_down`
+  (denied). `stages/provision.sh`. | `CapBounded`
 | *Configure* | Applies the chosen settings (endpoints, auth, tools).
   Preserves every index — cannot drop a proof or widen a grant. | — (preserves)
 | *Harness* | Runs the one standard gate: ABI proofs typecheck, FFI builds
@@ -90,16 +91,34 @@ cartridge _did_ discharge them.
 
 == Capability model
 
-Capabilities are a fixed, framework-level set (`Net`, `Fs`, `Cred`, `Clock`,
-`Rand`, …) — *proven in the framework, selected by configuration*. Each grant is:
+Capabilities are a fixed, framework-level *universe* (`Net`, `Fs`, `Cred`,
+`Clock`, `Rand`) — *proven in the framework, selected by configuration*. Under
+fork-per-request (ADR-0005) a cartridge keeps no cross-invocation state, so every
+granted capability is necessarily scoped to a single fork. The disposition of
+each capability is therefore *binary*:
 
-* *locked-down* — statically denied; the capability is provably absent from the
-  artifact's type index, so no code path can reach it; or
-* *ephemeral* — granted only for the lifetime of a single fork-per-request
-  invocation (ADR-0005), then gone.
+* *ephemeral* — granted; live only for the lifetime of one fork-per-request
+  invocation, then gone; or
+* *locked-down* — denied; provably absent, so no code path can reach it.
 
-Because the set is fixed and the selection is data, adding a cartridge never
-requires reasoning about _new_ capability machinery — only choosing a subset.
+Provisioning writes a `capabilities` block that *partitions* the universe, with
+two laws the harness re-checks on every run:
+
+[stem]
+++++
+ephemeral ∪ locked\_down = universe \quad\text{(complete)} \qquad
+ephemeral ∩ locked\_down = ∅ \quad\text{(disjoint)}
+++++
+
+`inertness = |locked_down| / |universe|` is the *obleeny* metric: `1.0` means the
+cartridge is granted nothing (maximally inert); the Foundry pushes it as high as
+the chosen settings allow. Because the universe is fixed and the grant is data,
+adding a cartridge never requires reasoning about _new_ capability machinery —
+only choosing a subset.
+
+The same partition is modelled in `proof/Foundry.idr` (`universe`, `lockedDown`,
+and the machine-checked extremes `grantNothingLocksAll` / `grantAllLocksNothing`
+/ `grantFsLocksRest`), so the shell stage and the design proof cannot drift.
 
 == Extensibility — cartridge kinds
 
@@ -143,15 +162,20 @@ agentic proofs.
 | `proof/check.sh` | Done — typechecks the model
 | `stages/harness.sh` | Done — the standard assurance gate (idris2 + zig + probe)
 | `foundry.sh` | Wizard orchestrator — Mint delegates to the Deno minter;
-  Provision/Configure/Harness implemented
-| Capability indexing in generated `cartridge.json` | Scaffolded — full
-  enforcement is the next increment
+  Provision/Configure/Harness wired
+| `stages/provision.sh` | *Done & tested* — writes the capability partition
+  (ephemeral/locked-down + inertness) into `cartridge.json`
+| Capability enforcement in `cartridge.json` | *Done & tested* — the harness
+  verifies the partition laws + grant ⊆ provisioned; `test/test-foundry.sh`
+  covers it (incl. escalation + tampered-partition failure paths)
 |===
 
 == Roadmap
 
-. Emit a `capabilities` block in minted `cartridge.json` and have the harness
-  enforce declared ⊆ granted (closes the value-level half of `CapBounded`).
+. [*DONE*] Emit a `capabilities` block (ephemeral/locked-down partition +
+  inertness) in the cartridge `cartridge.json` and have the harness enforce the
+  partition laws + grant ⊆ provisioned — the value-level half of `CapBounded`,
+  mirrored by the `lockedDown` / inertness proofs in `proof/Foundry.idr`.
 . Per-kind obligation bundles wired from `cross-cutting/` (issue *c*).
 . Descriptor-driven Mint (an enriched API descriptor → tools) for the full
   3-minute UX (issue *f*, hyperpolymath/boj-server#200).

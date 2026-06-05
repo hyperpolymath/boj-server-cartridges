@@ -71,18 +71,33 @@ else
   ok "truthful: available=false (correctly not advertised — nothing to over-claim)"
 fi
 
-# 4 ─ CapBounded: declared capabilities must be within the grant.
+# 4 ─ CapBounded: the `capabilities` block (written by the Provision stage) must
+#     be a valid PARTITION of the universe, and must not claim more capability
+#     than was granted. This is the value-level counterpart of the type-level
+#     CapBounded proven in proof/Foundry.idr.
 if [ -f "$CJ" ] && command -v jq >/dev/null 2>&1; then
-  declared=$(jq -r '(.capabilities // []) | join(",")' "$CJ" 2>/dev/null || echo "")
-  if [ -z "$declared" ]; then
-    skip "no capabilities declared (treated as none — maximally locked-down)"
-  elif [ -z "$GRANTED" ]; then
-    skip "declared [$declared] but no --granted set supplied to check against"
+  if jq -e '(.capabilities? | type) == "object"' "$CJ" >/dev/null 2>&1; then
+    # 4a · partition invariants: ephemeral ∪ locked_down = universe (complete)
+    #      and ephemeral ∩ locked_down = ∅ (disjoint).
+    if jq -e '.capabilities as $c
+              | (($c.ephemeral + $c.locked_down) | sort) == ($c.universe | sort)
+                and (($c.ephemeral - $c.locked_down) | length) == ($c.ephemeral | length)' \
+              "$CJ" >/dev/null 2>&1; then
+      inert=$(jq -r '.capabilities.inertness // "?"' "$CJ")
+      eph=$(jq -r '.capabilities.ephemeral | join(",")' "$CJ")
+      ok "cap-bounded: valid partition (granted [${eph:-none}], inertness ${inert})"
+    else
+      bad "capabilities block is not a valid partition of the universe"
+    fi
+    # 4b · if a grant was supplied, the manifest must not exceed it.
+    if [ -n "$GRANTED" ]; then
+      gj=$(printf '%s' "$GRANTED" | jq -cR 'split(",") | map(gsub("\\s";"")) | map(select(length>0))')
+      over=$(jq -rn --argjson g "$gj" --slurpfile cj "$CJ" '($cj[0].capabilities.ephemeral - $g) | join(", ")')
+      [ -z "$over" ] && ok "manifest grant ⊆ provisioned grant [$GRANTED]" \
+                     || bad "capability escalation: $over not in grant [$GRANTED]"
+    fi
   else
-    over=""
-    IFS=',' read -ra ds <<< "$declared"
-    for c in "${ds[@]}"; do case ",$GRANTED," in *",$c,"*) : ;; *) over="$over $c";; esac; done
-    [ -z "$over" ] && ok "cap-bounded: [$declared] ⊆ [$GRANTED]" || bad "capability escalation:$over not in grant [$GRANTED]"
+    skip "no capabilities block — run the Provision stage (foundry.sh) to add one"
   fi
 fi
 

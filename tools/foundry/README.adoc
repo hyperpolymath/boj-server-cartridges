@@ -1,0 +1,42 @@
+// SPDX-License-Identifier: MPL-2.0
+= Foundry
+
+The integrated, high-assurance cartridge-making workflow:
+*mint → provision → configure → harness*, with the design proven in Idris2 so
+proofs are never dropped through the flow.
+
+* `SPEC.adoc` — the specification (read this first).
+* `proof/Foundry.idr` — the design proof: _no dropped proofs_ + _least
+  authority_, machine-checked by Idris2 0.8.0.
+* `proof/check.sh` — typecheck the design proof.
+* `stages/harness.sh` — the one standard assurance gate every cartridge passes.
+* `foundry.sh` — the wizard.
+
+== Quick start
+
+[source,sh]
+----
+# verify the design proof itself
+tools/foundry/proof/check.sh
+
+# mint a new cartridge interactively (effort = choosing settings)
+tools/foundry/foundry.sh
+
+# or non-interactively
+tools/foundry/foundry.sh --from my-cartridge.minter.toml
+
+# re-run the assurance gate on any existing cartridge
+tools/foundry/foundry.sh --harness cartridges/templates/gossamer-mcp
+----
+
+== What "assured" means here
+
+The Foundry does not _ask you to trust_ that the flow is safe — it makes the
+unsafe flow *fail to compile*. `proof/Foundry.idr` indexes every in-flight
+cartridge by the proof-obligations it has discharged and the capabilities it was
+granted; a cartridge can only be sealed once all obligations are present, and it
+can hold no capability beyond its grant. `stages/harness.sh` is the operational
+mirror: the same obligations, met concretely (idris2 `--check`, `zig build`, the
+truthfulness probe).
+
+See `SPEC.adoc` and boj-server issue *f* (#200).

@@ -1,9 +1,10 @@
 ---
 name: Bug report
 about: Report a bug in a cartridge, the schema mirror, or the Deno validator
-title: "bug: "
+title: 'bug: '
 labels: bug
 assignees: hyperpolymath
+
 ---
 
 <!-- SPDX-License-Identifier: MPL-2.0 -->

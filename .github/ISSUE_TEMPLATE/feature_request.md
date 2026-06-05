@@ -1,9 +1,10 @@
 ---
 name: Feature request
 about: Propose a new cartridge, a registry-side improvement, or a schema-mirror change
-title: "feat: "
+title: 'feat: '
 labels: enhancement
 assignees: hyperpolymath
+
 ---
 
 <!-- SPDX-License-Identifier: MPL-2.0 -->

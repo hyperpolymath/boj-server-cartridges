@@ -1,0 +1,159 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= The Foundry — high-assurance cartridge-making workflow
+:toc: macro
+:icons: font
+
+A specification for the integrated *mint → provision → configure → harness*
+flow that produces high-assurance BoJ cartridges from a settings choice, with
+proofs carried end-to-end and never dropped.
+
+toc::[]
+
+== Why
+
+Today, making a cartridge means bespoke design + bespoke proofs + a bespoke test
+harness — deep, repetitive effort every time. The Foundry *inverts the effort*:
+
+[quote]
+A person notices a cartridge is missing — "Internet Archive? no cartridge —
+why?". Their only real work is (1) confirming it is absent and (2) *choosing
+settings*. About three minutes later the Foundry has produced an
+algorithmically-perfect, high-assurance cartridge.
+
+Three principles make that possible:
+
+. *Carry a proven pre-mint framework — do not build from scratch, and do not do
+  mechanically repetitive assembly.* A cartridge is *derived by composition*
+  from a framework that already carries the ABI and memory-safety proofs. The
+  edge is in never re-deriving the same scaffolding.
+. *One general harness, not bespoke ones.* A single standard harness provides
+  every capability; per-cartridge configuration only *selects* which are
+  _locked-down_ (permanently denied, proven absent) versus _ephemeral_ (granted
+  for the fork's lifetime only). No new harness is designed per cartridge.
+. *Proofs carried end-to-end, none dropped.* Each stage of the flow preserves
+  and may extend the set of discharged proof-obligations; a cartridge can only
+  be _sealed_ once they are all present. This is not a convention — it is
+  mechanically checked (see <<assurance>>).
+
+== The flow
+
+[cols="1,3,2",options="header"]
+|===
+| Stage | Does | Discharges
+| *Mint* | Scaffolds from `cartridges/templates/<kind>` via the existing
+  `tools/cartridge-minter` + a `minter.toml` descriptor. | `AbiConform`,
+  `MemSafe` (inherited from the proven template)
+| *Provision* | Grants an *exact* capability set (least authority); marks each
+  grant locked-down or ephemeral. | `CapBounded`
+| *Configure* | Applies the chosen settings (endpoints, auth, tools).
+  Preserves every index — cannot drop a proof or widen a grant. | — (preserves)
+| *Harness* | Runs the one standard gate: ABI proofs typecheck, FFI builds
+  against the shared shim, the truthfulness probe returns non-stub. | `Truthful`
+|===
+
+[#assurance]
+== Assurance (proof of design)
+
+The flow is modelled in Idris2 — the same proof assistant BoJ uses — in
+`proof/Foundry.idr`, and `proof/check.sh` typechecks it. An `Artifact` is
+indexed, *in its type*, by the obligations it has discharged and the
+capabilities it was granted:
+
+[source,idris]
+----
+record Artifact (discharged : List Obligation) (caps : List Capability) where
+  constructor MkArtifact
+  name : String
+----
+
+Two properties are then machine-checked:
+
+NO DROPPED PROOFS::
+  Every stage's result type carries at least its input's `discharged` set, and a
+  `Sealed` cartridge is unconstructable without `Complete ds` (every required
+  obligation present). A `failing` block asserts that a pipeline which *skips
+  the harness* does not compile — pinned to the exact error
+  `Can't find an implementation for Elem Truthful`. If a refactor ever let a
+  proof-dropping flow seal, `Foundry.idr` stops compiling.
+
+LEAST AUTHORITY::
+  After `provision granted`, the artifact's capability index *is* `granted`;
+  `configure` and `harness` preserve it, and no operation widens it. A cartridge
+  can hold no capability beyond its grant. This is the near-term, type-level
+  form of the _obleeny_ horizon (provable inertness — boj-server issue #d).
+
+The operational counterpart is `stages/harness.sh`: the *same* obligations, met
+concretely (idris2 `--check`, `zig build`, the `#196` truthfulness probe). The
+Idris model says the flow _cannot_ drop a proof; the harness says this specific
+cartridge _did_ discharge them.
+
+== Capability model
+
+Capabilities are a fixed, framework-level set (`Net`, `Fs`, `Cred`, `Clock`,
+`Rand`, …) — *proven in the framework, selected by configuration*. Each grant is:
+
+* *locked-down* — statically denied; the capability is provably absent from the
+  artifact's type index, so no code path can reach it; or
+* *ephemeral* — granted only for the lifetime of a single fork-per-request
+  invocation (ADR-0005), then gone.
+
+Because the set is fixed and the selection is data, adding a cartridge never
+requires reasoning about _new_ capability machinery — only choosing a subset.
+
+== Extensibility — cartridge kinds
+
+A *kind* is a template under `cartridges/templates/` plus the obligation set its
+harness enforces. The Foundry is parameterised over kind, so new server classes
+plug in without touching the flow:
+
+[cols="1,3",options="header"]
+|===
+| Kind | Adds (beyond the base ABI/mem-safety/truthful bundle)
+| `domain` | nothing — ABI conformance only (the common case)
+| `coordination` / `orchestration` | routing soundness: a request reaches exactly
+  one correct downstream; no-orphan / no-dup
+| `agentic` | capability-bound execution: a step uses only granted capabilities
+| `nesy` | symbolic-soundness: the neural→symbolic bridge preserves declared
+  invariants
+|===
+
+The behavioural obligations for these live in
+`boj-server-cartridges/cartridges/cross-cutting/` (issue *c*,
+hyperpolymath/boj-server-cartridges#37) and become part of the inherited
+pre-mint bundle for that kind — so an `agentic` cartridge is _born_ carrying the
+agentic proofs.
+
+== Relationship to what already exists
+
+* `tools/cartridge-minter/mint.ts` — the Mint stage (kept; the Foundry wraps it).
+* `cartridges/templates/gossamer-mcp/` — the reference template (ABI proof in
+  `abi/Gossamer/Protocol.idr`, shared `ffi/cartridge_shim.zig`).
+* `boj-server` `tests/truthfulness_check.sh` (#196) — the Truthful gate the
+  harness reuses.
+* `boj-server` `src/abi/Boj/*` — the 5-axiom trusted base every proof rests on
+  (issue *a*, hyperpolymath/boj-server#197).
+
+== Status
+
+[cols="1,2",options="header"]
+|===
+| Piece | State
+| `proof/Foundry.idr` | *Done & typechecked* (Idris2 0.8.0) — no-drop + least-authority
+| `proof/check.sh` | Done — typechecks the model
+| `stages/harness.sh` | Done — the standard assurance gate (idris2 + zig + probe)
+| `foundry.sh` | Wizard orchestrator — Mint delegates to the Deno minter;
+  Provision/Configure/Harness implemented
+| Capability indexing in generated `cartridge.json` | Scaffolded — full
+  enforcement is the next increment
+|===
+
+== Roadmap
+
+. Emit a `capabilities` block in minted `cartridge.json` and have the harness
+  enforce declared ⊆ granted (closes the value-level half of `CapBounded`).
+. Per-kind obligation bundles wired from `cross-cutting/` (issue *c*).
+. Descriptor-driven Mint (an enriched API descriptor → tools) for the full
+  3-minute UX (issue *f*, hyperpolymath/boj-server#200).
+. Toward _obleeny_: partial-evaluate a minted cartridge to its minimal core and
+  prove dead-capability elimination (issue *d*, hyperpolymath/boj-server#198).

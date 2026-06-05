@@ -9,6 +9,14 @@
 **/target/
 **/dist/
 
+# Idris2 type-check output. Always emitted as `build/` DIRECTLY under an `abi/`
+# dir, so this pattern is precise: it does NOT touch the legitimate
+# `cross-cutting/build/` category (the Build-Server-Protocol cartridges).
+**/abi/build/
+*.ttc
+*.ttm
+*.ibc
+
 # OS junk
 .DS_Store
 *.swp

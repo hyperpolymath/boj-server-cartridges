@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Enforce zero-axiom trusted base
         run: bash scripts/check-trusted-base.sh
 
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Read pinned Idris2 version
         id: ver
@@ -68,7 +68,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y chezscheme libgmp-dev build-essential
 
       - name: Cache asdf + Idris2 toolchain
-        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.asdf
           key: idris2-asdf-${{ runner.os }}-${{ steps.ver.outputs.idris2 }}

@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
 name: OpenSSF Scorecard
-
 on:
   branch_protection_rule:
   schedule:
@@ -8,10 +7,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   scorecard:
     permissions:

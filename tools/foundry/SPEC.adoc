@@ -137,11 +137,14 @@ plug in without touching the flow:
   invariants
 |===
 
-The behavioural obligations for these live in
-`boj-server-cartridges/cartridges/cross-cutting/` (issue *c*,
-hyperpolymath/boj-server-cartridges#37) and become part of the inherited
-pre-mint bundle for that kind — so an `agentic` cartridge is _born_ carrying the
-agentic proofs.
+This is now *machine-checked*. `proof/Foundry.idr` models `Kind`, the per-kind
+obligation set (`extra`), the per-kind harness (`harnessFor`) and per-kind
+completeness (`CompleteFor`). `foundryFor k` seals a cartridge of kind `k` only
+once the kind's *full* bundle (base + behavioural) is discharged, and a `failing`
+block proves an `agentic` cartridge run through the base harness *cannot* seal —
+so an `agentic` cartridge is _born_ carrying its obligation and can never drop
+it. The concrete behavioural proofs these obligations stand for live in
+`cartridges/cross-cutting/` (issue hyperpolymath/boj-server-cartridges#37).
 
 == Relationship to what already exists
 
@@ -176,7 +179,10 @@ agentic proofs.
   inertness) in the cartridge `cartridge.json` and have the harness enforce the
   partition laws + grant ⊆ provisioned — the value-level half of `CapBounded`,
   mirrored by the `lockedDown` / inertness proofs in `proof/Foundry.idr`.
-. Per-kind obligation bundles wired from `cross-cutting/` (issue *c*).
+. [*type-level model DONE*] Per-kind obligation bundles — `Kind` / `extra` /
+  `harnessFor` / `CompleteFor` / `foundryFor` + the per-kind `failing` block in
+  `proof/Foundry.idr`. Remaining: bind each behavioural obligation to a concrete
+  `cross-cutting/` proof (issue hyperpolymath/boj-server-cartridges#37).
 . Descriptor-driven Mint (an enriched API descriptor → tools) for the full
   3-minute UX (issue *f*, hyperpolymath/boj-server#200).
 . Toward _obleeny_: partial-evaluate a minted cartridge to its minimal core and

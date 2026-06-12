@@ -30,13 +30,19 @@ import Data.List.Elem
 -- Proof obligations and capabilities
 ------------------------------------------------------------------------
 
-||| The proof-obligations every shippable cartridge must discharge.
+||| The proof-obligations a cartridge can discharge. The first four are the BASE
+||| bundle every shippable cartridge must carry; the last three are BEHAVIOURAL,
+||| added per kind (see `extra`). They share one index so the base proofs are
+||| untouched and a kind simply requires a longer obligation set.
 public export
 data Obligation
-  = AbiConform   -- implements the boj_cartridge_* ABI (ADR-0006)
-  | MemSafe      -- no undefined behaviour across the FFI boundary
-  | Truthful     -- `available` implies a non-stub invoke (the #196 gate)
-  | CapBounded   -- uses only the capabilities it was granted
+  = AbiConform      -- implements the boj_cartridge_* ABI (ADR-0006)
+  | MemSafe         -- no undefined behaviour across the FFI boundary
+  | Truthful        -- `available` implies a non-stub invoke (the #196 gate)
+  | CapBounded      -- uses only the capabilities it was granted
+  | RoutingSound    -- coordination: a request reaches exactly one correct downstream
+  | ExecCapBounded  -- agentic: each execution step uses only granted capabilities
+  | SymbolicSound   -- nesy: the neural->symbolic bridge preserves declared invariants
 
 ||| Capabilities the general harness can grant. Anything not granted is denied.
 public export
@@ -200,3 +206,90 @@ grantAllLocksNothing = Refl
 public export
 grantFsLocksRest : lockedDown [Fs] = [Net, Cred, Clock, Rand]
 grantFsLocksRest = Refl
+
+------------------------------------------------------------------------
+-- Extensibility — per-kind obligation bundles (issue #37)
+------------------------------------------------------------------------
+-- A cartridge KIND is the base bundle PLUS the behavioural obligations its
+-- harness enforces. The Foundry is parameterised over kind, so new server
+-- classes plug in WITHOUT touching the flow: a kind only ADDS obligations, and
+-- the per-kind harness discharges exactly those. An `agentic` cartridge is then
+-- BORN carrying the agentic proof — the "proven pre-mint framework" the SPEC
+-- describes, here machine-checked. The behavioural obligations join the same
+-- `discharged` index as the base ones, so all the proofs above are unaffected.
+
+||| The server kinds the maker can compose. `Domain` is the common case (base
+||| bundle only); the rest are the cross-cutting kinds (issue #37).
+public export
+data Kind = Domain | Coordination | Agentic | Nesy
+
+||| The extra obligation(s) each kind carries beyond the base bundle.
+public export
+extra : Kind -> List Obligation
+extra Domain       = []
+extra Coordination = [RoutingSound]
+extra Agentic      = [ExecCapBounded]
+extra Nesy         = [SymbolicSound]
+
+||| PER-KIND HARNESS — the one general harness, specialised to a kind. It runs the
+||| base harness (discharging Truthful) AND discharges exactly the kind's extra
+||| obligations: never fewer (no dropped proofs), never more (least authority at
+||| the obligation level). For `Domain`, `extra` is empty, so it is precisely the
+||| base harness.
+export
+harnessFor : {0 ds : List Obligation} -> {0 caps : List Capability}
+          -> (k : Kind) -> Artifact ds caps -> Artifact (extra k ++ Truthful :: ds) caps
+harnessFor _ (MkArtifact n) = MkArtifact n
+
+||| Per-kind completeness: the base bundle is `Complete` AND every obligation the
+||| kind requires is discharged. Built from the existing `Complete` plus one
+||| `Elem` per kind — the same auto-`Elem` pattern proven above.
+public export
+data CompleteFor : (k : Kind) -> (ds : List Obligation) -> Type where
+  DomainOK  : {0 ds : List Obligation} -> {auto base : Complete ds}
+           -> CompleteFor Domain ds
+  CoordOK   : {0 ds : List Obligation} -> {auto base : Complete ds}
+           -> {auto r : Elem RoutingSound ds} -> CompleteFor Coordination ds
+  AgenticOK : {0 ds : List Obligation} -> {auto base : Complete ds}
+           -> {auto r : Elem ExecCapBounded ds} -> CompleteFor Agentic ds
+  NesyOK    : {0 ds : List Obligation} -> {auto base : Complete ds}
+           -> {auto r : Elem SymbolicSound ds} -> CompleteFor Nesy ds
+
+||| A sealed cartridge OF A KIND — unconstructable unless the kind's FULL
+||| obligation bundle (base + behavioural) is present in its type.
+public export
+record SealedFor (k : Kind) where
+  constructor SealK
+  {0 ds   : List Obligation}
+  {0 caps : List Capability}
+  artifact : Artifact ds caps
+  0 complete : CompleteFor k ds
+
+||| The kinded flow. Mint+provision+configure as before, then the kind's harness.
+||| That every branch typechecks IS the per-kind assurance: the agentic flow
+||| seals an agentic cartridge precisely because `harnessFor Agentic` discharged
+||| `ExecCapBounded`. The branches share one body and differ only in the
+||| completeness witness the checker must find.
+export
+foundryFor : (k : Kind) -> (name : String) -> (granted : List Capability) -> SealedFor k
+foundryFor Domain       n g = SealK (harnessFor Domain       (configure id (provision g (mint n)))) DomainOK
+foundryFor Coordination n g = SealK (harnessFor Coordination (configure id (provision g (mint n)))) CoordOK
+foundryFor Agentic      n g = SealK (harnessFor Agentic      (configure id (provision g (mint n)))) AgenticOK
+foundryFor Nesy         n g = SealK (harnessFor Nesy         (configure id (provision g (mint n)))) NesyOK
+
+||| Positive witness: the agentic flow DOES seal an agentic cartridge — it
+||| carries `ExecCapBounded` because `harnessFor Agentic` discharged it. (The
+||| companion `failing` block below shows the base harness does not.)
+public export
+agenticSeals : SealedFor Agentic
+agenticSeals = foundryFor Agentic "demo-agentic" [Fs]
+
+-- NO DROPPED PROOFS, per kind. An agentic cartridge run through the BASE
+-- (Domain) harness never discharges `ExecCapBounded`, so it cannot seal AS
+-- agentic. This `failing` block pins that exact compile error — if a refactor
+-- ever let an agentic cartridge seal without its obligation, THIS file would
+-- stop compiling.
+failing "Can't find an implementation for Elem ExecCapBounded"
+  agenticNeedsItsProof : (name : String) -> SealedFor Agentic
+  agenticNeedsItsProof name =
+    SealK (harnessFor Domain (configure id (provision [] (mint name)))) AgenticOK

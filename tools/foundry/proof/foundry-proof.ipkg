@@ -1,0 +1,5 @@
+package foundry-proof
+
+sourcedir = "."
+
+modules = Foundry

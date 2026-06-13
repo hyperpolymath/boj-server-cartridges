@@ -6,16 +6,17 @@
 # old flat cartridges/<name> layout.
 name: Zig Cartridge Tests
 
+# Was workflow-level path-filtered: a required check that never ran on PRs
+# touching none of its paths, leaving the check "Expected" and the PR blocked.
+# Now always runs; the `changes` job gates the heavy job, which when skipped
+# reports SUCCESS to required checks. (zig-test also does its own per-cartridge
+# scoping for the relevant case.)
 on:
   push:
     branches: [main]
-    paths:
-      - 'cartridges/**/ffi/**'
-      - '.github/workflows/zig-test.yml'
   pull_request:
-    paths:
-      - 'cartridges/**/ffi/**'
-      - '.github/workflows/zig-test.yml'
+    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -25,8 +26,39 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.detect.outputs.run }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -uo pipefail
+          run=true
+          if [ "$EVENT" = pull_request ]; then
+            git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null \
+              && changed=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE '^cartridges/.*/ffi/' && run=true || run=false; }
+          elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
+            changed=$(git diff --name-only "${BEFORE}...${GITHUB_SHA}" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE '^cartridges/.*/ffi/' && run=true || run=false; }
+          fi
+          printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
+          echo "relevant=$run; changed files:"; printf '%s\n' "${changed:-<none computed>}"
+
   zig-test:
     name: Build and test Zig cartridge FFI
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

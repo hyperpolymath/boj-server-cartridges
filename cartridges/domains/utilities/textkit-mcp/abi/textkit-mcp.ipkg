@@ -1,0 +1,5 @@
+package textkit-mcp-abi
+
+sourcedir = "."
+
+modules = TextkitMcp.SafeTextkit

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "textkit-mcp",
+  "version": "0.1.0",
+  "description": "Pure-computation text utilities (base64 encode/decode, etc.). No network, no filesystem, no credentials.",
+  "domain": "utilities",
+  "category": "domain",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://textkit-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "encode_base64",
+      "description": "Base64-encode a UTF-8 text string (RFC 4648). Pure computation — no network, no filesystem, no credentials.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "The text to encode. May be empty."
+          }
+        },
+        "required": []
+      }
+    }
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libtextkit_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  },
+  "caps": [],
+  "grant": "",
+  "available": true,
+  "status": "ready"
+}

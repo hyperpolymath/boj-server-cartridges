@@ -1,0 +1,14 @@
+name        = "textkit-mcp"
+description = "Pure-computation text utilities (base64 encode/decode, etc.). No network, no filesystem, no credentials."
+version     = "0.1.0"
+domain      = "utilities"
+category    = "domain"
+tier        = "Ayo"
+protocols   = ["MCP"]
+
+[auth]
+method = "none"
+
+[[tools]]
+name        = "encode_base64"
+description = "Base64-encode a text string. Pure computation, no I/O."

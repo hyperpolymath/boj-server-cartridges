@@ -37,6 +37,10 @@ Taxonomy ratified in [`docs/decisions/ADR-001-taxonomy.adoc`](docs/decisions/ADR
 - One cartridge per PR where possible. Cartridge-wave PRs (e.g. the vector-DB / multi-modal waves bundled into v0.1) are the exception — call them out in the PR description and link the upstream campaign.
 - Cross-link the canonical schema home ([hyperpolymath/standards](https://github.com/hyperpolymath/standards/tree/main/cartridges)) in PR descriptions when proposing schema-shape changes; those land upstream first, then mirror here via a `PINNED-SHA` bump.
 
+## CI / required checks
+
+Required status-check workflows must **always report**. Never add `on.*.paths` to a required workflow (`proofs.yml`, `zig-test.yml`, `foundry.yml`): a path-filtered required check that doesn't trigger is reported as permanently "Expected" and leaves the PR `blocked` even when green. The estate pattern — keep the workflow always-triggered, add an always-run `changes` job that recomputes the gate's path set via `git diff origin/<base>...HEAD`, and gate each heavy job with `needs: changes` + `if: needs.changes.outputs.run == 'true'` (a job skipped via `if:` counts as a passing required check). Fail safe: default to running. Mirrors boj-server's gates (boj-server PR #216, this repo PR #45).
+
 ## What lives elsewhere
 
 - The cartridge **spec** itself (schema shape, role suffix conventions, version semantics): [hyperpolymath/standards](https://github.com/hyperpolymath/standards) `cartridges/`.

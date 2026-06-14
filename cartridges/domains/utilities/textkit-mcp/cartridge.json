@@ -50,5 +50,23 @@
   "caps": [],
   "grant": "",
   "available": true,
-  "status": "ready"
+  "status": "ready",
+  "capabilities": {
+    "universe": [
+      "Clock",
+      "Cred",
+      "Fs",
+      "Net",
+      "Rand"
+    ],
+    "ephemeral": [],
+    "locked_down": [
+      "Clock",
+      "Cred",
+      "Fs",
+      "Net",
+      "Rand"
+    ],
+    "inertness": 1
+  }
 }

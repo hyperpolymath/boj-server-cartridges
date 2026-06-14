@@ -21,7 +21,23 @@
     "base_url": "local://container-mcp",
     "content_type": "application/json"
   },
+  "available": true,
+  "status": "ready",
   "tools": [
+    {
+      "name": "container_list",
+      "description": "List containers.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "boolean",
+            "description": "Include stopped containers (default: false)"
+          }
+        },
+        "required": []
+      }
+    },
     {
       "name": "container_build",
       "description": "Build a container image from a Containerfile.",
@@ -132,20 +148,6 @@
       }
     },
     {
-      "name": "container_list",
-      "description": "List containers.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "all": {
-            "type": "boolean",
-            "description": "Include stopped containers (default: false)"
-          }
-        },
-        "required": []
-      }
-    },
-    {
       "name": "container_logs",
       "description": "Get logs from a container.",
       "inputSchema": {
@@ -192,5 +194,24 @@
       "boj_cartridge_version",
       "boj_cartridge_invoke"
     ]
+  },
+  "capabilities": {
+    "universe": [
+      "Clock",
+      "Cred",
+      "Fs",
+      "Net",
+      "Rand"
+    ],
+    "ephemeral": [
+      "Fs"
+    ],
+    "locked_down": [
+      "Clock",
+      "Cred",
+      "Net",
+      "Rand"
+    ],
+    "inertness": 0.8
   }
 }

@@ -110,5 +110,36 @@
         ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libmodel_router_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  },
+  "available": true,
+  "status": "ready",
+  "capabilities": {
+    "universe": [
+      "Clock",
+      "Cred",
+      "Fs",
+      "Net",
+      "Rand"
+    ],
+    "ephemeral": [],
+    "locked_down": [
+      "Clock",
+      "Cred",
+      "Fs",
+      "Net",
+      "Rand"
+    ],
+    "inertness": 1
+  }
 }

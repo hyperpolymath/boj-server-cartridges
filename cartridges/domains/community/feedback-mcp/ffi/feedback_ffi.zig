@@ -259,29 +259,166 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 
 const shim = @import("cartridge_shim.zig");
 
-/// Dispatch the cartridge.json MCP tools. Grade D Alpha — each arm
-/// returns a stub JSON body shaped to the tool's intended response.
+/// Parse a [*c]const u8 JSON-args pointer into a std.json.Value.
+/// Returns a parsed value on success; caller must deinit.
+/// `arena_mem` must outlive the returned parsed value.
+fn parseArgs(
+    json_args: [*c]const u8,
+    allocator: std.mem.Allocator,
+) ?std.json.Parsed(std.json.Value) {
+    const args_str: []const u8 = if (json_args != null)
+        std.mem.span(@as([*:0]const u8, @ptrCast(json_args)))
+    else
+        "{}";
+    return std.json.parseFromSlice(std.json.Value, allocator, args_str, .{}) catch null;
+}
+
+/// Dispatch the cartridge MCP tools against the real feedback state machine.
 export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,
     in_out_len: [*c]usize,
 ) callconv(.c) i32 {
-    _ = json_args;
     if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
 
-    const body: []const u8 =     if (shim.toolIs(tool_name, "feedback_register_channel"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "feedback_start_collecting"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "feedback_submit"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "feedback_get_stats"))
-        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
-else
-    return shim.RC_UNKNOWN_TOOL;
+    var arena_mem: [4096]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&arena_mem);
+    const allocator = fba.allocator();
 
-    return shim.writeResult(out_buf, in_out_len, body);
+    var result_buf: [256]u8 = undefined;
+
+    // ── feedback_register_channel ─────────────────────────────────────
+    if (shim.toolIs(tool_name, "feedback_register_channel")) {
+        // Default channel_type = 1 (web_form) when absent or unparseable.
+        var channel_type: c_int = 1;
+        if (parseArgs(json_args, allocator)) |parsed| {
+            defer parsed.deinit();
+            if (parsed.value == .object) {
+                if (parsed.value.object.get("channel_type")) |val| {
+                    if (val == .integer) channel_type = @intCast(val.integer);
+                }
+            }
+        }
+        const slot = fb_register(channel_type);
+        if (slot < 0) {
+            const body = std.fmt.bufPrint(
+                &result_buf,
+                "{{\"ok\":false,\"error\":\"no slots available\"}}",
+                .{},
+            ) catch return shim.RC_RUNTIME_ERROR;
+            return shim.writeResult(out_buf, in_out_len, body);
+        }
+        const body = std.fmt.bufPrint(
+            &result_buf,
+            "{{\"slot\":{d},\"channel\":\"web_form\",\"state\":\"channel_registered\",\"ok\":true}}",
+            .{slot},
+        ) catch return shim.RC_RUNTIME_ERROR;
+        return shim.writeResult(out_buf, in_out_len, body);
+    }
+
+    // ── feedback_start_collecting ─────────────────────────────────────
+    if (shim.toolIs(tool_name, "feedback_start_collecting")) {
+        var slot: c_int = -1;
+        if (parseArgs(json_args, allocator)) |parsed| {
+            defer parsed.deinit();
+            if (parsed.value == .object) {
+                if (parsed.value.object.get("slot")) |val| {
+                    if (val == .integer) slot = @intCast(val.integer);
+                }
+            }
+        }
+        const rc = fb_start_collecting(slot);
+        if (rc != 0) {
+            const body = std.fmt.bufPrint(
+                &result_buf,
+                "{{\"ok\":false,\"error\":\"invalid slot or bad state\"}}",
+                .{},
+            ) catch return shim.RC_RUNTIME_ERROR;
+            return shim.writeResult(out_buf, in_out_len, body);
+        }
+        const body = std.fmt.bufPrint(
+            &result_buf,
+            "{{\"slot\":{d},\"state\":\"collecting\",\"ok\":true}}",
+            .{slot},
+        ) catch return shim.RC_RUNTIME_ERROR;
+        return shim.writeResult(out_buf, in_out_len, body);
+    }
+
+    // ── feedback_submit ───────────────────────────────────────────────
+    if (shim.toolIs(tool_name, "feedback_submit")) {
+        var slot: c_int = -1;
+        var sentiment_int: c_int = @intFromEnum(Sentiment.unclassified);
+        if (parseArgs(json_args, allocator)) |parsed| {
+            defer parsed.deinit();
+            if (parsed.value == .object) {
+                if (parsed.value.object.get("slot")) |val| {
+                    if (val == .integer) slot = @intCast(val.integer);
+                }
+                if (parsed.value.object.get("sentiment")) |val| {
+                    if (val == .string) {
+                        const s = val.string;
+                        if (std.mem.eql(u8, s, "positive")) {
+                            sentiment_int = @intFromEnum(Sentiment.positive);
+                        } else if (std.mem.eql(u8, s, "negative")) {
+                            sentiment_int = @intFromEnum(Sentiment.negative);
+                        } else if (std.mem.eql(u8, s, "neutral")) {
+                            sentiment_int = @intFromEnum(Sentiment.neutral);
+                        }
+                        // else remains unclassified (-99)
+                    }
+                }
+            }
+        }
+        const count = fb_submit(slot, sentiment_int);
+        if (count < 0) {
+            const body = std.fmt.bufPrint(
+                &result_buf,
+                "{{\"ok\":false,\"error\":\"invalid slot or bad state\"}}",
+                .{},
+            ) catch return shim.RC_RUNTIME_ERROR;
+            return shim.writeResult(out_buf, in_out_len, body);
+        }
+        const body = std.fmt.bufPrint(
+            &result_buf,
+            "{{\"slot\":{d},\"count\":{d},\"ok\":true}}",
+            .{ slot, count },
+        ) catch return shim.RC_RUNTIME_ERROR;
+        return shim.writeResult(out_buf, in_out_len, body);
+    }
+
+    // ── feedback_get_stats ────────────────────────────────────────────
+    if (shim.toolIs(tool_name, "feedback_get_stats")) {
+        var slot: c_int = -1;
+        if (parseArgs(json_args, allocator)) |parsed| {
+            defer parsed.deinit();
+            if (parsed.value == .object) {
+                if (parsed.value.object.get("slot")) |val| {
+                    if (val == .integer) slot = @intCast(val.integer);
+                }
+            }
+        }
+        const total = fb_count(slot);
+        if (total < 0) {
+            const body = std.fmt.bufPrint(
+                &result_buf,
+                "{{\"ok\":false,\"error\":\"invalid slot\"}}",
+                .{},
+            ) catch return shim.RC_RUNTIME_ERROR;
+            return shim.writeResult(out_buf, in_out_len, body);
+        }
+        const pos = fb_positive_count(slot);
+        const neg = fb_negative_count(slot);
+        const neu = fb_neutral_count(slot);
+        const body = std.fmt.bufPrint(
+            &result_buf,
+            "{{\"slot\":{d},\"total\":{d},\"positive\":{d},\"negative\":{d},\"neutral\":{d},\"ok\":true}}",
+            .{ slot, total, pos, neg, neu },
+        ) catch return shim.RC_RUNTIME_ERROR;
+        return shim.writeResult(out_buf, in_out_len, body);
+    }
+
+    return shim.RC_UNKNOWN_TOOL;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -345,18 +482,42 @@ test "state transition validation" {
 // ═══════════════════════════════════════════════════════════════════════
 
 test "invoke: each declared tool succeeds" {
+    fb_reset();
     var buf: [256]u8 = undefined;
-    const tools = [_][]const u8{
-        "feedback_register_channel",
-        "feedback_start_collecting",
-        "feedback_submit",
-        "feedback_get_stats",
-    };
-    for (tools) |t| {
+
+    // feedback_register_channel({}) — default channel, should return slot+ok
+    {
         var len: usize = buf.len;
-        const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
+        const rc = boj_cartridge_invoke("feedback_register_channel", "{}", &buf, &len);
         try std.testing.expectEqual(@as(i32, 0), rc);
-        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"ok\":true") != null);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"slot\"") != null);
+    }
+
+    // feedback_start_collecting({"slot":0}) — slot 0 was just registered
+    {
+        var len: usize = buf.len;
+        const rc = boj_cartridge_invoke("feedback_start_collecting", "{\"slot\":0}", &buf, &len);
+        try std.testing.expectEqual(@as(i32, 0), rc);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"ok\":true") != null);
+    }
+
+    // feedback_submit({"slot":0,"sentiment":"positive"})
+    {
+        var len: usize = buf.len;
+        const rc = boj_cartridge_invoke("feedback_submit", "{\"slot\":0,\"sentiment\":\"positive\"}", &buf, &len);
+        try std.testing.expectEqual(@as(i32, 0), rc);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"ok\":true") != null);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"count\"") != null);
+    }
+
+    // feedback_get_stats({"slot":0})
+    {
+        var len: usize = buf.len;
+        const rc = boj_cartridge_invoke("feedback_get_stats", "{\"slot\":0}", &buf, &len);
+        try std.testing.expectEqual(@as(i32, 0), rc);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"ok\":true") != null);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"total\"") != null);
     }
 }
 

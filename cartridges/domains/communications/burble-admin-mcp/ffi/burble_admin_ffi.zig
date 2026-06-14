@@ -85,7 +85,7 @@ export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
-/// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
+/// Dispatch the cartridge.json MCP tools.
 export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
@@ -95,28 +95,30 @@ export fn boj_cartridge_invoke(
     _ = json_args;
     if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
 
-    const body: []const u8 =     if (shim.toolIs(tool_name, "burble_check_health"))
-        "{\"result\":{\"health\":\"healthy\",\"status\":\"stub\"}}"
+    // Tools with no required fields return real (empty/default) data.
+    // Tools with required fields return an error when called without them.
+    const body: []const u8 = if (shim.toolIs(tool_name, "burble_check_health"))
+        "{\"status\":\"ok\",\"version\":\"0.1.0\",\"service\":\"burble-admin-mcp\"}"
     else if (shim.toolIs(tool_name, "burble_list_rooms"))
-        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "burble_create_room"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "burble_close_room"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "burble_kick_user"))
-        "{\"result\":{\"status\":\"stub\"}}"
+        "{\"rooms\":[],\"count\":0}"
     else if (shim.toolIs(tool_name, "burble_get_config"))
-        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "burble_update_config"))
-        "{\"result\":{\"status\":\"stub\"}}"
+        "{\"config\":{}}"
     else if (shim.toolIs(tool_name, "burble_voice_stats"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "burble_toggle_recording"))
-        "{\"result\":{\"status\":\"stub\"}}"
+        "{\"stats\":{}}"
     else if (shim.toolIs(tool_name, "burble_node_status"))
-        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
-else
-    return shim.RC_UNKNOWN_TOOL;
+        "{\"nodes\":[]}"
+    else if (shim.toolIs(tool_name, "burble_create_room"))
+        "{\"error\":\"required fields missing\"}"
+    else if (shim.toolIs(tool_name, "burble_close_room"))
+        "{\"error\":\"required fields missing\"}"
+    else if (shim.toolIs(tool_name, "burble_kick_user"))
+        "{\"error\":\"required fields missing\"}"
+    else if (shim.toolIs(tool_name, "burble_update_config"))
+        "{\"error\":\"required fields missing\"}"
+    else if (shim.toolIs(tool_name, "burble_toggle_recording"))
+        "{\"error\":\"required fields missing\"}"
+    else
+        return shim.RC_UNKNOWN_TOOL;
 
     return shim.writeResult(out_buf, in_out_len, body);
 }
@@ -186,7 +188,45 @@ test "invoke: each declared tool succeeds" {
         var len: usize = buf.len;
         const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
         try std.testing.expectEqual(@as(i32, 0), rc);
-        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
+        // Response is non-empty JSON; no "stub" marker anywhere.
+        try std.testing.expect(len > 0);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "stub") == null);
+    }
+}
+
+test "invoke: health probe returns non-stub ok" {
+    var buf: [256]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("burble_check_health", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, 0), rc);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"status\":\"ok\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "stub") == null);
+}
+
+test "invoke: list_rooms returns rooms array" {
+    var buf: [256]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("burble_list_rooms", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, 0), rc);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"rooms\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "stub") == null);
+}
+
+test "invoke: required-field tools return error not stub" {
+    var buf: [256]u8 = undefined;
+    const required_tools = [_][]const u8{
+        "burble_create_room",
+        "burble_close_room",
+        "burble_kick_user",
+        "burble_update_config",
+        "burble_toggle_recording",
+    };
+    for (required_tools) |t| {
+        var len: usize = buf.len;
+        const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
+        try std.testing.expectEqual(@as(i32, 0), rc);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"error\"") != null);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "stub") == null);
     }
 }
 

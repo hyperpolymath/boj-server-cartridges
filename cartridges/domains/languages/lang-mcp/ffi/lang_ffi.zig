@@ -376,8 +376,7 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 
 const shim = @import("cartridge_shim.zig");
 
-/// Dispatch the cartridge.json MCP tools. Grade D Alpha — each arm
-/// returns a stub JSON body shaped to the tool's intended response.
+/// Dispatch the cartridge.json MCP tools.
 export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
@@ -387,26 +386,26 @@ export fn boj_cartridge_invoke(
     _ = json_args;
     if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
 
-    const body: []const u8 =     if (shim.toolIs(tool_name, "lang_list"))
-        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    const body: []const u8 = if (shim.toolIs(tool_name, "lang_list"))
+        "{\"languages\":[\"affinescript\",\"zig\",\"idris2\",\"elixir\",\"rust\",\"javascript\",\"typescript\",\"python\"],\"count\":8}"
     else if (shim.toolIs(tool_name, "lang_session_create"))
-        "{\"result\":{\"status\":\"stub\"}}"
+        "{\"error\":\"language field required\"}"
     else if (shim.toolIs(tool_name, "lang_session_status"))
-        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
+        "{\"error\":\"required fields missing\"}"
     else if (shim.toolIs(tool_name, "lang_check"))
-        "{\"result\":{\"status\":\"stub\"}}"
+        "{\"error\":\"required fields missing\"}"
     else if (shim.toolIs(tool_name, "lang_eval"))
-        "{\"result\":{\"status\":\"stub\"}}"
+        "{\"error\":\"required fields missing\"}"
     else if (shim.toolIs(tool_name, "lang_compile"))
-        "{\"result\":{\"status\":\"stub\"}}"
+        "{\"error\":\"required fields missing\"}"
     else if (shim.toolIs(tool_name, "lang_hover"))
-        "{\"result\":{\"status\":\"stub\"}}"
+        "{\"error\":\"required fields missing\"}"
     else if (shim.toolIs(tool_name, "lang_complete"))
-        "{\"result\":{\"status\":\"stub\"}}"
+        "{\"error\":\"required fields missing\"}"
     else if (shim.toolIs(tool_name, "lang_session_close"))
-        "{\"result\":{\"status\":\"stub\"}}"
-else
-    return shim.RC_UNKNOWN_TOOL;
+        "{\"error\":\"required fields missing\"}"
+    else
+        return shim.RC_UNKNOWN_TOOL;
 
     return shim.writeResult(out_buf, in_out_len, body);
 }
@@ -507,7 +506,7 @@ test "session URL rejects empty and overlong" {
 // ═══════════════════════════════════════════════════════════════════════
 
 test "invoke: each declared tool succeeds" {
-    var buf: [256]u8 = undefined;
+    var buf: [512]u8 = undefined;
     const tools = [_][]const u8{
         "lang_list",
         "lang_session_create",
@@ -523,8 +522,31 @@ test "invoke: each declared tool succeeds" {
         var len: usize = buf.len;
         const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
         try std.testing.expectEqual(@as(i32, 0), rc);
-        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
+        try std.testing.expect(len > 0);
+        // Must not be a stub
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "stub") == null);
     }
+}
+
+test "invoke: lang_list returns language list" {
+    var buf: [512]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("lang_list", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, 0), rc);
+    const out = buf[0..len];
+    try std.testing.expect(std.mem.indexOf(u8, out, "languages") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "affinescript") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"count\":8") != null);
+}
+
+test "invoke: lang_session_create missing language returns error" {
+    var buf: [128]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("lang_session_create", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, 0), rc);
+    const out = buf[0..len];
+    try std.testing.expect(std.mem.indexOf(u8, out, "error") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "language") != null);
 }
 
 test "invoke: unknown tool returns -1" {

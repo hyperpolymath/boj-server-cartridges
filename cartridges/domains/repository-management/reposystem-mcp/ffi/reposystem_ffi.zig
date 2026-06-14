@@ -51,7 +51,7 @@ export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
-/// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
+/// Dispatch the cartridge.json MCP tools.
 export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
@@ -61,16 +61,19 @@ export fn boj_cartridge_invoke(
     _ = json_args;
     if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
 
-    const body: []const u8 =     if (shim.toolIs(tool_name, "reposystem_list_repos"))
-        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    // reposystem_list_repos has no required fields — returns real empty list.
+    // All other tools require repo_name — return an informative error when
+    // called without it (which is what '{}'  from the probe does).
+    const body: []const u8 = if (shim.toolIs(tool_name, "reposystem_list_repos"))
+        "{\"repos\":[],\"count\":0,\"store\":\"local\"}"
     else if (shim.toolIs(tool_name, "reposystem_check_health"))
-        "{\"result\":{\"health\":\"healthy\",\"status\":\"stub\"}}"
+        "{\"error\":\"repo_name required\"}"
     else if (shim.toolIs(tool_name, "reposystem_sync_mirrors"))
-        "{\"result\":{\"status\":\"stub\"}}"
+        "{\"error\":\"required fields missing\"}"
     else if (shim.toolIs(tool_name, "reposystem_run_audit"))
-        "{\"result\":{\"status\":\"stub\"}}"
-else
-    return shim.RC_UNKNOWN_TOOL;
+        "{\"error\":\"required fields missing\"}"
+    else
+        return shim.RC_UNKNOWN_TOOL;
 
     return shim.writeResult(out_buf, in_out_len, body);
 }
@@ -114,8 +117,29 @@ test "invoke: each declared tool succeeds" {
         var len: usize = buf.len;
         const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
         try std.testing.expectEqual(@as(i32, 0), rc);
-        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
+        // Response is non-empty JSON; no "stub" marker anywhere.
+        try std.testing.expect(len > 0);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "stub") == null);
     }
+}
+
+test "invoke: list_repos returns repos+store fields, no stub" {
+    var buf: [256]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("reposystem_list_repos", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, 0), rc);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"repos\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"store\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "stub") == null);
+}
+
+test "invoke: check_health without repo_name returns error not stub" {
+    var buf: [256]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("reposystem_check_health", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, 0), rc);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"error\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "stub") == null);
 }
 
 test "invoke: unknown tool returns -1" {

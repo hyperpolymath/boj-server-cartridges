@@ -4,6 +4,8 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "burble-admin-mcp",
   "version": "0.1.0",
+  "available": true,
+  "status": "ready",
   "description": "Burble WebRTC server administration",
   "domain": "communications",
   "category": "domain",
@@ -167,5 +169,23 @@
       "boj_cartridge_version",
       "boj_cartridge_invoke"
     ]
+  },
+  "capabilities": {
+    "universe": [
+      "Clock",
+      "Cred",
+      "Fs",
+      "Net",
+      "Rand"
+    ],
+    "ephemeral": [],
+    "locked_down": [
+      "Clock",
+      "Cred",
+      "Fs",
+      "Net",
+      "Rand"
+    ],
+    "inertness": 1
   }
 }

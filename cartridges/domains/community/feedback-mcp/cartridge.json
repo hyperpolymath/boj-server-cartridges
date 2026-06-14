@@ -110,5 +110,25 @@
       "boj_cartridge_version",
       "boj_cartridge_invoke"
     ]
+  },
+  "available": true,
+  "status": "ready",
+  "capabilities": {
+    "universe": [
+      "Clock",
+      "Cred",
+      "Fs",
+      "Net",
+      "Rand"
+    ],
+    "ephemeral": [],
+    "locked_down": [
+      "Clock",
+      "Cred",
+      "Fs",
+      "Net",
+      "Rand"
+    ],
+    "inertness": 1
   }
 }

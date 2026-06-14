@@ -46,20 +46,22 @@ else
 fi
 
 # 2 ─ MemSafe: the FFI must build against the shared shim.
+FFI_BUILT=0
 if command -v zig >/dev/null 2>&1 && [ -f "$CART/ffi/build.zig" ]; then
-  if (cd "$CART/ffi" && zig build) >/dev/null 2>&1; then ok "ffi builds (shim-conformant)"; else bad "zig build failed"; fi
-  rm -rf "$CART/ffi/zig-out" "$CART/ffi/.zig-cache" 2>/dev/null || true
+  if (cd "$CART/ffi" && zig build) >/dev/null 2>&1; then ok "ffi builds (shim-conformant)"; FFI_BUILT=1; else bad "zig build failed"; fi
 else
   skip "zig / build.zig unavailable — FFI not built here (CI does)"
 fi
 
 # 3 ─ Truthful: only advertised cartridges must prove non-stub.
+#     MemSafe intentionally leaves zig-out in place here so step 3 can probe it;
+#     we clean up below whether or not the probe ran.
 avail=$( [ -f "$CJ" ] && command -v jq >/dev/null 2>&1 && jq -r '.available // false' "$CJ" || echo false )
 if [ "$avail" = "true" ]; then
   so_rel=$( jq -r '.ffi.so_path // empty' "$CJ" )
   tool=$( jq -r '.tools[0].name // empty' "$CJ" )
   inv=$(command -v boj-invoke || echo "../boj-server/ffi/zig/zig-out/bin/boj-invoke")
-  if [ -n "$so_rel" ] && [ -x "$inv" ] && [ -n "$tool" ]; then
+  if [ -n "$so_rel" ] && [ -x "$inv" ] && [ -n "$tool" ] && [ -f "$CART/$so_rel" ]; then
     out=$("$inv" "$CART/$so_rel" invoke "$tool" '{}' 2>/dev/null || true)
     if [ -z "$out" ]; then bad "available but '$tool' gave no output"
     elif printf '%s' "$out" | grep -qE '"status"[[:space:]]*:[[:space:]]*"stub"'; then bad "available but '$tool' is a stub: $out"
@@ -70,6 +72,8 @@ if [ "$avail" = "true" ]; then
 else
   ok "truthful: available=false (correctly not advertised — nothing to over-claim)"
 fi
+# Clean up build artifacts now that MemSafe + Truthful are both done.
+[ "$FFI_BUILT" = 1 ] && rm -rf "$CART/ffi/zig-out" "$CART/ffi/.zig-cache" 2>/dev/null || true
 
 # 4 ─ CapBounded: the `capabilities` block (written by the Provision stage) must
 #     be a valid PARTITION of the universe, and must not claim more capability

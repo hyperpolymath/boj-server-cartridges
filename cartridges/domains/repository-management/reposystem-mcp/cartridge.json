@@ -4,6 +4,8 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "reposystem-mcp",
   "version": "0.1.0",
+  "available": true,
+  "status": "ready",
   "description": "Reposystem repository management. Lists managed repos, checks health, syncs mirrors, and runs RSR compliance audits.",
   "domain": "Repository Management",
   "category": "domain",
@@ -90,5 +92,23 @@
       "boj_cartridge_version",
       "boj_cartridge_invoke"
     ]
+  },
+  "capabilities": {
+    "universe": [
+      "Clock",
+      "Cred",
+      "Fs",
+      "Net",
+      "Rand"
+    ],
+    "ephemeral": [],
+    "locked_down": [
+      "Clock",
+      "Cred",
+      "Fs",
+      "Net",
+      "Rand"
+    ],
+    "inertness": 1
   }
 }

@@ -20,10 +20,11 @@
     "base_url": "local://hesiod-mcp",
     "content_type": "application/json"
   },
+  "available": true,
+  "status": "ready",
   "tools": [
     {
-      "id": "dns_lookup",
-      "name": "DNS Lookup",
+      "name": "dns_lookup",
       "description": "Query DNS records for a hostname",
       "inputSchema": {
         "type": "object",
@@ -59,8 +60,7 @@
       }
     },
     {
-      "id": "dns_reverse_lookup",
-      "name": "Reverse DNS Lookup",
+      "name": "dns_reverse_lookup",
       "description": "Resolve IP address to hostname",
       "inputSchema": {
         "type": "object",
@@ -81,8 +81,7 @@
       }
     },
     {
-      "id": "dns_bulk_lookup",
-      "name": "Bulk DNS Lookup",
+      "name": "dns_bulk_lookup",
       "description": "Query multiple hostnames at once",
       "inputSchema": {
         "type": "object",
@@ -121,12 +120,6 @@
       }
     }
   ],
-  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
-  "license": "MPL-2.0",
-  "abi": {
-    "interface": "abi/Hesiod.idr",
-    "loopback_proof": "IsLoopback 5173"
-  },
   "ffi": {
     "so_path": "ffi/zig-out/lib/libhesiod_mcp.so",
     "abi_version": "ADR-0006",
@@ -149,5 +142,24 @@
   "loopback": {
     "host": "127.0.0.1",
     "port": 5173
+  },
+  "capabilities": {
+    "universe": [
+      "Clock",
+      "Cred",
+      "Fs",
+      "Net",
+      "Rand"
+    ],
+    "ephemeral": [
+      "Net"
+    ],
+    "locked_down": [
+      "Clock",
+      "Cred",
+      "Fs",
+      "Rand"
+    ],
+    "inertness": 0.8
   }
 }

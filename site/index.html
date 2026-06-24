@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<!--
+SPDX-License-Identifier: MPL-2.0
+SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+cartridges.boj-server.net — canonical MCP cartridge registry for the BoJ ecosystem.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BoJ Cartridge Registry — 139 open-source MCP cartridges</title>
+  <meta name="description" content="Canonical registry of 139 open-source MCP cartridges for the Bundle of Joy (BoJ) server. Browse by domain, search by name, and contribute new cartridges.">
+  <link rel="canonical" href="https://cartridges.boj-server.net/">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <meta property="og:title" content="BoJ Cartridge Registry — 139 open-source MCP cartridges">
+  <meta property="og:description" content="Canonical registry of 139 open-source MCP cartridges for the Bundle of Joy (BoJ) server.">
+  <meta property="og:url" content="https://cartridges.boj-server.net/">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<a class="skip-link" href="#catalogue">Skip to catalogue</a>
+<header class="hero">
+  <div class="container">
+    <p class="eyebrow">cartridges.boj-server.net</p>
+    <h1>BoJ Cartridge Registry</h1>
+    <p class="tagline">The canonical source for <strong>139 open-source MCP cartridges</strong> — browse, search, and contribute to the <a href="https://boj-server.net/">Bundle of Joy</a> ecosystem.</p>
+    <div class="badges">
+      <a class="badge badge-license" href="https://github.com/hyperpolymath/boj-server-cartridges/blob/main/LICENSE">MPL-2.0</a>
+      <a class="badge badge-src" href="https://github.com/hyperpolymath/boj-server-cartridges">Registry source</a>
+      <a class="badge badge-server" href="https://boj-server.net/">Install BoJ ↗</a>
+    </div>
+    <nav class="hero-nav" aria-label="Page sections">
+      <a href="#catalogue">Browse catalogue</a>
+      <a href="#contribute">Contribute</a>
+      <a href="https://boj-server.net/">boj-server.net</a>
+      <a href="https://github.com/hyperpolymath/boj-server-cartridges/tree/main/docs">Docs</a>
+    </nav>
+  </div>
+</header>
+<main class="container">
+  <section id="catalogue" aria-labelledby="catalogue-heading">
+    <h2 id="catalogue-heading">Cartridge catalogue</h2>
+    <p class="lead">All <span id="total-count">139</span> cartridges — search by name or description, filter by group or tier.</p>
+    <div class="cat-controls" role="search">
+      <label class="visually-hidden" for="q">Search cartridges</label>
+      <input id="q" type="search" placeholder="Search cartridges…" autocomplete="off" spellcheck="false" aria-label="Search cartridges">
+      <label class="visually-hidden" for="filter-group">Filter by group</label>
+      <select id="filter-group" aria-label="Filter by group">
+        <option value="">All groups</option>
+      </select>
+      <label class="visually-hidden" for="filter-tier">Filter by tier</label>
+      <select id="filter-tier" aria-label="Filter by tier">
+        <option value="">All tiers</option>
+        <option value="Ayo">Ayo (stable)</option>
+        <option value="Teranga">Teranga (experimental)</option>
+      </select>
+    </div>
+    <p class="cat-status" id="cat-status" aria-live="polite"></p>
+    <ul class="cards" id="cards" aria-label="Cartridges"></ul>
+  </section>
+  <section id="contribute" aria-labelledby="contribute-heading">
+    <h2 id="contribute-heading">Contribute a cartridge</h2>
+    <p class="lead">All cartridges are open-source. The registry welcomes new MCP cartridges that follow the BoJ conventions.</p>
+    <div class="grid">
+      <div class="card-flat">
+        <strong>1. Fork the registry</strong>
+        <p>Fork <a href="https://github.com/hyperpolymath/boj-server-cartridges">hyperpolymath/boj-server-cartridges</a> and create a branch for your cartridge.</p>
+      </div>
+      <div class="card-flat">
+        <strong>2. Add your cartridge</strong>
+        <p>Place your cartridge under <code>cartridges/&lt;category&gt;/&lt;bucket&gt;/&lt;name&gt;-mcp/</code>. Include a <code>boj.toml</code> manifest.</p>
+      </div>
+      <div class="card-flat">
+        <strong>3. Update the catalogue</strong>
+        <p>Run <code>just catalog</code> to regenerate <code>site/catalog.json</code> with your new cartridge entry.</p>
+      </div>
+      <div class="card-flat">
+        <strong>4. Open a pull request</strong>
+        <p>Open a PR against <code>main</code>. CI runs hypatia checks. Once merged, the registry updates automatically.</p>
+      </div>
+    </div>
+  </section>
+  <section id="about" aria-labelledby="about-heading">
+    <h2 id="about-heading">About the registry</h2>
+    <p class="lead">The BoJ cartridge registry is the canonical source for MCP cartridges that extend the <a href="https://boj-server.net/">Bundle of Joy</a> server.</p>
+    <h3>Tiers</h3>
+    <div class="grid">
+      <div class="card-flat">
+        <strong>Ayo</strong>
+        <p>Production-grade cartridges. Stable API, passing hypatia checks, and active maintenance.</p>
+      </div>
+      <div class="card-flat">
+        <strong>Teranga</strong>
+        <p>Experimental cartridges. Functional but subject to breaking changes while the API settles.</p>
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="site-footer">
+  <div class="container">
+    <nav class="foot-links" aria-label="Footer navigation">
+      <a href="https://github.com/hyperpolymath/boj-server-cartridges">GitHub</a>
+      <a href="https://boj-server.net/">boj-server.net</a>
+      <a href="https://github.com/hyperpolymath/boj-server-cartridges/blob/main/LICENSE">MPL-2.0</a>
+      <a href="https://github.com/hyperpolymath/boj-server-cartridges/issues">Issues</a>
+    </nav>
+    <p class="foot-meta">
+      cartridges.boj-server.net — BoJ Cartridge Registry<br>
+      &copy; 2026 Jonathan D.A. Jewell (hyperpolymath). Cartridges are the work of their respective authors.
+    </p>
+  </div>
+</footer>
+<script src="/assets/app.js" defer></script>
+</body>
+</html>

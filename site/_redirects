@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: MPL-2.0
+# Cloudflare Pages redirects for cartridges.boj-server.net.
+/install   https://boj-server.net/#get  302
+/source    https://github.com/hyperpolymath/boj-server-cartridges  302
+/docs      https://github.com/hyperpolymath/boj-server-cartridges/tree/main/docs  302

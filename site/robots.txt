@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
+User-agent: *
+Allow: /
+Sitemap: https://cartridges.boj-server.net/sitemap.xml

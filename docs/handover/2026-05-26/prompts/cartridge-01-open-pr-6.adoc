@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 :icons: font
 
 = Cartridge 01 — Open the rate-limited PR for stack-orchestrator-mcp

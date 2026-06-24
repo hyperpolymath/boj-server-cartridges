@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
 # librarian-mcp
 
 A document RAG cartridge for BoJ. Hold books and long-form text on the server

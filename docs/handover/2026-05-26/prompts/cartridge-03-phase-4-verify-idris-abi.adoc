@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 :icons: font
 
 = Cartridge 03 — Phase 4: verify + Idris2 ABI for stack-orchestrator-mcp (Shield-tier promotion)

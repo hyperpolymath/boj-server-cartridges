@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 :icons: font
 
 = Cartridge 07 — boj-server#158 merge follow-through (tray remote-fetch + catalog reload)

@@ -4,7 +4,7 @@
 :date: 2026-04-25
 :spdx: MPL-2.0
 
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 
 Proof-compiler query interface for formal verification workflows — analyze proofs, validate theorems, type-check expressions.
 

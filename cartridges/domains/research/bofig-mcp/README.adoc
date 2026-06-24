@@ -4,7 +4,7 @@
 :date: 2026-04-25
 :spdx: MPL-2.0
 
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 
 Evidence graph query interface for investigative journalism workflows — search evidence, find connections, analyze relationships in complex networks.
 

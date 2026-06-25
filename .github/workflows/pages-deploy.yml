@@ -17,7 +17,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Deploy site/ to Cloudflare Pages
         run: npx wrangler@latest pages deploy site/ --project-name=boj-server-cartridges
         env:

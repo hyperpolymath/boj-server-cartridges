@@ -6,6 +6,7 @@
 
 # boj-server-cartridges
 [![OpenSSF Best Practices](https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=openssourcesecurity)](https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/boj-server-cartridges)
+[![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=hyperpolymath_boj-server-cartridges)](https://sonarcloud.io/summary/new_code?id=hyperpolymath_boj-server-cartridges)
 
 
 Canonical home of **BoJ cartridges**. Hosts (`boj-server`, `panll`, others) fetch cartridges from here on demand into a host-local cache; this repository ships the source tree.

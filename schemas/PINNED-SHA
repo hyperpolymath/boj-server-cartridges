@@ -7,8 +7,8 @@
 
 canonical_repo = "hyperpolymath/standards"
 canonical_path = "cartridges/cartridge-v1.json"
-canonical_commit = "7c2b81556791e97172da866b560147ec541797eb"
-canonical_blob_sha = "2cc334e4c15d310e5f427019c04866058479ed9b"
-content_sha256 = "033e2fa8cbee5338fbdd73dfd86ac2a3ca76536af31d0ac4a8184f38a6718997"
-pinned_at = "2026-06-01"
-pinned_by_pr = "hyperpolymath/standards#200"
+canonical_commit = "f5f0506a6ec88e574753eee701a268e0d4b3a7f2"
+canonical_blob_sha = "fd2ac67045efca90500e0e549e5ca97b817bf12f"
+content_sha256 = "7d03f79f9c881784eba21670ac86130371d02f54483b373c8673587c49ab8d08"
+pinned_at = "2026-07-01"
+pinned_by_pr = "hyperpolymath/standards#373"

@@ -17,6 +17,10 @@ permissions:
 jobs:
   sonarqube:
     name: SonarQube
+    # Dependabot-authored runs get a secrets-restricted GITHUB_TOKEN and
+    # cannot see repo Actions secrets (only the separate Dependabot secrets
+    # store, which SONAR_TOKEN isn't in) -- skip rather than fail unwinnably.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1

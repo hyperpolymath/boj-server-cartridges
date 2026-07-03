@@ -49,4 +49,4 @@ Required status-check workflows must **always report**. Never add `on.*.paths` t
 
 ## Machine-readable summary
 
-[`0.1-AI-MANIFEST.a2ml`](0.1-AI-MANIFEST.a2ml) is the project's machine-readable manifest. Update it when adding a top-level structural element (a new domain, a new role suffix, a new tool under `tools/`).
+[`0-AI-MANIFEST.a2ml`](0-AI-MANIFEST.a2ml) is the project's machine-readable manifest. Update it when adding a top-level structural element (a new domain, a new role suffix, a new tool under `tools/`).

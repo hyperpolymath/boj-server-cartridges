@@ -13,7 +13,7 @@ Canonical home of *BoJ cartridges*. Hosts (`boj-server`, `panll`, others) fetch
 cartridges from here on demand into a host-local cache; this repository ships
 the source tree.
 
-Machine-readable summary: link:0.1-AI-MANIFEST.a2ml[`0.1-AI-MANIFEST.a2ml`].
+Machine-readable summary: link:0-AI-MANIFEST.a2ml[`0-AI-MANIFEST.a2ml`].
 
 toc::[]
 

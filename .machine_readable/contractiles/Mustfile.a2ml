@@ -86,7 +86,7 @@ hooks fail if any check fails.
 
 ### template-readonly
 - description: Template marker files are not modified
-- run: grep -q 'RSR_TEMPLATE_DO_NOT_EDIT' .machine_readable/0.1-AI-MANIFEST.a2ml
+- run: grep -q 'RSR_TEMPLATE_DO_NOT_EDIT' .machine_readable/0-AI-MANIFEST.a2ml
 - severity: warning
 
 ## Git State

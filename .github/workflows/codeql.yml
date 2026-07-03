@@ -5,7 +5,9 @@
 # source (cartridge adapters, tooling) alongside its Idris2/Zig/Rust core, so
 # the javascript-typescript matrix has genuine source to analyse (unlike a
 # pure-Elixir sibling repo, where the same matrix found nothing and had to be
-# repointed at `actions`).
+# repointed at `actions`). Also runs `actions`, matching the canonical
+# two-language matrix in hyperpolymath/standards — every repo's workflow
+# surface is analysable regardless of its application-language mix.
 name: CodeQL Security Analysis
 on:
   push:
@@ -31,6 +33,8 @@ jobs:
       matrix:
         include:
           - language: javascript-typescript
+            build-mode: none
+          - language: actions
             build-mode: none
     steps:
       - name: Checkout

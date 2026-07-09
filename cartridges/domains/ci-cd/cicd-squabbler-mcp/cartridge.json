@@ -1,0 +1,70 @@
+{
+  "$schema": "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "cicd-squabbler-mcp",
+  "version": "0.1.0",
+  "description": "cicd-squabbler — the CI/CD gate fighter (squabble != bypass). Diagnoses a stuck branch-protection gate and plans legitimate moves: self-win CI-config fixes, escalations to specialist experts, and owner assignments. Proxies to the squabble-app loopback backend.",
+  "domain": "ci",
+  "category": "domain",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://cicd-squabbler-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "squabble_fight",
+      "description": "Plan a fight for a stuck gate: classify every unsatisfied required check as self-win (CI-config lane) | escalate-to-expert (hypatia/fleet/proof/security) | assign-owner (upstream or misconfigured), plus a structural scan (path-filter traps, missing well-known files, banned licence labels). Returns the Outcome/Report evidence manifest. Never bypasses: no admin-override, no dropped contexts.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "description": "Repository as owner/repo (used for upstream-owner attribution)"
+          },
+          "gate": {
+            "type": "object",
+            "description": "The gate: {checks:[{required_context, run: missing|pending|failed|passed}]} — from `squabble fetch` or the caller's own check-run data"
+          },
+          "repo_root": {
+            "type": "string",
+            "description": "Optional path to a local checkout; enables the a2ml ecosystem-context reader and workflow ground-truthing. Fail-safe when absent."
+          }
+        },
+        "required": [
+          "slug",
+          "gate"
+        ]
+      }
+    },
+    {
+      "name": "squabble_diagnose",
+      "description": "Pure-engine diagnosis of a gate: current state (blocked|red|green) plus one conservative legitimate move per unsatisfied required check. No filesystem context; no mutation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "checks": {
+            "type": "array",
+            "description": "Required checks with realised runs: [{required_context: string, run: missing|pending|failed|passed}]",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "checks"
+        ]
+      }
+    }
+  ]
+}

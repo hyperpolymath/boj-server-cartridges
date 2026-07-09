@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+= cicd-squabbler-mcp
+
+CI/CD gate-fighter cartridge — makes
+https://github.com/hyperpolymath/cicd-squabbler[cicd-squabbler] summonable
+through boj-server. Operationalises estate Doctrine #5: *squabble, don't
+bypass* — a gate is won only by legitimately satisfying its required checks,
+never by admin-override or dropping a context (SPARK-proved invariant in the
+upstream repo).
+
+== Tools
+
+|===
+|Tool |Purpose
+
+|`squabble_fight`
+|Plan a fight for a stuck gate: classify every unsatisfied required check as
+*self-win* (CI-config lane) / *escalate-to-expert* (hypatia / fleet / proof /
+security specialist groups) / *assign-owner* (upstream reusable or
+misconfigured gate), plus a structural scan (path-filter traps, missing
+well-known files, banned licence labels). Returns the `Outcome`/`Report`
+evidence manifest — fail-closed, no silent skip.
+
+|`squabble_diagnose`
+|Pure-engine diagnosis: gate state (`blocked`/`red`/`green`) plus one
+conservative legitimate move per unsatisfied check. No filesystem context,
+no mutation.
+|===
+
+== Backend
+
+Proxies to the `squabble-app` loopback HTTP backend
+(`SQUABBLE_BACKEND_URL`, default `http://127.0.0.1:7741`) — the same shared
+planner the `squabble` CLI uses. Start it with:
+
+[source,shell]
+----
+cargo run -p squabble-app   # in hyperpolymath/cicd-squabbler
+----
+
+No `ffi` block on purpose: this cartridge takes the `mod.js` (Deno gateway)
+dispatch path. The gateway only proxies; the sandbox has no subprocess
+capability, and the gate invariant lives in `squabble-core` upstream.
+
+== Example
+
+[source,shell]
+----
+curl -s -X POST http://localhost:7700/cartridge/cicd-squabbler-mcp/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"squabble_fight","arguments":{"slug":"hyperpolymath/ipv6-only","gate":{"checks":[{"required_context":"lint-shell","run":"failed"}]}}}'
+----

@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= bug-filing-mcp
+
+Autonomous bug-report filing cartridge. It is the boj-side packaging of the
+real *feedback-o-tron* engine for the autonomous bug-reporting pipeline
+(see `feedback-o-tron/docs/AUTONOMOUS-BUG-PIPELINE.adoc`).
+
+[IMPORTANT]
+====
+*This is not `feedback-mcp`.* `feedback-mcp` is an unrelated in-memory *sentiment
+counter*. Per owner decision *D0 = new wrapping cartridge*, that cartridge is left
+untouched and this *new* cartridge wraps the real bug-filing engine. The two only
+share the `127.0.0.1:7722` placeholder port; run one backend or the other.
+====
+
+== What it does
+
+Exposes a single tool, `submit_feedback`, that files a bug report / feedback /
+proposal to one or more forges (GitHub, GitLab, Bitbucket, Codeberg, Bugzilla,
+email) through the feedback-o-tron engine — with deduplication against existing
+issues and audit logging handled engine-side.
+
+== How it wires
+
+[source,text]
+----
+boj gateway :7700
+  POST /cartridge/bug-filing-mcp/invoke {tool:"submit_feedback", arguments:{title,body,repo}}
+    -> bug-filing-mcp/mod.js  (Deno JS worker)
+       -> POST http://127.0.0.1:7722/api/v1/submit_feedback
+          -> feedback-o-tron Submitter -> gh / glab / Bugzilla REST / ...
+----
+
+The cartridge is a thin HTTP client; all submission logic (dedup, audit, rate
+limiting, dry-run) lives in the engine, reached over its localhost HTTP intake.
+
+== Prerequisites
+
+Run the feedback-o-tron engine with its HTTP intake enabled:
+
+[source,sh]
+----
+FEEDBACK_A_TRON_HTTP=1 feedback-a-tron        # listens on 127.0.0.1:7722
+# override: FEEDBACK_A_TRON_HTTP_PORT, FEEDBACK_A_TRON_HTTP_BIND
+----
+
+Point the cartridge elsewhere with `BUG_FILING_BACKEND_URL` if needed.
+
+== Tool: `submit_feedback`
+
+[cols="1,1,3",options="header"]
+|===
+| Field | Required | Meaning
+| `title` | yes | Issue title
+| `body` | yes | Issue body (markdown)
+| `repo` | yes | Target repo, `owner/repo`
+| `platforms` | no | Subset of `github,gitlab,bitbucket,codeberg,bugzilla,email` (default `github`)
+| `labels` | no | Labels to apply (platform-dependent)
+| `dry_run` | no | Preview without filing
+| `skip_dedupe` | no | Skip duplicate checking
+|===
+
+If the backend is not running, the cartridge returns a `503` with a hint to
+start the engine with `FEEDBACK_A_TRON_HTTP=1`.

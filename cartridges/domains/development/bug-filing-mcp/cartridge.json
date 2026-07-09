@@ -1,0 +1,69 @@
+{
+  "$schema": "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "bug-filing-mcp",
+  "version": "0.1.0",
+  "description": "Autonomous bug-report filing cartridge -- wraps the real feedback-o-tron engine (multi-forge issue submission with deduplication and audit logging) via its localhost HTTP intake. This is the boj-side packaging of the engine for the autonomous bug-reporting pipeline (feedback-o-tron/docs/AUTONOMOUS-BUG-PIPELINE.adoc, D0 = new wrapping cartridge). NOT the same as feedback-mcp, which is an unrelated in-memory sentiment counter.",
+  "domain": "development",
+  "category": "domain",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "http://127.0.0.1:7722",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "submit_feedback",
+      "description": "File a bug report / feedback / proposal to one or more forges (GitHub, GitLab, Bitbucket, Codeberg, Bugzilla, email) via the feedback-o-tron engine. Includes deduplication against existing issues and audit logging. Use dry_run to preview without filing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Issue/feedback title"
+          },
+          "body": {
+            "type": "string",
+            "description": "Issue/feedback body (markdown supported)"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Target repository (owner/repo format)"
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["github", "gitlab", "bitbucket", "codeberg", "bugzilla", "email"]
+            },
+            "description": "Platforms to submit to (default: github)"
+          },
+          "labels": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Labels to apply (platform-dependent)"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "If true, show what would be submitted without actually submitting"
+          },
+          "skip_dedupe": {
+            "type": "boolean",
+            "description": "If true, skip duplicate checking"
+          }
+        },
+        "required": ["title", "body", "repo"]
+      }
+    }
+  ]
+}

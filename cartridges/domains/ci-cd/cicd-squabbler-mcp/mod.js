@@ -44,11 +44,13 @@ export async function handleTool(toolName, args) {
       return post("/api/v1/fight", payload);
     }
     case "squabble_diagnose": {
-      const { checks } = args ?? {};
+      // Accept both the documented bare shape ({checks}) and the
+      // gate-wrapped shape ({gate:{checks}}) callers generalise from
+      // squabble_fight by analogy — the backend tolerates both too.
+      const checks = args?.checks ?? args?.gate?.checks;
       if (!Array.isArray(checks)) {
-        return { status: 400, data: { error: "checks (array) is required" } };
+        return { status: 400, data: { error: "checks (array) is required — pass {checks:[...]} or {gate:{checks:[...]}}" } };
       }
-      // The backend takes the Gate object directly.
       return post("/api/v1/diagnose", { checks });
     }
     default:

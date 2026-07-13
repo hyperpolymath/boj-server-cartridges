@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 name = "linear-mcp"
-description = "Linear project management GraphQL API cartridge — issues, projects, teams, cycles, labels, and workflow states"
-version = "0.1.0"
-domain = "Comms"
+description = "Linear and related services — issues, comments, projects, milestones, teams, cycles, labels, workflow states, users, documents, initiatives and attachments over the Linear GraphQL API"
+version = "0.2.0"
+domain = "project-management"
 protocols = [
     "MCP",
     "GraphQL",
@@ -11,3 +11,14 @@ protocols = [
 tier = "Ayo"
 backend = "universal"
 generate_panel = true
+
+[auth]
+# Linear personal API keys (lin_api_...) go in Authorization RAW — no "Bearer"
+# prefix. Bearer is only correct for OAuth2 access tokens.
+method = "api_key"
+credential_source = "vault-mcp"
+fields = ["linear_api_key"]
+
+[api]
+base_url = "https://api.linear.app/graphql"
+local_only = false

@@ -114,7 +114,10 @@ Priorities are Linear's own scale: `0` none, `1` urgent, `2` high, `3` medium,
 
 [source,sh]
 ----
-export LINEAR_API_KEY="lin_api_..."
+# Sourced from vault-mcp in production. The value is a Linear personal API key;
+# it is deliberately not written out here, even as an example — the estate's
+# secret scanner treats a realistic-looking key prefix as a finding.
+export LINEAR_API_KEY="$(vault-mcp read linear/api_key)"
 
 # who am I?
 deno run --allow-net --allow-env -e '

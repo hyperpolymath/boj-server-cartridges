@@ -2,15 +2,14 @@
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 :spdx: MPL-2.0
 :tier: Ayo
-:domain: Comms
+:domain: project-management
 :protocols: MCP, GraphQL
 
 == Overview
 
-Linear project management GraphQL API cartridge for the BoJ server.
-Wraps the full Linear platform — issues, projects, teams, cycles,
-labels, comments, workflow states, and search — behind a type-safe,
-rate-limit-aware interface using the GraphQL endpoint at
+Linear and its related services, behind one cartridge: issues, comments,
+projects, milestones, teams, cycles, labels, workflow states, users, documents,
+initiatives and attachments — 27 MCP tools over the Linear GraphQL endpoint at
 https://api.linear.app/graphql.
 
 == Architecture
@@ -26,91 +25,118 @@ https://api.linear.app/graphql.
 
 | FFI
 | Zig
-| C-compatible implementation with thread-safe session pool, GraphQL
-  request stubs, and rate-limit tracking
+| ADR-0006 five-symbol conformance layer: thread-safe session pool and the
+  SafeComms state machine in C-ABI form. *No HTTP transport* — see below.
 
-| Adapter
-| zig
-| REST bridge exposing all 16 Linear actions to the BoJ unified adapter
+| Runtime
+| Deno (`mod.js`)
+| The working implementation. Calls the Linear GraphQL API and is what the
+  BoJ loader executes.
 |===
 
-== API Key Setup
+=== Which layer actually serves Linear
 
-This cartridge authenticates using Linear API keys (Bearer tokens).
+`mod.js` does. The Zig FFI deliberately answers `{"result":{"status":"stub"}}`
+for every tool: it proves the ABI contract, not the API.
 
-1. Go to **Linear Settings** -> **API** -> **Personal API keys**
-   (or create a workspace-level OAuth application)
-2. Create a new API key with the scopes you need
-3. Store the key in **vault-mcp** so the cartridge can retrieve it at authentication time
+That is why `cartridge.json` leaves `available` unset (false). The Foundry
+truthfulness probe (`tools/foundry/stages/harness.sh`) only passes this
+cartridge *because* it does not claim to serve Linear over the FFI. Wiring a
+real transport into the FFI is the prerequisite for ever setting
+`available: true` — setting that flag while the FFI still stubs would be
+precisely the over-claim the probe exists to catch.
 
-== Linear Actions (16 total)
+== Authentication
 
-[cols="1,2,1"]
+Set `LINEAR_API_KEY` (sourced from `vault-mcp` in production).
+
+[IMPORTANT]
+====
+Linear personal API keys (`lin_api_...`) go in the `Authorization` header
+*raw, with no `Bearer` prefix*. `Bearer` is correct only for OAuth2 access
+tokens. Sending `Bearer lin_api_...` fails with 401.
+
+`mod.js` picks the right form automatically: keys beginning `lin_api_` are sent
+raw, anything else is treated as an OAuth2 token and prefixed with `Bearer`.
+====
+
+== Rate limiting
+
+Linear reports exhaustion as *HTTP 400* carrying a GraphQL error with
+`extensions.code == "RATELIMITED"` — *not* HTTP 429. Code that only tests for
+429 will misread a rate-limit as a generic bad request. `mod.js` detects the
+`RATELIMITED` extension code and normalises it to a `429` result with
+`rateLimited: true`, surfacing the `X-RateLimit-*` headers under `limits`.
+
+Budgets: 5,000 requests/hour and 3,000,000 complexity points/hour per API key;
+a single query may not exceed 10,000 points.
+
+== Tools
+
+[cols="1,3"]
 |===
-| Action | GraphQL Operation | Kind
+| Group | Tools
 
-| ListIssues         | `issues`           | Query
-| GetIssue           | `issue(id)`        | Query
-| CreateIssue        | `issueCreate`      | Mutation
-| UpdateIssue        | `issueUpdate`      | Mutation
-| DeleteIssue        | `issueDelete`      | Mutation
-| ListProjects       | `projects`         | Query
-| GetProject         | `project(id)`      | Query
-| ListTeams          | `teams`            | Query
-| ListCycles         | `cycles`           | Query
-| CreateComment      | `commentCreate`    | Mutation
-| SearchIssues       | `issueSearch`      | Query
-| ListLabels         | `issueLabels`      | Query
-| AssignIssue        | `issueUpdate`      | Mutation
-| SetPriority        | `issueUpdate`      | Mutation
-| MoveToProject      | `issueUpdate`      | Mutation
-| ListWorkflowStates | `workflowStates`   | Query
+| Issues
+| `linear_list_issues`, `linear_get_issue`, `linear_create_issue`,
+  `linear_update_issue`, `linear_assign_issue`, `linear_set_priority`,
+  `linear_move_to_project`, `linear_archive_issue`, `linear_search_issues`
+
+| Comments
+| `linear_list_comments`, `linear_create_comment`
+
+| Projects
+| `linear_list_projects`, `linear_get_project`, `linear_create_project`,
+  `linear_update_project`, `linear_list_project_milestones`
+
+| Teams & workflow
+| `linear_list_teams`, `linear_get_team`, `linear_list_cycles`,
+  `linear_list_labels`, `linear_list_workflow_states`
+
+| Users
+| `linear_list_users`, `linear_whoami`
+
+| Docs & initiatives
+| `linear_list_documents`, `linear_get_document`, `linear_list_initiatives`
+
+| Attachments
+| `linear_create_attachment`
 |===
 
-== Connection State Machine
+`linear_get_issue` accepts either a UUID or a human identifier such as
+`ENG-123`; Linear's `issue(id:)` field only resolves UUIDs, so identifiers are
+routed through a filtered `issues` query instead.
 
-....
-Unauthenticated ──→ Authenticated ──→ Unauthenticated
-                         │   ↑
-                         ↓   │
-                    RateLimited
-                         │
-                         ↓
-                       Error ──→ Unauthenticated
-....
+Priorities are Linear's own scale: `0` none, `1` urgent, `2` high, `3` medium,
+`4` low.
 
-Valid transitions:
+== Usage
 
-- `Unauthenticated` -> `Authenticated` (authenticate with API key)
-- `Authenticated` -> `RateLimited` (rate budget exhausted)
-- `RateLimited` -> `Authenticated` (budget window reset)
-- `Authenticated` -> `Error` (network/API fault)
-- `RateLimited` -> `Error` (unrecoverable error during rate limit)
-- `Authenticated` -> `Unauthenticated` (graceful close)
-- `Error` -> `Unauthenticated` (reset for re-auth)
-
-== Building
-
-[source,bash]
+[source,sh]
 ----
-# Build FFI shared library
-cd ffi && zig build
+export LINEAR_API_KEY="lin_api_..."
 
-# Run FFI tests
-cd ffi && zig build test
-
-# Type-check ABI
-cd abi && idris2 --check linear_mcp.ipkg
+# who am I?
+deno run --allow-net --allow-env -e '
+  import { handleTool } from "./mod.js";
+  console.log(await handleTool("linear_whoami", {}));
+'
 ----
 
-== PanLL Panels
+== Tests
 
-The `panels/manifest.json` provides three data sources for the PanLL dashboard:
+[source,sh]
+----
+tests/integration_test.sh    # FFI build + Zig unit tests + Idris2 ABI check
+tests/parity_test.sh         # cartridge.json <-> mod.js <-> FFI tool-name parity
+benchmarks/quick-bench.sh    # latency of the GraphQL transport
+----
 
-- **Auth Status** — live state badge (5 s refresh)
-- **Issue Queries** — session issue query counter (10 s refresh)
-- **Recent Activity** — actions performed + rate limit usage (10 s refresh)
+The tool list is declared in three places — `cartridge.json`, `mod.js` and the
+`TOOLS` table in `ffi/linear_mcp_ffi.zig`. `parity_test.sh` fails if they drift.
 
-== Status
+== Toolchain
 
-Development — not yet ready for mounting.
+Pinned by `.tool-versions`: `zig 0.15.1`, `deno 2.7.14`, `idris2 0.8.0`. Zig
+0.16 removed `std.meta.intToEnum` and `Compile.linkLibC`, both of which this
+repo's Zig still uses, so the FFI does not build on 0.16.

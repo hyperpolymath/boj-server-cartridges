@@ -15,8 +15,9 @@ module LinearMcp.SafeComms
 -- ---------------------------------------------------------------------------
 
 ||| Connection lifecycle states for Linear API interactions.
-||| Models the full lifecycle: authentication via Bearer token,
-||| connected operation against the GraphQL endpoint, rate limiting
+||| Models the full lifecycle: authentication via API key (sent raw in the
+||| Authorization header; "Bearer" is for OAuth2 tokens only), connected
+||| operation against the GraphQL endpoint, rate limiting
 ||| (Linear enforces request-based limits), and error recovery.
 public export
 data ConnState
@@ -33,7 +34,7 @@ data ConnState
 ||| Only the transitions enumerated here can ever occur at the FFI boundary.
 public export
 data ValidTransition : ConnState -> ConnState -> Type where
-  ||| Authenticate with a Linear API key (Bearer token).
+  ||| Authenticate with a Linear API key (raw Authorization header).
   Authenticate   : ValidTransition Unauthenticated Authenticated
   ||| Hit a Linear rate limit (complexity or request budget exhausted).
   HitRateLimit   : ValidTransition Authenticated RateLimited

@@ -395,7 +395,51 @@ export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
-/// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
+/// The 27 MCP tools declared in cartridge.json. Kept in lockstep with that
+/// manifest and with mod.js — a name here that is absent there (or vice versa)
+/// is drift, and `tests/parity_test.sh` fails on it.
+pub const TOOLS = [_][]const u8{
+    "linear_list_issues",
+    "linear_get_issue",
+    "linear_create_issue",
+    "linear_update_issue",
+    "linear_assign_issue",
+    "linear_set_priority",
+    "linear_move_to_project",
+    "linear_archive_issue",
+    "linear_search_issues",
+    "linear_list_comments",
+    "linear_create_comment",
+    "linear_list_projects",
+    "linear_get_project",
+    "linear_create_project",
+    "linear_update_project",
+    "linear_list_project_milestones",
+    "linear_list_teams",
+    "linear_get_team",
+    "linear_list_cycles",
+    "linear_list_labels",
+    "linear_list_workflow_states",
+    "linear_list_users",
+    "linear_whoami",
+    "linear_list_documents",
+    "linear_get_document",
+    "linear_list_initiatives",
+    "linear_create_attachment",
+};
+
+/// Dispatch the cartridge.json MCP tools.
+///
+/// The *working* implementation of this cartridge is `mod.js` (Deno), which
+/// talks to https://api.linear.app/graphql. This FFI surface is the ADR-0006
+/// conformance layer: it proves the five-symbol contract and the SafeComms
+/// state machine, and has no HTTP transport of its own.
+///
+/// It therefore answers `"status":"stub"` *on purpose*, and cartridge.json
+/// leaves `available` false. That is what keeps the Foundry truthfulness probe
+/// honest: the probe only passes here because the cartridge does not claim to
+/// serve Linear over the FFI. Wiring a real transport in is the prerequisite
+/// for ever setting `available: true`.
 export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
@@ -405,23 +449,16 @@ export fn boj_cartridge_invoke(
     _ = json_args;
     if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
 
-    const body: []const u8 =     if (shim.toolIs(tool_name, "linear_authenticate"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "linear_list_issues"))
-        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "linear_get_issue"))
-        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "linear_create_issue"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "linear_update_issue"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "linear_list_teams"))
-        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "linear_search_issues"))
-        "{\"result\":{\"matches\":[],\"status\":\"stub\"}}"
-else
-    return shim.RC_UNKNOWN_TOOL;
+    var known = false;
+    for (TOOLS) |t| {
+        if (shim.toolIs(tool_name, t)) {
+            known = true;
+            break;
+        }
+    }
+    if (!known) return shim.RC_UNKNOWN_TOOL;
 
+    const body: []const u8 = "{\"result\":{\"status\":\"stub\"}}";
     return shim.writeResult(out_buf, in_out_len, body);
 }
 
@@ -528,21 +565,22 @@ test "boj_cartridge_init returns 0" {
 
 test "invoke: each declared tool succeeds" {
     var buf: [256]u8 = undefined;
-    const tools = [_][]const u8{
-        "linear_authenticate",
-        "linear_list_issues",
-        "linear_get_issue",
-        "linear_create_issue",
-        "linear_update_issue",
-        "linear_list_teams",
-        "linear_search_issues",
-    };
-    for (tools) |t| {
+    for (TOOLS) |t| {
+        // shim.toolIs spans a NUL-terminated pointer, so the probe name must be
+        // NUL-terminated too — a bare slice .ptr would read past the literal.
+        var name: [64]u8 = undefined;
+        @memcpy(name[0..t.len], t);
+        name[t.len] = 0;
+
         var len: usize = buf.len;
-        const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
+        const rc = boj_cartridge_invoke(&name, "{}", &buf, &len);
         try std.testing.expectEqual(@as(i32, 0), rc);
         try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
     }
+}
+
+test "invoke: tool table matches the 27 declared tools" {
+    try std.testing.expectEqual(@as(usize, 27), TOOLS.len);
 }
 
 test "invoke: unknown tool returns -1" {
@@ -555,7 +593,9 @@ test "invoke: unknown tool returns -1" {
 test "invoke: buffer too small returns -3" {
     var buf: [4]u8 = undefined;
     var len: usize = buf.len;
-    const rc = boj_cartridge_invoke("linear_authenticate", "{}", &buf, &len);
+    // Any *known* tool: the buffer-capacity check must be reached, so this
+    // cannot use a name outside TOOLS or it short-circuits to -1 instead.
+    const rc = boj_cartridge_invoke("linear_whoami", "{}", &buf, &len);
     try std.testing.expectEqual(@as(i32, -3), rc);
     try std.testing.expect(len > 4);
 }

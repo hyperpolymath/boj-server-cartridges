@@ -2,8 +2,8 @@
   "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
   "spdx": "MPL-2.0",
   "cartridge": "linear-mcp",
-  "domain": "Comms",
-  "version": "0.1.0",
+  "domain": "project-management",
+  "version": "0.2.0",
   "panels": [
     {
       "id": "linear-auth-status",
@@ -20,10 +20,22 @@
           "type": "state-badge",
           "field": "state",
           "states": {
-            "unauthenticated": { "color": "#95a5a6", "icon": "plug-disconnected" },
-            "authenticated": { "color": "#2ecc71", "icon": "plug-connected" },
-            "rate_limited": { "color": "#e67e22", "icon": "clock" },
-            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+            "unauthenticated": {
+              "color": "#95a5a6",
+              "icon": "plug-disconnected"
+            },
+            "authenticated": {
+              "color": "#2ecc71",
+              "icon": "plug-connected"
+            },
+            "rate_limited": {
+              "color": "#e67e22",
+              "icon": "clock"
+            },
+            "error": {
+              "color": "#e74c3c",
+              "icon": "alert-triangle"
+            }
           }
         }
       ]
@@ -67,7 +79,12 @@
         {
           "type": "progress-bar",
           "items": [
-            { "field": "rate_count", "max_field": "rate_budget", "label": "Rate Limit (50/min)", "color": "#3498db" }
+            {
+              "field": "rate_count",
+              "max_field": "rate_budget",
+              "label": "Rate Limit (50/min)",
+              "color": "#3498db"
+            }
           ]
         }
       ]

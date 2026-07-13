@@ -3,84 +3,49 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "linear-mcp",
-  "version": "0.1.0",
-  "description": "Linear issue tracking and project management",
+  "version": "0.2.0",
+  "description": "Linear and related services — issues, comments, projects, milestones, teams, cycles, labels, workflow states, users, documents, initiatives and attachments over the Linear GraphQL API",
   "domain": "project-management",
   "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",
-    "REST"
+    "GraphQL"
   ],
   "auth": {
-    "method": "none",
-    "env_var": null,
-    "credential_source": null
+    "method": "api-key",
+    "notes_method": "raw_authorization_header",
+    "env_var": "LINEAR_API_KEY",
+    "credential_source": "vault-mcp"
   },
   "api": {
-    "base_url": "local://linear-mcp",
+    "base_url": "https://api.linear.app/graphql",
     "content_type": "application/json"
   },
   "tools": [
     {
-      "name": "linear_authenticate",
-      "description": "Authenticate with Linear API key",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "api_key": {
-            "type": "string",
-            "description": "Linear API key"
-          }
-        },
-        "required": [
-          "api_key"
-        ]
-      }
-    },
-    {
       "name": "linear_list_issues",
-      "description": "List issues (optionally filtered)",
+      "description": "List issues, optionally filtered by team, project, assignee or state",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": {
-            "type": "integer",
-            "description": "Session index"
-          },
-          "team_id": {
-            "type": "string",
-            "description": "Team ID filter"
-          },
-          "state": {
-            "type": "string",
-            "description": "State filter"
-          }
-        },
-        "required": [
-          "session_id"
-        ]
+          "team_id": { "type": "string", "description": "Team UUID filter" },
+          "project_id": { "type": "string", "description": "Project UUID filter" },
+          "assignee_id": { "type": "string", "description": "Assignee UUID filter" },
+          "state": { "type": "string", "description": "Workflow state name filter (e.g. 'In Progress')" },
+          "limit": { "type": "integer", "description": "Max results (default 50, max 250)" }
+        }
       }
     },
     {
       "name": "linear_get_issue",
-      "description": "Get a specific issue",
+      "description": "Get a single issue by UUID or by human identifier (e.g. ENG-123)",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": {
-            "type": "integer",
-            "description": "Session index"
-          },
-          "issue_id": {
-            "type": "string",
-            "description": "Issue ID"
-          }
+          "issue_id": { "type": "string", "description": "Issue UUID or identifier such as ENG-123" }
         },
-        "required": [
-          "session_id",
-          "issue_id"
-        ]
+        "required": ["issue_id"]
       }
     },
     {
@@ -89,58 +54,185 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": {
-            "type": "integer",
-            "description": "Session index"
-          },
-          "team_id": {
-            "type": "string",
-            "description": "Team ID"
-          },
-          "title": {
-            "type": "string",
-            "description": "Issue title"
-          },
-          "description": {
-            "type": "string",
-            "description": "Issue description"
-          },
-          "priority": {
-            "type": "integer",
-            "description": "Priority 0-4"
+          "team_id": { "type": "string", "description": "Team UUID" },
+          "title": { "type": "string", "description": "Issue title" },
+          "description": { "type": "string", "description": "Markdown description" },
+          "priority": { "type": "integer", "description": "0 none, 1 urgent, 2 high, 3 medium, 4 low" },
+          "assignee_id": { "type": "string", "description": "Assignee UUID" },
+          "project_id": { "type": "string", "description": "Project UUID" },
+          "state_id": { "type": "string", "description": "Workflow state UUID" },
+          "label_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Label UUIDs"
           }
         },
-        "required": [
-          "session_id",
-          "team_id",
-          "title"
-        ]
+        "required": ["team_id", "title"]
       }
     },
     {
       "name": "linear_update_issue",
-      "description": "Update an issue",
+      "description": "Update an issue's fields",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": {
-            "type": "integer",
-            "description": "Session index"
-          },
-          "issue_id": {
-            "type": "string",
-            "description": "Issue ID"
-          },
-          "fields": {
-            "type": "object",
-            "description": "Fields to update"
-          }
+          "issue_id": { "type": "string", "description": "Issue UUID" },
+          "title": { "type": "string", "description": "New title" },
+          "description": { "type": "string", "description": "New markdown description" },
+          "priority": { "type": "integer", "description": "0 none, 1 urgent, 2 high, 3 medium, 4 low" },
+          "state_id": { "type": "string", "description": "Workflow state UUID" },
+          "fields": { "type": "object", "description": "Raw IssueUpdateInput fields (escape hatch)" }
         },
-        "required": [
-          "session_id",
-          "issue_id",
-          "fields"
-        ]
+        "required": ["issue_id"]
+      }
+    },
+    {
+      "name": "linear_assign_issue",
+      "description": "Assign an issue to a user",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issue_id": { "type": "string", "description": "Issue UUID" },
+          "assignee_id": { "type": "string", "description": "Assignee UUID" }
+        },
+        "required": ["issue_id", "assignee_id"]
+      }
+    },
+    {
+      "name": "linear_set_priority",
+      "description": "Set an issue's priority",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issue_id": { "type": "string", "description": "Issue UUID" },
+          "priority": { "type": "integer", "description": "0 none, 1 urgent, 2 high, 3 medium, 4 low" }
+        },
+        "required": ["issue_id", "priority"]
+      }
+    },
+    {
+      "name": "linear_move_to_project",
+      "description": "Move an issue into a project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issue_id": { "type": "string", "description": "Issue UUID" },
+          "project_id": { "type": "string", "description": "Target project UUID" }
+        },
+        "required": ["issue_id", "project_id"]
+      }
+    },
+    {
+      "name": "linear_archive_issue",
+      "description": "Archive an issue (Linear's soft delete)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issue_id": { "type": "string", "description": "Issue UUID" }
+        },
+        "required": ["issue_id"]
+      }
+    },
+    {
+      "name": "linear_search_issues",
+      "description": "Search issues by text across title and description",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search text" },
+          "limit": { "type": "integer", "description": "Max results (default 50, max 250)" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "linear_list_comments",
+      "description": "List comments on an issue",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issue_id": { "type": "string", "description": "Issue UUID" },
+          "limit": { "type": "integer", "description": "Max results (default 50, max 250)" }
+        },
+        "required": ["issue_id"]
+      }
+    },
+    {
+      "name": "linear_create_comment",
+      "description": "Add a comment to an issue",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issue_id": { "type": "string", "description": "Issue UUID" },
+          "body": { "type": "string", "description": "Markdown comment body" }
+        },
+        "required": ["issue_id", "body"]
+      }
+    },
+    {
+      "name": "linear_list_projects",
+      "description": "List projects in the workspace",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "description": "Max results (default 50, max 250)" }
+        }
+      }
+    },
+    {
+      "name": "linear_get_project",
+      "description": "Get a single project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_id": { "type": "string", "description": "Project UUID" }
+        },
+        "required": ["project_id"]
+      }
+    },
+    {
+      "name": "linear_create_project",
+      "description": "Create a new project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Project name" },
+          "team_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Owning team UUIDs (at least one)"
+          },
+          "description": { "type": "string", "description": "Project description" },
+          "target_date": { "type": "string", "description": "Target date (ISO 8601)" },
+          "lead_id": { "type": "string", "description": "Project lead UUID" }
+        },
+        "required": ["name", "team_ids"]
+      }
+    },
+    {
+      "name": "linear_update_project",
+      "description": "Update a project's fields",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_id": { "type": "string", "description": "Project UUID" },
+          "name": { "type": "string", "description": "New name" },
+          "description": { "type": "string", "description": "New description" },
+          "state": { "type": "string", "description": "Project state (e.g. planned, started, completed)" },
+          "fields": { "type": "object", "description": "Raw ProjectUpdateInput fields (escape hatch)" }
+        },
+        "required": ["project_id"]
+      }
+    },
+    {
+      "name": "linear_list_project_milestones",
+      "description": "List milestones within a project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_id": { "type": "string", "description": "Project UUID" }
+        },
+        "required": ["project_id"]
       }
     },
     {
@@ -149,37 +241,122 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": {
-            "type": "integer",
-            "description": "Session index"
-          }
-        },
-        "required": [
-          "session_id"
-        ]
+          "limit": { "type": "integer", "description": "Max results (default 50, max 250)" }
+        }
       }
     },
     {
-      "name": "linear_search_issues",
-      "description": "Search issues by query",
+      "name": "linear_get_team",
+      "description": "Get a team and its members",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": {
-            "type": "integer",
-            "description": "Session index"
-          },
-          "query": {
-            "type": "string",
-            "description": "Search query"
-          }
+          "team_id": { "type": "string", "description": "Team UUID" }
         },
-        "required": [
-          "session_id",
-          "query"
-        ]
+        "required": ["team_id"]
+      }
+    },
+    {
+      "name": "linear_list_cycles",
+      "description": "List cycles (sprints), optionally for one team",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "team_id": { "type": "string", "description": "Team UUID filter" },
+          "limit": { "type": "integer", "description": "Max results (default 50, max 250)" }
+        }
+      }
+    },
+    {
+      "name": "linear_list_labels",
+      "description": "List issue labels",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "description": "Max results (default 50, max 250)" }
+        }
+      }
+    },
+    {
+      "name": "linear_list_workflow_states",
+      "description": "List workflow states, optionally for one team",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "team_id": { "type": "string", "description": "Team UUID filter" },
+          "limit": { "type": "integer", "description": "Max results (default 50, max 250)" }
+        }
+      }
+    },
+    {
+      "name": "linear_list_users",
+      "description": "List users in the workspace",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "description": "Max results (default 50, max 250)" }
+        }
+      }
+    },
+    {
+      "name": "linear_whoami",
+      "description": "Identify the authenticated user and organisation",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "linear_list_documents",
+      "description": "List documents in the workspace",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "description": "Max results (default 50, max 250)" }
+        }
+      }
+    },
+    {
+      "name": "linear_get_document",
+      "description": "Get a document including its content",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": { "type": "string", "description": "Document UUID" }
+        },
+        "required": ["document_id"]
+      }
+    },
+    {
+      "name": "linear_list_initiatives",
+      "description": "List initiatives (groupings of projects)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer", "description": "Max results (default 50, max 250)" }
+        }
+      }
+    },
+    {
+      "name": "linear_create_attachment",
+      "description": "Attach an external URL (e.g. a pull request) to an issue",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issue_id": { "type": "string", "description": "Issue UUID" },
+          "url": { "type": "string", "description": "URL to attach" },
+          "title": { "type": "string", "description": "Attachment title" },
+          "subtitle": { "type": "string", "description": "Attachment subtitle" }
+        },
+        "required": ["issue_id", "url"]
       }
     }
+  ],
+  "states": [
+    "Unauthenticated",
+    "Authenticated",
+    "RateLimited",
+    "Error"
   ],
   "ffi": {
     "so_path": "ffi/zig-out/lib/liblinear_mcp.so",

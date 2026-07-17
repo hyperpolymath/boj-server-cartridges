@@ -28,6 +28,11 @@ jobs:
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e # v8.2.0
+        # Pinned back from v8.2.0 (#76 dependabot bump). v8.2.0 fails JRE
+        # auto-provisioning with "GET api.sonarcloud.io/analysis/jres 403
+        # Forbidden" on every run; v8.1.0 was the last green (PR #74). Hold the
+        # bump here until the v8.2.0 provisioning-auth regression is resolved
+        # upstream (or SONAR_TOKEN is confirmed/rotated if this still 403s).
+        uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uuidgen *)",
+      "Bash(git ls-tree *)",
+      "Bash(asciidoctor --version)"
+    ]
+  }
+}

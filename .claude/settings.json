@@ -3,7 +3,9 @@
     "allow": [
       "Bash(uuidgen *)",
       "Bash(git ls-tree *)",
-      "Bash(asciidoctor --version)"
+      "Bash(asciidoctor --version)",
+      "Bash(actionlint *)",
+      "mcp__claude-in-chrome__get_page_text"
     ]
   }
 }

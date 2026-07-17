@@ -4,8 +4,13 @@
 // bug-filing-mcp/mod.js — autonomous bug-report filing.
 //
 // Wraps the real feedback-o-tron engine via its localhost HTTP intake
-// (POST /api/v1/submit_feedback on http://127.0.0.1:7722; run the engine with
-// FEEDBACK_A_TRON_HTTP=1). Override the backend with BUG_FILING_BACKEND_URL.
+// (http://127.0.0.1:7722; run the engine with FEEDBACK_A_TRON_HTTP=1).
+// Override the backend with BUG_FILING_BACKEND_URL.
+//
+// v0.2 tools (the interactive loop): research_feedback (avoid duplicates,
+// get the repo's template questions) -> synthesize_feedback (intent-gated,
+// template-hydrated draft + open questions) -> submit_feedback (validated
+// template_data, multi-forge dispatch).
 //
 // This is the boj-side packaging of the engine for the autonomous bug-reporting
 // pipeline (feedback-o-tron/docs/AUTONOMOUS-BUG-PIPELINE.adoc, contract C4 dispatch
@@ -45,6 +50,10 @@ async function post(path, payload) {
 
 export async function handleTool(toolName, args) {
   switch (toolName) {
+    case "research_feedback":
+      return post("/api/v1/research_feedback", args ?? {});
+    case "synthesize_feedback":
+      return post("/api/v1/synthesize_feedback", args ?? {});
     case "submit_feedback":
       return post("/api/v1/submit_feedback", args ?? {});
     default:

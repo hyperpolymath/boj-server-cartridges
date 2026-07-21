@@ -57,4 +57,17 @@ fi
 echo "────────────────────────────────────────"
 echo "Proof type-check: PASS=${pass} FAIL=${fail}"
 [ "$fail" -eq 0 ] || { echo "PROOF TYPECHECK FAILED"; exit 1; }
+
+# Vacuous-pass guard. PASS=0/FAIL=0 means the `find` matched nothing — a moved
+# directory, a bad checkout, or a future refactor that renames `abi/`. Without
+# this the gate reports success having verified NOTHING, which is precisely the
+# failure mode this script was written to prevent. A repo with zero proofs is
+# not a passing repo; it is a broken gate.
+if [ "$pass" -eq 0 ]; then
+    echo "PROOF TYPECHECK FAILED: no proofs were found to check." >&2
+    echo "  Expected .idr files under cartridges/**/abi and/or tools/foundry/proof." >&2
+    echo "  A green run with zero proofs verified would be a false assurance." >&2
+    exit 1
+fi
+
 echo "All proofs type-check under the pinned toolchain."

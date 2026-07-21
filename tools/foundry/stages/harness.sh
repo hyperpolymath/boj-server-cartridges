@@ -15,6 +15,9 @@
 # Usage: harness.sh <cartridge-dir> [--granted "Net,Fs,..."]
 set -euo pipefail
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
+
 CART="${1:?usage: harness.sh <cartridge-dir> [--granted caps]}"
 shift || true
 GRANTED=""
@@ -46,9 +49,29 @@ else
 fi
 
 # 2 ─ MemSafe: the FFI must build against the shared shim.
+#
+# Zig's build API is not stable across minor versions (e.g. `linkLibC()` was
+# removed in 0.16), so a toolchain that does not match the repo pin fails the
+# build for reasons that have nothing to do with this cartridge. Reporting that
+# as "zig build failed" sends the reader hunting a template defect that is not
+# there. Detect the mismatch and name it.
 FFI_BUILT=0
+ZIG_PIN=$(awk '/^zig /{print $2}' "$REPO_ROOT/.tool-versions" 2>/dev/null || true)
 if command -v zig >/dev/null 2>&1 && [ -f "$CART/ffi/build.zig" ]; then
-  if (cd "$CART/ffi" && zig build) >/dev/null 2>&1; then ok "ffi builds (shim-conformant)"; FFI_BUILT=1; else bad "zig build failed"; fi
+  ZIG_HAVE=$(zig version 2>/dev/null || echo unknown)
+  build_log=$(mktemp)
+  if (cd "$CART/ffi" && zig build) >"$build_log" 2>&1; then
+    ok "ffi builds (shim-conformant, zig $ZIG_HAVE)"; FFI_BUILT=1
+  elif [ -n "$ZIG_PIN" ] && [ "$ZIG_HAVE" != "$ZIG_PIN" ]; then
+    bad "zig build failed under zig $ZIG_HAVE, but this repo pins zig $ZIG_PIN"
+    printf '       TOOLCHAIN MISMATCH — this is very likely not a cartridge defect.\n' >&2
+    printf '       Install the pinned toolchain (mise install / asdf install) and re-run.\n' >&2
+    printf '       first error: %s\n' "$(grep -m1 -E 'error:' "$build_log" || echo '(none captured)')" >&2
+  else
+    bad "zig build failed (zig $ZIG_HAVE)"
+    printf '       first error: %s\n' "$(grep -m1 -E 'error:' "$build_log" || echo '(none captured)')" >&2
+  fi
+  rm -f "$build_log"
 else
   skip "zig / build.zig unavailable — FFI not built here (CI does)"
 fi

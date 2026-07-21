@@ -24,12 +24,15 @@ fi
 TOML_ABS="$(cd "$(dirname "$TOML")" && pwd)/$(basename "$TOML")"
 
 echo "==> mint: scaffolding from $TOML_ABS" >&2
+# stdout of this script is a CONTRACT: it carries the scaffolded cartridge path
+# and nothing else (foundry.sh consumes it). All minter chatter therefore goes to
+# stderr — `2>&1` here would fold Deno's diagnostics into the path and corrupt it.
 deno run \
   --allow-read \
   --allow-write \
   "$MINTER" \
   "$TOML_ABS" \
-  2>&1
+  >&2
 
 # Derive the output path from the minter.toml (same logic as mint.ts)
 NAME="$(grep '^name' "$TOML_ABS" | head -1 | sed 's/.*=\s*"\(.*\)"/\1/' | tr -d ' ')"

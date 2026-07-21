@@ -53,6 +53,36 @@ Three principles make that possible:
   against the shared shim, the truthfulness probe returns non-stub. | `Truthful`
 |===
 
+=== Configure — what a setting is allowed to do
+
+`stages/configure.sh` applies settings under two mechanically-checked rules,
+the operational counterpart of `configure : Artifact ds caps -> Artifact ds caps`:
+
+PRESERVATION::
+  The `capabilities` block written by Provision is compared before and after and
+  must be byte-identical. Configure may never edit the grant.
+
+NO ESCALATION::
+  A setting whose use would require a `locked_down` capability is refused.
+  Configuration cannot smuggle in authority that provisioning denied.
+
+[cols="2,1,3",options="header"]
+|===
+| Setting | Requires | Rule
+| `--api-base` (loopback) | — | `local://<name>`, `127.0.0.1`, `localhost` and
+  `[::1]` forms address a loopback backend, which needs no network authority.
+| `--api-base` (remote) | `Net` | Any other address reaches the network.
+| `--auth` (≠ `none`) | `Cred` | Presenting a credential is exactly `Cred`.
+| `--auth-env`, `--auth-source` | `Cred` | *Unconditionally* — naming a secret is
+  itself credential authority. Deciding this from the manifest's current
+  `auth.method` would let credential wiring be written into a freshly-minted
+  cartridge (where `method` is `none`) and activated by a later `--auth`.
+|===
+
+Configure also refuses a cartridge with no `capabilities` block: without a
+provisioned grant there is no authority to check against, so it fails closed
+rather than configure something whose authority is unknown.
+
 [#assurance]
 == Assurance (proof of design)
 

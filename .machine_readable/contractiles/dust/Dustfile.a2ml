@@ -54,7 +54,7 @@ to new repositories.
 - description: No references to boj-server-cartridges in generic template files
 - run: test -z "$(grep -r 'boj-server-cartridges' machine-readable-design/ 2>/dev/null)"
 - severity: warning
-- notes: Generic templates should use {{PROJECT_NAME}} or similar placeholders
+- notes: Generic templates should use boj-server-cartridges or similar placeholders
 
 ### version-sync-checked
 - description: Version in canonical-directory-structure matches .machine_readable/contractiles

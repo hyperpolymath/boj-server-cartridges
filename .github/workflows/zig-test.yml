@@ -1,3 +1,4 @@
+# This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
 # Builds and tests the Zig FFI of any cartridge whose ffi/ changed. Adapted
 # from boj-server's zig-test.yml for this repo's hybrid taxonomy: cartridges
@@ -34,7 +35,7 @@ jobs:
     outputs:
       run: ${{ steps.detect.outputs.run }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - id: detect
@@ -64,7 +65,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           # Need history for `git diff origin/main...HEAD` to find a merge base
           # when main has advanced beyond the PR branch's fork point. With the
@@ -72,7 +73,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Zig
-        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        uses: mlugg/setup-zig@v2.2.1
         with:
           version: 0.15.2
 

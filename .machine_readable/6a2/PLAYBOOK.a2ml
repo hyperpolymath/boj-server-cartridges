@@ -135,7 +135,8 @@ run = """
   bash scripts/check-trusted-base.sh   # zero believe_me/assert_*/sorry
   bash scripts/typecheck-proofs.sh     # idris2 --check every abi/**/*.idr
 """
-workflow = ".github/workflows/proofs.yml (jobs: changes, trusted-base, typecheck)"
+workflow = ".github/workflows/proofs.yml"
+workflow-jobs = "changes, trusted-base, typecheck"
 toolchain = "idris2 0.8.0 per .tool-versions"
 notes = "typecheck-proofs.sh checks each .idr INDIVIDUALLY from its abi/ root rather than building an .ipkg, so a stale .ipkg cannot hide a rotted module. It carries a vacuous-pass guard: PASS=0 is a FAILURE. Respect that guard — it exists because 23 proofs in this repo had silently rotted while their boj-server twins stayed green (#36/#37)."
 

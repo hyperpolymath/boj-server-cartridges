@@ -9,6 +9,13 @@ Exposes this cartridge's FFI over the wire protocols declared in
 `cartridge.json`. Dispatches tool invocations to the C-ABI exports at
 `../ffi/` and formats responses per protocol.
 
+This is the **template** adapter — `just mint` copies this tree — so it
+carries the canonical "unified adapter" shape: **one loopback listener**,
+protocol-classified (REST `/invoke`, SSE `/sse`, GraphQL `/graphql`,
+gRPC-compat `/grpc/<Svc>/<Method>`), funnelling every request through the
+transaction gate (`exposureSatisfied`) before a **single** dispatch into
+`ffi.boj_cartridge_invoke`.
+
 == Files
 
 [cols="1,4"]
@@ -16,12 +23,15 @@ Exposes this cartridge's FFI over the wire protocols declared in
 | File | Role
 
 | `build.zig`  | Zig build graph — depends on the sibling `ffi` target.
-| `gossamer_adapter.zig` | Protocol dispatch (121 lines). Tool catalogue matches `cartridge.json`.
+| `gossamer_adapter.zig` | Unified protocol dispatch + transaction gate. Tool catalogue matches `cartridge.json`.
 | `SIDELINED-*.v.adoc` | zig predecessor(s). Not built — zig banned 2026-04-10.
 |===
 
 == Invariants
 
+* **Internal-only, never a public ingress.** Per ADR-0004 the only governed
+  public surface is the `http-capability-gateway` (tier-2); this adapter binds
+  loopback (`127.0.0.1`) and sits behind it.
 * **Stateless** — all state lives behind the FFI, never in the adapter.
 * **Response passthrough** — whatever the FFI returns goes back to the wire
   unmodified (no embellishment, no silent recovery).
@@ -30,8 +40,13 @@ Exposes this cartridge's FFI over the wire protocols declared in
 
 == Test/proof surface
 
-No inline tests at the adapter layer — protocol routing is exercised by the
-trunk seam tests at `ffi/zig/src/seams.zig`.
+`zig build test` runs the inline adapter tests: protocol classification,
+per-protocol tool extraction, the dispatch funnel into the one Zig ABI (every
+tool in `cartridge.json`), and the `exposureSatisfied` truth table.
+
+`zig build` is the stronger gate of the two — it compiles the executable, so
+`main()` and the listener path are analysed. A test-only run does not reach
+them.
 
 == Read-first
 

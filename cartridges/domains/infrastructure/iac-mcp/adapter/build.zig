@@ -6,12 +6,33 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{}); const optimize = b.standardOptimizeOption(.{});
-    const ffi_mod = b.createModule(.{ .root_source_file = b.path("../ffi/iac_ffi.zig"), .target = target, .optimize = optimize });
-    const adapter = b.addExecutable(.{ .name = "iac_adapter", .root_source_file = b.path("iac_adapter.zig"), .target = target, .optimize = optimize });
-    adapter.root_module.addImport("iac_ffi", ffi_mod); b.installArtifact(adapter);
-    const rs = b.step("run", "Run iac-mcp adapter"); rs.dependOn(&b.addRunArtifact(adapter).step);
-    const tests = b.addTest(.{ .root_source_file = b.path("iac_adapter.zig"), .target = target, .optimize = optimize });
-    tests.root_module.addImport("iac_ffi", ffi_mod);
-    const ts = b.step("test", "Test iac-mcp adapter"); ts.dependOn(&b.addRunArtifact(tests).step);
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    const ffi_mod = b.createModule(.{
+        .root_source_file = b.path("../ffi/iac_ffi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const adapter_mod = b.createModule(.{
+        .root_source_file = b.path("iac_adapter.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    adapter_mod.addImport("iac_ffi", ffi_mod);
+
+    const adapter = b.addExecutable(.{
+        .name = "iac_adapter",
+        .root_module = adapter_mod,
+    });
+    b.installArtifact(adapter);
+
+    const run_step = b.step("run", "Run the iac-mcp adapter");
+    run_step.dependOn(&b.addRunArtifact(adapter).step);
+
+    const adapter_tests = b.addTest(.{ .root_module = adapter_mod });
+    const run_tests = b.addRunArtifact(adapter_tests);
+    const test_step = b.step("test", "Run iac-mcp adapter tests");
+    test_step.dependOn(&run_tests.step);
 }

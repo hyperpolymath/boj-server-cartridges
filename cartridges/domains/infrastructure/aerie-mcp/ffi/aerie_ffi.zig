@@ -12,31 +12,31 @@ const std = @import("std");
 // ── Bespoke tool exports (kept for backward compat during migration) ──
 
 /// List active environment count.
-export fn aerie_list_envs_count() u32 {
+pub export fn aerie_list_envs_count() u32 {
     return 0; // Stub
 }
 
 /// Create an environment. Returns env ID or 0 on failure.
-export fn aerie_create_env(name: [*c]const u8, mem_mb: u32) u32 {
+pub export fn aerie_create_env(name: [*c]const u8, mem_mb: u32) u32 {
     if (name == null or mem_mb == 0) return 0;
     return 1; // Stub
 }
 
 /// Destroy an environment. Returns 0 on success.
-export fn aerie_destroy_env(env_id: u32) i32 {
+pub export fn aerie_destroy_env(env_id: u32) i32 {
     if (env_id == 0) return -1;
     return 0; // Stub
 }
 
 /// Get env status: 0=provisioning, 1=ready, 2=destroying, 3=destroyed, 4=error.
-export fn aerie_get_status(env_id: u32) u8 {
+pub export fn aerie_get_status(env_id: u32) u8 {
     if (env_id == 0) return 4; // Error
     return 1; // Stub — ready
 }
 
 // ── Standard ABI symbols (ADR-0005 + ADR-0006) ─────────────────────────
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 // String literals in Zig are already NUL-terminated sentinel arrays; hold
 // their addresses in module-level constants so the exported pointers have
@@ -44,23 +44,23 @@ const shim = @import("cartridge_shim.zig");
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "aerie-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// ADR-0006 reference: dispatch `tool_name` with `json_args`, write result
 /// into `out_buf`/`*in_out_len`. Return codes documented in ADR-0006.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

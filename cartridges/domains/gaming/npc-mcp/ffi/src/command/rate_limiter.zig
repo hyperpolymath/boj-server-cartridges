@@ -68,4 +68,4 @@ test "rate limiter — refills over time" {
     try testing.expect(rl.tryAcquire(100_000_000));
 }
 
-const shim = @import("../../cartridge_shim.zig");
+pub const shim = @import("../../cartridge_shim.zig");

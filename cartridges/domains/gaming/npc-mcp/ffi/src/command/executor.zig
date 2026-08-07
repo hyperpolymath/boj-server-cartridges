@@ -75,4 +75,4 @@ test "command queue — drain is idempotent (second drain returns empty)" {
     try testing.expectEqual(@as(usize, 0), second.len);
 }
 
-const shim = @import("../../cartridge_shim.zig");
+pub const shim = @import("../../cartridge_shim.zig");

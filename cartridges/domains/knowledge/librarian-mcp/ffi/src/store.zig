@@ -205,7 +205,7 @@ pub fn listIn(allocator: std.mem.Allocator, root_dir: std.Io.Dir) ![][]u8 {
     return names.toOwnedSlice(allocator);
 }
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 // ── Tests ──
 

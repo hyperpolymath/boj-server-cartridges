@@ -9,19 +9,19 @@ const std = @import("std");
 pub const VerifyStatus = enum(u8) { verified = 0, unverified = 1, tampered = 2, expired = 3 };
 
 /// Verify a message. Returns status code.
-export fn vext_verify_message(msg: [*c]const u8, sig: [*c]const u8) u8 {
+pub export fn vext_verify_message(msg: [*c]const u8, sig: [*c]const u8) u8 {
     if (msg == null or sig == null) return @intFromEnum(VerifyStatus.unverified);
     return @intFromEnum(VerifyStatus.verified); // Stub
 }
 
 /// Check an attestation by issuer. Returns depth or 0 if not found.
-export fn vext_check_attestation(issuer: [*c]const u8) u32 {
+pub export fn vext_check_attestation(issuer: [*c]const u8) u32 {
     if (issuer == null) return 0;
     return 1; // Stub
 }
 
 /// Append an entry to the verification chain. Returns 0 on success.
-export fn vext_append_chain(payload: [*c]const u8) i32 {
+pub export fn vext_append_chain(payload: [*c]const u8) i32 {
     if (payload == null) return -1;
     return 0; // Stub
 }
@@ -30,27 +30,27 @@ export fn vext_append_chain(payload: [*c]const u8) i32 {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "vext-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

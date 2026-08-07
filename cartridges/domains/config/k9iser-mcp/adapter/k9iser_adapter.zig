@@ -24,6 +24,9 @@
 const std = @import("std");
 const ffi = @import("k9iser_ffi");
 
+// Zig 0.16 removed `std.net`; the sockets API moved onto `std.Io`.
+const net = std.Io.net;
+
 // Loopback-only by construction: this adapter is internal, fronted by the
 // http-capability-gateway (ADR-0004). Never bind a routable interface.
 const BIND_IP = [4]u8{ 127, 0, 0, 1 };
@@ -161,32 +164,36 @@ fn jsonStringField(body: []const u8, key: []const u8) ?[]const u8 {
     if (i > start) return body[start..i] else return null;
 }
 
-fn writeHttp(stream: std.net.Stream, status: u16, ctype: []const u8, body: []const u8) void {
-    var hdr: [256]u8 = undefined;
-    const h = std.fmt.bufPrint(&hdr, "HTTP/1.1 {d} OK\r\nContent-Type: {s}\r\nContent-Length: {d}\r\nConnection: close\r\n\r\n", .{ status, ctype, body.len }) catch return;
-    _ = stream.write(h) catch {};
-    _ = stream.write(body) catch {};
+fn writeHttp(io: std.Io, stream: net.Stream, status: u16, ctype: []const u8, body: []const u8) void {
+    var wbuf: [1024]u8 = undefined;
+    var stream_writer = stream.writer(io, &wbuf);
+    const w = &stream_writer.interface;
+    w.print("HTTP/1.1 {d} OK\r\nContent-Type: {s}\r\nContent-Length: {d}\r\nConnection: close\r\n\r\n", .{ status, ctype, body.len }) catch return;
+    w.writeAll(body) catch return;
+    w.flush() catch return;
 }
 
-fn writeSse(stream: std.net.Stream, d: Dispatch) void {
-    const head = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n";
-    _ = stream.write(head) catch {};
-    _ = stream.write("event: open\ndata: {\"cartridge\":\"k9iser-mcp\"}\n\n") catch {};
-    var fb: [4608]u8 = undefined;
+fn writeSse(io: std.Io, stream: net.Stream, d: Dispatch) void {
+    var wbuf: [1024]u8 = undefined;
+    var stream_writer = stream.writer(io, &wbuf);
+    const w = &stream_writer.interface;
+    w.writeAll("HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n") catch return;
+    w.writeAll("event: open\ndata: {\"cartridge\":\"k9iser-mcp\"}\n\n") catch return;
     const ev = if (d.status == 200) "result" else "error";
-    const frame = std.fmt.bufPrint(&fb, "event: {s}\ndata: {s}\n\n", .{ ev, d.body }) catch "event: error\ndata: {}\n\n";
-    _ = stream.write(frame) catch {};
-    _ = stream.write("event: done\ndata: {}\n\n") catch {};
+    w.print("event: {s}\ndata: {s}\n\n", .{ ev, d.body }) catch return;
+    w.writeAll("event: done\ndata: {}\n\n") catch return;
+    w.flush() catch return;
 }
 
 // Loopback-only listener ⇒ peers are local by construction. We still
 // evaluate the gate every request (no gatekeeperless path); the
 // non-local branch is exercised by exposureSatisfied's tests.
-fn handleConnection(stream: std.net.Stream) void {
-    defer stream.close();
+fn handleConnection(io: std.Io, stream: net.Stream) void {
+    defer stream.close(io);
     var buf: [8192]u8 = undefined;
-    const n = stream.read(&buf) catch return;
-    const req = buf[0..n];
+    var stream_reader = stream.reader(io, &buf);
+    stream_reader.interface.fillMore() catch return;
+    const req = stream_reader.interface.buffered();
 
     var lines = std.mem.splitScalar(u8, req, '\n');
     const first = lines.next() orelse return;
@@ -199,19 +206,19 @@ fn handleConnection(stream: std.net.Stream) void {
 
     const proto = classify(path);
     if (proto == .unknown) {
-        writeHttp(stream, 404, "application/json", "{\"error\":\"route-not-found\"}");
+        writeHttp(io, stream, 404, "application/json", "{\"error\":\"route-not-found\"}");
         return;
     }
 
     // ── TRANSACTION GATE — runs before dispatch, every request ──────────
     const is_local = true; // loopback-bound (BIND_IP); see module header
     if (!exposureSatisfied(REQUIRED_EXPOSURE, presentedExposure(req), is_local)) {
-        writeHttp(stream, 403, "application/json", "{\"error\":\"forbidden\",\"detail\":\"exposure-gate\"}");
+        writeHttp(io, stream, 403, "application/json", "{\"error\":\"forbidden\",\"detail\":\"exposure-gate\"}");
         return;
     }
 
     const tool = toolFor(proto, path, body) orelse {
-        writeHttp(stream, 400, "application/json", "{\"error\":\"missing-tool\"}");
+        writeHttp(io, stream, 400, "application/json", "{\"error\":\"missing-tool\"}");
         return;
     };
 
@@ -219,26 +226,29 @@ fn handleConnection(stream: std.net.Stream) void {
     const d = dispatch(tool, body, &out);
 
     switch (proto) {
-        .sse => writeSse(stream, d),
+        .sse => writeSse(io, stream, d),
         .graphql => {
             var gb: [4352]u8 = undefined;
             const g = std.fmt.bufPrint(&gb, "{{\"data\":{{\"invoke\":{s}}}}}", .{d.body}) catch d.body;
-            writeHttp(stream, d.status, "application/json", g);
+            writeHttp(io, stream, d.status, "application/json", g);
         },
-        else => writeHttp(stream, d.status, "application/json", d.body), // rest, grpc
+        else => writeHttp(io, stream, d.status, "application/json", d.body), // rest, grpc
     }
 }
 
 pub fn main() !void {
     _ = ffi.boj_cartridge_init();
     defer ffi.boj_cartridge_deinit();
-    const addr = std.net.Address.initIp4(BIND_IP, PORT);
-    var server = try addr.listen(.{ .reuse_address = true });
-    defer server.deinit();
+
+    // One process-wide runtime, shared with the cartridge behind the ABI.
+    const io = ffi.shim.io();
+    const addr: net.IpAddress = .{ .ip4 = .{ .bytes = BIND_IP, .port = PORT } };
+    var server = try addr.listen(io, .{ .reuse_address = true });
+    defer server.deinit(io);
     std.debug.print("k9iser-mcp INTERNAL unified adapter on 127.0.0.1:{d} (behind http-capability-gateway; rest|sse|graphql|grpc; transaction-gated)\n", .{PORT});
     while (true) {
-        const conn = try server.accept();
-        const t = try std.Thread.spawn(.{}, handleConnection, .{conn.stream});
+        const stream = try server.accept(io);
+        const t = try std.Thread.spawn(.{}, handleConnection, .{ io, stream });
         t.detach();
     }
 }

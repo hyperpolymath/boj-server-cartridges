@@ -14,6 +14,9 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    // The sibling FFI library links libc (see ../ffi/build.zig); the
+    // adapter embeds the same source, so it must link it too.
+    ffi_mod.link_libc = true;
 
     const adapter_mod = b.createModule(.{
         .root_source_file = b.path("bug_filing_mcp_adapter.zig"),

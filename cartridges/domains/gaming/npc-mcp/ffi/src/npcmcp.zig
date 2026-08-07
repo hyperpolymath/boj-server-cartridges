@@ -221,4 +221,4 @@ test {
     std.testing.refAllDecls(@This());
 }
 
-const shim = @import("../cartridge_shim.zig");
+pub const shim = @import("../cartridge_shim.zig");

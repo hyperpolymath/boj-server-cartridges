@@ -245,36 +245,31 @@ pub fn invokeRecipe(
     argv_list.appendAssumeCapacity(recipe);
     for (argv_extra) |a| argv_list.appendAssumeCapacity(a);
 
-    var child = std.process.Child.init(argv_list.items, allocator);
-    child.cwd = worktree;
-    child.stdin_behavior = .Ignore;
-    child.stdout_behavior = .Pipe;
-    child.stderr_behavior = .Pipe;
-
-    child.spawn() catch return error.SpawnFailed;
-
-    var stdout_buf: std.ArrayList(u8) = .empty;
-    defer stdout_buf.deinit(allocator);
-    var stderr_buf: std.ArrayList(u8) = .empty;
-    defer stderr_buf.deinit(allocator);
-
-    child.collectOutput(allocator, &stdout_buf, &stderr_buf, MAX_CAPTURE) catch {
-        _ = child.kill() catch {};
-        return error.OutputTooLarge;
+    // Zig 0.16: Child.init/spawn/collectOutput/wait were folded into
+    // std.process.run, which takes the Io handle and enforces the capture
+    // limit itself. Uses the shim's process-wide Io.
+    const run_result = std.process.run(allocator, shim.io(), .{
+        .argv = argv_list.items,
+        .cwd = .{ .path = worktree },
+        .stdout_limit = .limited(MAX_CAPTURE),
+        .stderr_limit = .limited(MAX_CAPTURE),
+    }) catch |e| return switch (e) {
+        error.StreamTooLong => error.OutputTooLarge,
+        error.OutOfMemory => error.OutOfMemory,
+        else => error.SpawnFailed,
     };
 
-    const term = child.wait() catch return error.SpawnFailed;
-    const exit_code: i32 = switch (term) {
-        .Exited => |c| @intCast(c),
-        .Signal => |s| -@as(i32, @intCast(s)),
-        .Stopped => -1,
-        .Unknown => -1,
+    // 0.16 lower-cased the Term tags and typed the signal as posix.SIG.
+    const exit_code: i32 = switch (run_result.term) {
+        .exited => |c| @intCast(c),
+        .signal => |s| -@as(i32, @intCast(@intFromEnum(s))),
+        .stopped, .unknown => -1,
     };
 
     return .{
         .exit_code = exit_code,
-        .stdout = stdout_buf.toOwnedSlice(allocator) catch return error.OutOfMemory,
-        .stderr = stderr_buf.toOwnedSlice(allocator) catch return error.OutOfMemory,
+        .stdout = run_result.stdout,
+        .stderr = run_result.stderr,
     };
 }
 
@@ -733,7 +728,8 @@ fn coordDeregister(allocator: std.mem.Allocator) !void {
         .location = .{ .uri = uri },
         .extra_headers = &header_buf,
         .payload = payload,
-        .response_storage = .ignore,
+        // 0.16: FetchOptions.response_storage was replaced by response_writer;
+        // leaving it null discards the body, which is what we want here.
     }) catch {};
 }
 
@@ -844,4 +840,4 @@ test "matchMemories ignores non-matching tag blocks" {
     try std.testing.expectEqual(@as(usize, 0), hits.len);
 }
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");

@@ -9,26 +9,26 @@ const std = @import("std");
 pub const WindowHandle = u32;
 
 /// Create a new webview window. Returns handle or 0 on failure.
-export fn gossamer_create_window(width: u32, height: u32) WindowHandle {
+pub export fn gossamer_create_window(width: u32, height: u32) WindowHandle {
     if (width == 0 or height == 0) return 0;
     // Stub: real impl delegates to libgossamer
     return 1;
 }
 
 /// Load a panel by URI into a window. Returns 0 on success, -1 on error.
-export fn gossamer_load_panel(handle: WindowHandle, uri: [*c]const u8) i32 {
+pub export fn gossamer_load_panel(handle: WindowHandle, uri: [*c]const u8) i32 {
     if (handle == 0 or uri == null) return -1;
     return 0;
 }
 
 /// Evaluate JavaScript in a window context. Returns 0 on success.
-export fn gossamer_eval_js(handle: WindowHandle, script: [*c]const u8) i32 {
+pub export fn gossamer_eval_js(handle: WindowHandle, script: [*c]const u8) i32 {
     if (handle == 0 or script == null) return -1;
     return 0;
 }
 
 /// Get runtime version. Returns packed major.minor.patch.
-export fn gossamer_get_version() u32 {
+pub export fn gossamer_get_version() u32 {
     return (0 << 16) | (1 << 8) | 0; // 0.1.0
 }
 
@@ -36,27 +36,27 @@ export fn gossamer_get_version() u32 {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "gossamer-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

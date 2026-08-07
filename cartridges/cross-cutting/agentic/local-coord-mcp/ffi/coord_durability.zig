@@ -805,4 +805,4 @@ test "replay decodes every event type" {
     try std.testing.expectEqual(@as(u8, 85), tr.confidence_pct);
 }
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");

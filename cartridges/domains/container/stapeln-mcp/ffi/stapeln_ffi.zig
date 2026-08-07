@@ -6,53 +6,53 @@
 const std = @import("std");
 
 /// List active stack count.
-export fn stapeln_list_stacks_count() u32 {
+pub export fn stapeln_list_stacks_count() u32 {
     return 0; // Stub
 }
 
 /// Deploy a stack by name. Returns 0 on success, -1 on error.
-export fn stapeln_deploy(name: [*c]const u8, replicas: u32) i32 {
+pub export fn stapeln_deploy(name: [*c]const u8, replicas: u32) i32 {
     if (name == null or replicas == 0) return -1;
     return 0; // Stub
 }
 
 /// Scale a stack. Returns 0 on success.
-export fn stapeln_scale(name: [*c]const u8, replicas: u32) i32 {
+pub export fn stapeln_scale(name: [*c]const u8, replicas: u32) i32 {
     _ = replicas; // stub — parameter reserved for real implementation
     if (name == null) return -1;
     return 0; // Stub
 }
 
 /// Get health status: 0=healthy, 1=degraded, 2=unhealthy, 3=unknown.
-export fn stapeln_get_health(name: [*c]const u8) u8 {
+pub export fn stapeln_get_health(name: [*c]const u8) u8 {
     if (name == null) return 3;
     return 0; // Stub
 }
 
 // ── Standard ABI (ADR-0005 four symbols + ADR-0006 invoke) ──────────
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "stapeln-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the 4 cartridge.json MCP tools. Grade D Alpha stubs:
 /// each arm returns JSON that reflects the tool's intended shape.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

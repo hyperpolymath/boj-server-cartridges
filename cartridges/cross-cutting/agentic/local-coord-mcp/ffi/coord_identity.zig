@@ -473,4 +473,4 @@ test "RFC 8032 §7.1 TEST 1 — seed derives the canonical pubkey" {
     try std.testing.expectEqualSlices(u8, &expect_bytes, &pubkey);
 }
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");

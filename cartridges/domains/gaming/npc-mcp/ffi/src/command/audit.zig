@@ -78,4 +78,4 @@ test "audit — writes line per call" {
     try testing.expect(std.mem.indexOf(u8, content, "cmd-1") != null);
 }
 
-const shim = @import("../../cartridge_shim.zig");
+pub const shim = @import("../../cartridge_shim.zig");

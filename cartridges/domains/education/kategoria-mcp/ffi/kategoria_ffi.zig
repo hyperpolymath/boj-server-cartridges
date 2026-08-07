@@ -6,24 +6,24 @@
 const std = @import("std");
 
 /// Classify an input. Returns confidence 0-100, or 255 on error.
-export fn kategoria_classify(input: [*c]const u8) u8 {
+pub export fn kategoria_classify(input: [*c]const u8) u8 {
     if (input == null) return 255;
     return 85; // Stub — high confidence
 }
 
 /// Get route count for a classification label.
-export fn kategoria_get_routes(label: [*c]const u8) u32 {
+pub export fn kategoria_get_routes(label: [*c]const u8) u32 {
     if (label == null) return 0;
     return 1; // Stub
 }
 
 /// Get available taxonomy levels.
-export fn kategoria_get_levels() u32 {
+pub export fn kategoria_get_levels() u32 {
     return 12; // Matches clade taxonomy
 }
 
 /// Evaluate a challenge at a given level. Returns score 0-100.
-export fn kategoria_eval_challenge(level: u8, input: [*c]const u8) u8 {
+pub export fn kategoria_eval_challenge(level: u8, input: [*c]const u8) u8 {
     if (input == null or level > 12) return 0;
     return 70; // Stub
 }
@@ -32,22 +32,22 @@ export fn kategoria_eval_challenge(level: u8, input: [*c]const u8) u8 {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "kategoria-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
@@ -168,7 +168,7 @@ fn formatJsonString(s: []const u8) []const u8 {
 }
 
 /// Dispatch the cartridge.json MCP tools.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

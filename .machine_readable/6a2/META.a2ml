@@ -5,24 +5,50 @@
 # Architecture decisions, design rationale, governance.
 
 [metadata]
-version = "0.1.0"
-last-updated = "2026-04-11"
+version = "0.2.0"
+last-updated = "2026-08-07"
 
 [project-info]
-type = "library"  # TODO: update type (library|binary|service|website|monorepo)  # library | binary | monorepo | service | website
-languages = []             # e.g. ["rust", "zig", "idris2"]
+type = "registry"          # library | binary | monorepo | service | website | registry
+languages = ["zig", "idris2", "typescript", "elixir", "javascript", "rescript", "bash"]
 license = "MPL-2.0"
 author = "Jonathan D.A. Jewell (hyperpolymath)"
 
+[language-roles]
+# Counts are git-tracked files, recounted 2026-08-07 on commit c2da9ed
+# (`git ls-files '*.EXT' | wc -l`). They are file counts, not lines.
+zig = "577 files — the FFI layer (C-ABI implementations) and 99 of the 125 adapters. The estate default for anything below the protocol boundary."
+idris2 = "115 .idr + 69 .ipkg — the ABI layer. Dependently-typed contracts and state-machine/exposure-gate proofs under each cartridge's abi/."
+typescript = "40 files — repo tooling under tools/ (validator, minter, batch fixes) run on Deno, plus 8 cartridge adapters. The adapter TS is an APPROVED carve-out (MCP/LSP protocol glue against TS-native SDKs), documented in .claude/CLAUDE.md and authorised by path_allow_prefixes on the hypatia rules cicd_rules/typescript_detected and cicd_rules/rescript_detected. tools/*.ts is NOT carved out — it is convert-now."
+elixir = "146 .ex + 18 .exs across 13 cartridges — the *-lsp adapters and stack-orchestrator-mcp. These have no Zig adapter and no ffi/build.zig; that is by design, not rot."
+javascript = "133 files — per-cartridge mod.js entry points and a few src/server.js implementations."
+rescript = "3 files — orchestrator-lsp-mcp/panels/ VSCode extension-host panels. Same approved carve-out class as the adapter TypeScript."
+bash = "110 .sh — CI helper scripts (scripts/check-trusted-base.sh, scripts/typecheck-proofs.sh) and per-cartridge helpers."
+
 [architecture-decisions]
 # ADR format: status = proposed | accepted | deprecated | superseded | rejected
-# - { id = "ADR-001", title = "Use Zig for FFI", status = "accepted", date = "2026-02-14" }
+decisions = [
+  { id = "ADR-001", title = "Cartridge taxonomy — Hybrid (domains + cross-cutting + templates)", status = "accepted", date = "2026-05-26", path = "docs/decisions/ADR-001-taxonomy.adoc" },
+  { id = "ADR-002", title = "Stack-orchestrator is a new cartridge, not a redesign of fleet-mcp", status = "accepted", date = "2026-05-26", path = "docs/decisions/ADR-002-stack-orchestrator-vs-fleet-mcp.adoc" },
+]
+notes = "Only these two ADRs exist in this repository. ADR numbering here is repo-local and does NOT align with the estate-wide ADR series referenced from .claude/CLAUDE.md (ADR-0004 http-capability-gateway, ADR-0006 five-symbol FFI pattern), which live in hyperpolymath/standards."
 
 [development-practices]
 build-tool = "just"
+per-cartridge-build = "zig build (per cartridge, run inside the cartridge's ffi/ or adapter/ directory)"
 container-runtime = "podman"
 ci-platform = "github-actions"
-package-manager = "guix"  # guix | nix | cargo | mix
+package-manager = "nix"  # guix | nix | cargo | mix
+package-manager-note = "flake.nix is the ONLY dev shell in this repo. There is no guix.scm. Estate policy is Guix-primary / Nix-fallback; this repo sits on the fallback tier and the flake says so in its header. The Justfile carries guix-shell / guix-build recipes inherited from the RSR template — they have no manifest to act on here."
+container-note = "There is no Containerfile in this repo. The Justfile's container-* recipes are inherited RSR template scaffolding and are not exercised."
+
+[toolchain-pins]
+# Source: .tool-versions at repo root, read 2026-08-07.
+source = ".tool-versions"
+idris2 = "0.8.0"
+zig = "0.15.1"
+deno = "2.7.14"
+drift-warning = "The zig pin disagrees across the tree: .tool-versions says 0.15.1 while .github/workflows/zig-test.yml installs 0.15.2. Open PR #109 (feat/zig-016-ffi-sweep) moves both to 0.16.0 but has NOT merged as of 2026-08-07."
 
 [maintenance-axes]
 scoping-first = true
@@ -32,7 +58,7 @@ axis-2 = "corrective > adaptive > perfective"
 axis-3 = "systems > compliance > effects"
 
 [scoping]
-sources = "README, roadmap, status docs, maintenance checklist, CI/security docs"
+sources = "README.adoc, docs/decisions/, audits/, GOVERNANCE.md, SECURITY.md, .github/workflows/"
 marker-scan = "TODO/FIXME/XXX/HACK/STUB/PARTIAL"
 idris-unsound-scan = "believe_me/assert_total"
 
@@ -46,8 +72,15 @@ perfective-source = "axis-1 honest state after corrective/adaptive updates"
 [axis-3-audit-rules]
 audit-focus = "systems in place, documentation explains actual state, safety/security accounted for, observed effects reviewed"
 compliance-focus = "seams/compromises/exception register, bounded exceptions, anti-drift checks"
-drift-risk-example = "single exception broadening into policy violation (e.g. ReScript->TypeScript spread)"
-effects-evidence = "benchmark execution/results and maintainer status dialogue/review"
+drift-risk-example = "the adapter TypeScript carve-out broadening from MCP/LSP protocol glue into general application code"
+effects-evidence = "cartridge-schema validator output (142/142) and per-cartridge zig build results"
 
 [design-rationale]
-# Key design decisions and their reasoning
+sole-source-registry = "Cartridges used to be vendored inside boj-server. Two hosts (boj-server, panll) meant two divergent copies and no single place to gate the schema. Extracting them here gives one tree, one schema gate, and on-demand fetch into a host-local cache."
+pinned-schema-mirror = "The schema is owned by hyperpolymath/standards, but a network fetch in the CI gate would make the gate flaky and non-reproducible. schemas/cartridge-v1.json is a mirror; schemas/PINNED-SHA records the upstream commit plus a content SHA-256 that CI re-verifies, so silent drift fails loudly instead of passing quietly."
+three-layer-stack = "ABI in Idris2 (proof), FFI in Zig (C-ABI implementation), adapter in Zig (wire protocols). The proof layer and the implementation layer are deliberately different languages so the contract cannot be trivially satisfied by the implementation restating itself."
+vendored-shim = "cartridge_shim.zig is copied into each cartridge rather than shared, because a fetched cartridge must build standalone in a flat host cache with no sibling paths to reach for. The cost is drift: 116 copies, 115 canonical, 1 divergent (npc-mcp), with no CI check comparing them on main."
+
+[known-untruths-corrected]
+# Recorded so the correction is auditable rather than silent.
+corrected-2026-08-07 = "Before this date META.a2ml declared languages = [], type = 'library'  # TODO, an empty [architecture-decisions] section despite ADR-001 and ADR-002 existing since 2026-05-26, and package-manager = 'guix' despite there being no guix.scm. Those were rsr-template-repo defaults that had never been filled in."

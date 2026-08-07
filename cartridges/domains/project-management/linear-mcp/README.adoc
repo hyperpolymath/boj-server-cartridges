@@ -140,6 +140,19 @@ The tool list is declared in three places — `cartridge.json`, `mod.js` and the
 
 == Toolchain
 
-Pinned by `.tool-versions`: `zig 0.15.1`, `deno 2.7.14`, `idris2 0.8.0`. Zig
-0.16 removed `std.meta.intToEnum` and `Compile.linkLibC`, both of which this
-repo's Zig still uses, so the FFI does not build on 0.16.
+Pinned by link:../../../../.tool-versions[`.tool-versions`] at the repository
+root, which is the single source of truth — build against whatever it says
+rather than against a version quoted here.
+
+[NOTE]
+====
+An earlier revision of this page claimed the FFI "does not build on 0.16",
+citing Zig 0.16's removal of `std.meta.intToEnum` and `Compile.linkLibC`. That
+is *false*: the migration of every cartridge FFI to Zig 0.16.0
+(https://github.com/hyperpolymath/boj-server-cartridges/pull/109[#109]) builds
+and tests this cartridge green on 0.16.0. The removed APIs were replaced, not
+worked around.
+
+That PR is still open at the time of writing, so `.tool-versions` on `main`
+continues to pin `zig 0.15.1`. Nothing about 0.16 blocks this cartridge.
+====

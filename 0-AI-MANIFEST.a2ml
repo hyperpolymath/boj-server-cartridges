@@ -5,15 +5,24 @@
 id: "boj-server-cartridges"
 level: 0
 parent: null
-version: "0.1"
+version: "0.2"
+last_updated: "2026-08-07"
+counted_on_commit: "d4be56b"
 
 ---
 ### [AI_MANIFEST]
 description: |
   Canonical home of BoJ cartridges. Hosts (boj-server, panll, others)
-  fetch cartridges from here on-demand into a host-local cache. This
-  repository ships the source tree, the schema, and the validator that
-  guards both.
+  fetch cartridges from here on-demand into a flat host-local cache at
+  BOJ_CARTRIDGES_PATH. This repository ships the source tree, the pinned
+  schema mirror, and the validator that guards both.
+
+  SOLE SOURCE since 2026-08-04. hyperpolymath/boj-server#300 ("feat!:
+  retire the bundled cartridges/ tree") merged that day and deleted
+  boj-server's own cartridges/ directory. No host carries a fallback copy
+  any more, so a bad merge to main here reaches every host on its next
+  fetch. Verified 2026-08-07: boj-server's cartridges/ path returns 404 on
+  its default branch and scripts/fetch-cartridges.sh is present.
 
 role: "registry"
 canonical_for: "BoJ cartridge manifests"
@@ -24,20 +33,39 @@ canonical_locations:
   schema_pin: "schemas/PINNED-SHA"
   schema_doc: "schemas/SCHEMA-MIRROR.md"
   validator: "tools/validate-cartridges/"
+  minter: "tools/cartridge-minter/mint.ts"
+  foundry: "tools/foundry/foundry.sh"
+  minting_template: "cartridges/templates/gossamer-mcp/"
+  shim_canon: "cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig"
+  proof_gate: "scripts/typecheck-proofs.sh"
+  trusted_base_gate: "scripts/check-trusted-base.sh"
   audits: "audits/"
   taxonomy_adr: "docs/decisions/ADR-001-taxonomy.adoc"
+  checkpoints: ".machine_readable/6a2/"
+  contractiles: ".machine_readable/contractiles/"
 
 upstream:
   schema_canonical: "hyperpolymath/standards@cartridges/cartridge-v1.json"
   schema_canonical_commit: "7c2b81556791e97172da866b560147ec541797eb"
+  schema_canonical_commit_drift: |
+    KNOWN DISAGREEMENT. schemas/PINNED-SHA records
+    canonical_commit = "f5f0506a6ec88e574753eee701a268e0d4b3a7f2"
+    (pinned_at 2026-07-01, pinned_by_pr standards#373), which is not the
+    commit named above. PINNED-SHA is the OPERATIVE record — the CI gate
+    verifies the mirror's content SHA-256 against it, and that check
+    passes. The field above was not updated when the pin moved. Reconcile
+    it, or delete it in favour of PINNED-SHA; do not assume it is current.
 
 downstream_consumers:
   - id: "boj-server"
     role: "runtime"
     fetcher_script: "scripts/fetch-cartridges.sh"
     catalog_module: "elixir/lib/boj_rest/catalog.ex"
+    bundled_tree: "retired 2026-08-04 (boj-server#300)"
   - id: "panll"
     role: "host"
+    verified: false
+    note: "Listed from this repository's own records. Not independently verified against the panll tree."
 
 taxonomy:
   layout: "hybrid"
@@ -66,23 +94,180 @@ trust_tiers:
   - id: "Ayo"
     description: "Community-contributed"
 
+---
+### [INVENTORY]
+# Recounted 2026-08-07 on commit d4be56b. Commands included so the next
+# reader recounts rather than copies.
+cartridge_manifests: 142        # find cartridges -name cartridge.json | wc -l
+domains: 31                     # ls cartridges/domains | wc -l
+cross_cutting_categories: 7     # ls cartridges/cross-cutting | wc -l
+templates: 1                    # cartridges/templates/gossamer-mcp
+ffi_dirs: 131                   # find cartridges -type d -name ffi | wc -l
+ffi_build_zig: 118              # find cartridges -path '*/ffi/build.zig' | wc -l
+adapter_dirs: 125               # find cartridges -type d -name adapter | wc -l
+adapter_build_zig: 99           # find cartridges -path '*/adapter/build.zig' | wc -l
+abi_dirs: 126                   # find cartridges -type d -name abi | wc -l
+idris_proofs: 114               # find cartridges -path '*/abi/*' -name '*.idr' | wc -l
+cartridge_shims: 116            # find cartridges -name cartridge_shim.zig | wc -l
+cartridge_shims_canonical: 115  # byte-identical to shim_canon
+cartridge_shims_divergent: 1    # cartridges/domains/gaming/npc-mcp/ffi/cartridge_shim.zig
+
+---
+### [INVARIANTS]
 invariants:
   - "Every cartridge.json validates strictly against schemas/cartridge-v1.json; the CI gate (cartridge-schema) blocks merges on any violation"
   - "schemas/cartridge-v1.json content-SHA-256 matches schemas/PINNED-SHA; CI fails loudly on silent drift"
   - "Cartridges live under cartridges/domains/<domain>/, cartridges/cross-cutting/<category>/, or cartridges/templates/"
   - "Cartridge names end in a canonical role suffix"
-  - "Cartridges with a Zig FFI carry their own cartridge_shim.zig beside ffi/build.zig (per-cartridge layout; the gossamer template ships the canonical bytes)"
+  - "Leaf cartridge ABIs are axiom-free: zero believe_me / assert_total / assert_smaller / idris_crash / sorry outside comments (scripts/check-trusted-base.sh; sanctioned count here is 0, unlike boj-server's 5)"
+  - "No V-language sources anywhere under cartridges/ (V banned estate-wide 2026-04-10; Zig is its replacement, not its casualty)"
 
+shim_invariant:
+  # RESTATED 2026-08-07. The previous wording — "Cartridges with a Zig FFI
+  # carry their own cartridge_shim.zig beside ffi/build.zig" — was FALSE as
+  # a universal. Stated here as a rule plus its recorded exceptions.
+  rule: "A cartridge with a Zig FFI SHOULD carry its own cartridge_shim.zig beside ffi/build.zig, byte-identical to shim_canon. The shim is vendored by copy rather than shared because a fetched cartridge must build standalone in a flat host cache with no sibling paths to reach for."
+  holds_for: 116
+  exceptions:
+    - path: "cartridges/domains/languages/007-mcp/ffi"
+      kind: "ffi/build.zig present, no cartridge_shim.zig beside it"
+    - path: "cartridges/domains/knowledge/librarian-mcp/ffi"
+      kind: "ffi/build.zig present, no cartridge_shim.zig anywhere in the cartridge"
+    - path: "cartridges/domains/languages/orchestrator-lsp-mcp/ffi/zig"
+      kind: "build graph nested at ffi/zig/build.zig rather than ffi/build.zig; no shim at all. Not counted in ffi_build_zig above."
+    - path: "cartridges/domains/gaming/npc-mcp/ffi/cartridge_shim.zig"
+      kind: "shim present but NOT byte-identical to shim_canon; cause unrecorded"
+  enforcement: "NONE on main. No CI job compares the copies. Open PR #109 proposes tools/sync_cartridge_shim.sh (stamp + --check) and a shim-drift job; see [PENDING] below."
+
+---
+### [CI_GATES]
+# Every workflow in .github/workflows/ that is tracked in git, with its
+# real gating strength. 'advisory' means findings never fail the job —
+# a green check there means the tool RAN, not that the repo is clean.
 ci_gates:
   - id: "cartridge-schema"
     workflow: ".github/workflows/cartridge-schema.yml"
+    job: "validate"
+    gating: "hard"
     mode: "strict"
     flipped_to_strict_at: "2026-06-01"
-    baseline: "139 total / 139 passing / 0 failing"
+    baseline: "142 total / 142 passing / 0 failing"
+    baseline_verified_at: "2026-08-07"
+    baseline_command: "cd tools/validate-cartridges && deno task audit"
+    note: "Also re-verifies the schema mirror SHA-256 against schemas/PINNED-SHA before validating, and runs the validator's own unit tests."
+  - id: "proofs"
+    workflow: ".github/workflows/proofs.yml"
+    jobs: ["changes", "trusted-base", "typecheck"]
+    gating: "hard"
+    note: "Idris2 0.8.0 per .tool-versions. typecheck runs `idris2 --check` on each .idr INDIVIDUALLY from its abi/ root, so a stale .ipkg cannot mask a rotted module, and carries a vacuous-pass guard (PASS=0 is FAILURE). Added after 23 proofs here rotted while their boj-server twins stayed green (#36/#37)."
+  - id: "zig-test"
+    workflow: ".github/workflows/zig-test.yml"
+    jobs: ["changes", "zig-test"]
+    gating: "partial"
+    note: "PARTIAL BY CONSTRUCTION. The change filter is '^cartridges/.*/ffi/', so it builds only the FFI of cartridges a PR touched. It never builds an adapter and never sweeps the whole tree. Installs zig 0.15.2 while .tool-versions pins 0.15.1."
+  - id: "foundry"
+    workflow: ".github/workflows/foundry.yml"
+    jobs: ["changes", "provision-harness"]
+    gating: "hard"
   - id: "governance"
     workflow: ".github/workflows/governance.yml"
-    source: "hyperpolymath/standards/.github/workflows/governance-reusable.yml@main"
+    gating: "hard"
+    source: "hyperpolymath/standards/.github/workflows/governance-reusable.yml@81dbf2dd854b1444fd6236fa2352474383b2c2b9"
+    note: "Enforces the estate TypeScript allowlist via .governance-allowlist."
+  - id: "codeql"
+    workflow: ".github/workflows/codeql.yml"
+    job: "analyze"
+    gating: "hard"
+  - id: "secret-scanner"
+    workflow: ".github/workflows/secret-scanner.yml"
+    gating: "hard"
+    source: "hyperpolymath/standards/.github/workflows/secret-scanner-reusable.yml@c65436ee3351cd6b0fa14b142938b195efc77586"
+  - id: "hypatia-scan"
+    workflow: ".github/workflows/hypatia-scan.yml"
+    job: "scan"
+    gating: "advisory"
+    note: "Runs with --exit-zero and `|| true`. Findings NEVER fail the job; they are uploaded as SARIF and commented on the PR. Do not read a green hypatia-scan as a clean scan. The Hypatia scanner itself is cloned from main, not pinned."
+  - id: "scorecard"
+    workflow: ".github/workflows/scorecard.yml"
+    gating: "advisory"
+    source: "hyperpolymath/standards/.github/workflows/scorecard-reusable.yml@81dbf2dd854b1444fd6236fa2352474383b2c2b9"
+  - id: "build"
+    workflow: ".github/workflows/build.yml"
+    job: "sonarqube"
+    gating: "advisory"
+    note: "SonarCloud quality gate."
+  - id: "mirror"
+    workflow: ".github/workflows/mirror.yml"
+    gating: "non-gating"
+    source: "hyperpolymath/standards/.github/workflows/mirror-reusable.yml@d135b05bfc647d0c0fbfedc7e80f37ea50f49236"
+    note: "Publishes to other git forges; runs on push to main only."
+  - id: "pages"
+    workflow: ".github/workflows/pages.yml"
+    jobs: ["build", "deploy"]
+    gating: "non-gating"
+  - id: "pages-deploy"
+    workflow: ".github/workflows/pages-deploy.yml"
+    job: "deploy"
+    gating: "non-gating"
+    note: "Cloudflare Pages."
+  - id: "push-email-notify"
+    workflow: ".github/workflows/push-email-notify.yml"
+    job: "notify"
+    gating: "non-gating"
 
+untracked_workflow_warning: |
+  .github/workflows/main-estate-audit.yml exists in the working tree but is
+  NOT tracked in git as of 2026-08-07. It calls 26 hyperpolymath/cicd-suite
+  actions, every one pinned to @main rather than to a SHA. It is listed here
+  so it is not mistaken for a gate that runs, and so that committing it
+  as-is is a conscious decision rather than an accident.
+
+---
+### [KNOWN_GAPS]
+# Recorded, not papered over. Each is real and reproducible today.
+gaps:
+  - id: "adapters-do-not-build"
+    severity: "high"
+    detail: "None of the 99 cartridges/*/adapter/build.zig trees compiles. The gossamer template adapter calls ffi.gossamer_init, which does not exist, and the ffi `export fn` declarations are not `pub`, so the adapter cannot import them. Every minted adapter inherits the fault, so `just mint` output must not be treated as green."
+  - id: "adapters-are-ungated"
+    severity: "high"
+    detail: "No CI job builds any adapter. zig-test.yml filters on '^cartridges/.*/ffi/' only. This is why adapters-do-not-build survived undetected."
+  - id: "no-full-tree-sweep"
+    severity: "medium"
+    detail: "Nothing builds the whole tree. CI builds only what a PR touched, so a cartridge can rot indefinitely as long as nobody edits it."
+  - id: "shim-drift-undetected"
+    severity: "medium"
+    detail: "116 vendored shim copies, 1 divergent, nothing comparing them."
+  - id: "empty-abi-dirs"
+    severity: "low"
+    detail: "18 of 126 abi/ directories contain no .idr file. The proof gate's vacuous-pass guard is whole-run; an individually empty abi/ passes silently."
+  - id: "toolchain-pin-disagreement"
+    severity: "low"
+    detail: ".tool-versions pins zig 0.15.1; zig-test.yml installs 0.15.2."
+
+---
+### [PENDING]
+# Work that exists on a branch but is NOT on main. Listed so an agent does
+# not write runbook steps against tools that are not in the checkout.
+open_prs:
+  - id: "boj-server-cartridges#109"
+    branch: "feat/zig-016-ffi-sweep"
+    state: "open"
+    verified_at: "2026-08-07"
+    adds:
+      - "Zig 0.16.0 migration of all 118 ffi trees (.tool-versions and zig-test.yml both move to 0.16.0)"
+      - "tools/sync_cartridge_shim.sh — stamps the canonical shim into every cartridge; --check reports drift"
+      - "CI job shim-drift — fails on any shim differing from shim_canon"
+      - "CI job full-sweep — weekly cron + workflow_dispatch, builds every cartridge"
+      - "Justfile recipes: mint, shim-sync, shim-check"
+    absent_from_main:
+      - "tools/sync_cartridge_shim.sh"
+      - "the shim-drift job"
+      - "the full-sweep job"
+      - "the mint / shim-sync / shim-check recipes"
+
+---
+### [KNOWN_DRIFT]
 known_drift:
   inventory: "audits/cartridge-schema-2026-06-01.md"
   status: "cleared 2026-06-01"
@@ -92,3 +277,13 @@ known_drift:
     - "boj-server-cartridges#20 — missing fields + name-pattern renames — CLOSED"
     - "boj-server-cartridges#29 — shim build-path — CLOSED (97 build.zigs rewritten via #31)"
     - "boj-server-cartridges#32 — browser-mcp error_recover regression — CLOSED (fix bundled into #31)"
+  text_corruption_2026_08_07: |
+    A global find/replace of "v" -> "zig" corrupted ~140 cartridge READMEs
+    and .machine_readable/6a2/PLAYBOOK.a2ml, rewriting the estate's V-lang
+    ban notes into claims that ZIG is banned. Corrected on branch
+    docs/machine-readable-repair. The corrupted rows also documented
+    SIDELINED-*.v.adoc files that exist nowhere in this repository or its
+    history; those rows were removed rather than reworded. Regression
+    guards: the no-v-zig-substitution-corruption and
+    no-phantom-sidelined-files checks in
+    .machine_readable/contractiles/Mustfile.a2ml.

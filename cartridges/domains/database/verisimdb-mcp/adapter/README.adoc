@@ -16,7 +16,6 @@ gRPC-compat on **9116**, GraphQL on **9117**. Stateless.
 
 | `build.zig`                            | Zig build graph.
 | `verisimdb_adapter.zig`                | Protocol dispatch. Tools: `verisimdb_store_octad`, `verisimdb_get_octad`, `verisimdb_detect_drift`, `verisimdb_query_audit`.
-| `SIDELINED-verisimdb_adapter.v.adoc`   | zig predecessor. Not built.
 |===
 
 == Invariants

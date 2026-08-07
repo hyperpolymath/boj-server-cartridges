@@ -1,64 +1,98 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
-# STATE.a2ml — Project state checkpoint (META-TEMPLATE)
+# STATE.a2ml — Project state checkpoint
 #
-# This is the STATE file for rsr-template-repo itself.
-# When consumed by a new project, replace {{PLACEHOLDER}} tokens
-# and customize sections below for the target project.
+# Counts in this file were recounted against the working tree on the
+# stated last-updated date. Do not copy numbers forward without
+# recounting: the recount commands are given inline.
 
 [metadata]
-project = "rsr-template-repo"
+project = "boj-server-cartridges"
 version = "0.2.0"
-last-updated = "2026-02-28"
+last-updated = "2026-08-07"
 status = "active"  # active | paused | archived
 
 [project-context]
-name = "rsr-template-repo"
-purpose = "Canonical RSR-compliant repository template providing scaffolding for all hyperpolymath projects — including CI/CD, AI manifests, ABI/FFI standards, container ecosystem, and governance infrastructure."
-completion-percentage = 95
+name = "boj-server-cartridges"
+purpose = "Canonical registry of BoJ capability cartridges. Holds the cartridge source tree, the pinned manifest schema, and the validator that guards both. Hosts (boj-server, panll) no longer bundle cartridges; they fetch from here on demand into a flat host-local cache at BOJ_CARTRIDGES_PATH."
+completion-percentage = 70
 
 [position]
-phase = "maintenance"      # design | implementation | testing | maintenance | archived
-maturity = "production"    # experimental | alpha | beta | production | lts
+phase = "implementation"   # design | implementation | testing | maintenance | archived
+maturity = "beta"          # experimental | alpha | beta | production | lts
+notes = "Manifest layer is production-grade (schema gate strict, 142/142 passing). The Zig FFI layer builds. The adapter layer does NOT build and is ungated — see [blockers-and-issues]. 'beta' reflects the weakest layer, not the strongest."
+
+[inventory]
+# Recounted 2026-08-07 on commit c2da9ed (branch docs/machine-readable-repair,
+# which is origin/main). Commands are the exact ones used.
+counted-on-commit = "c2da9ed"
+cartridge-manifests = 142        # find cartridges -name cartridge.json | wc -l
+domains = 31                     # ls cartridges/domains | wc -l
+cross-cutting-categories = 7     # ls cartridges/cross-cutting | wc -l
+templates = 1                    # cartridges/templates/gossamer-mcp
+ffi-dirs = 131                   # find cartridges -type d -name ffi | wc -l
+ffi-build-zig = 118              # find cartridges -path '*/ffi/build.zig' | wc -l
+adapter-dirs = 125               # find cartridges -type d -name adapter | wc -l
+adapter-build-zig = 99           # find cartridges -path '*/adapter/build.zig' | wc -l
+cartridge-shims = 116            # find cartridges -name cartridge_shim.zig | wc -l
+cartridge-shims-canonical = 115  # byte-identical to the gossamer template shim
+cartridge-shims-divergent = 1    # cartridges/domains/gaming/npc-mcp/ffi/cartridge_shim.zig
+
+[schema-gate]
+mode = "strict"
+flipped-to-strict-at = "2026-06-01"
+baseline = "142 total / 142 passing / 0 failing"
+baseline-verified-at = "2026-08-07"
+baseline-command = "cd tools/validate-cartridges && deno task audit"
 
 [route-to-mvp]
 milestones = [
-  { name = "Phase 0: Core scaffolding (justfile, CI/CD, .machine_readable)", completion = 100 },
-  { name = "Phase 1: ABI/FFI standard (Idris2/Zig templates)", completion = 100 },
-  { name = "Phase 1b: AI Gatekeeper Protocol (0-AI-MANIFEST.a2ml)", completion = 100 },
-  { name = "Phase 1c: TOPOLOGY.md standard and guide", completion = 100 },
-  { name = "Phase 1d: Maintenance gate (axes, checklist, approach)", completion = 100 },
-  { name = "Phase 1e: Trustfile / contractiles", completion = 100 },
-  { name = "Phase 2: Container ecosystem templates (stapeln)", completion = 100 },
-  { name = "Phase 3: Multi-forge sync hardening", completion = 0 },
-  { name = "Phase 4: Nix/Guix reproducible shells", completion = 50 },
+  { name = "Phase 0: Registry extraction from boj-server + hybrid taxonomy (ADR-001)", completion = 100 },
+  { name = "Phase 1: Schema mirror pinned to standards + strict CI gate", completion = 100 },
+  { name = "Phase 2: Sole-source cutover — boj-server retires its bundled cartridges/ tree", completion = 100 },
+  { name = "Phase 3: Zig FFI layer builds for every cartridge that has one", completion = 90 },
+  { name = "Phase 4: Zig adapter layer compiles and is CI-gated", completion = 0 },
+  { name = "Phase 5: cartridge_shim.zig drift detection wired into CI", completion = 0 },
+  { name = "Phase 6: Idris2 ABI proofs typechecked for every cartridge that ships one", completion = 50 },
 ]
 
 [blockers-and-issues]
-# No active blockers
+# Recorded honestly; none of these is papered over anywhere in this repo.
+issues = [
+  { id = "adapters-do-not-build", severity = "high", description = "None of the 99 cartridges/*/adapter/build.zig trees compiles. The gossamer template adapter calls ffi.gossamer_init, which does not exist, and the ffi export fn declarations are not pub, so the adapter cannot import them. Every minted adapter inherits the fault." },
+  { id = "adapters-are-ungated", severity = "high", description = "No CI job builds any adapter. .github/workflows/zig-test.yml filters changed paths on '^cartridges/.*/ffi/' only, so the whole adapter layer is invisible to CI. This is why adapters-do-not-build went unnoticed." },
+  { id = "shim-drift-undetected", severity = "medium", description = "116 cartridge_shim.zig copies are vendored by copy from the gossamer template. 115 are byte-identical; cartridges/domains/gaming/npc-mcp/ffi/cartridge_shim.zig has diverged. Nothing in CI compares them." },
+  { id = "shim-invariant-has-exceptions", severity = "low", description = "0-AI-MANIFEST.a2ml's per-cartridge shim invariant does not hold universally. 007-mcp/ffi and librarian-mcp/ffi each have a build.zig with no shim beside it, and orchestrator-lsp-mcp keeps its build graph at ffi/zig/build.zig with no shim at all. The invariant text now records these three exceptions rather than asserting a falsehood." },
+  { id = "ffi-dirs-without-build-graph", severity = "low", description = "13 of the 131 ffi/ dirs have no build.zig (mostly the *-lsp cartridges, whose adapter is Elixir). This is by design, not rot, but the counts should not be read as 131 buildable FFIs." },
+]
+
+[in-flight]
+# Work that exists on a branch but is NOT on main as of last-updated.
+# Recorded so this file is not read as describing capabilities the tree
+# does not have.
+open-prs = [
+  { id = "boj-server-cartridges#109", branch = "feat/zig-016-ffi-sweep", state = "open", description = "Zig 0.16.0 migration of all 118 ffi trees; tools/sync_cartridge_shim.sh (stamp + --check); CI jobs shim-drift and full-sweep; Justfile recipes mint, shim-sync, shim-check. On main the toolchain pin is still zig 0.15.1 (.tool-versions) / 0.15.2 (zig-test.yml), tools/sync_cartridge_shim.sh does not exist, and neither shim-drift nor full-sweep exists." },
+]
 
 [critical-next-actions]
 actions = [
-  "Container templates complete — test with `just container-init`",
-  "Validate container templates across wolfi-base and static Chainguard images",
-  "Harden multi-forge sync for GitLab/Bitbucket mirroring edge cases",
-  "Expand Nix/Guix development shell templates",
+  "Merge #109 or close it — main's zig pin (0.15.1) and the branch's (0.16.0) are diverged and every count in this file will need recounting after the merge.",
+  "Fix the template adapter: make the ffi exports pub and replace the ffi.gossamer_init call with the real five-symbol entry point (boj_cartridge_init).",
+  "Widen zig-test.yml's change filter from '^cartridges/.*/ffi/' to cover '*/adapter/' so adapter breakage cannot recur silently.",
+  "Reconcile the manifest's schema_canonical_commit (7c2b8155...) with schemas/PINNED-SHA's canonical_commit (f5f0506a...) — they disagree.",
+  "Decide whether npc-mcp's divergent cartridge_shim.zig is intentional; if not, resync it.",
 ]
 
 [maintenance-status]
 last-run-utc = "never"
-last-report = "docs/reports/maintenance/latest.json"
+last-report = "none — no maintenance report has ever been generated in this repo"
 last-result = "unknown"  # unknown | pass | warn | fail
 open-warnings = 0
 open-failures = 0
+notes = "The RSR maintenance recipes (maint-audit, maint-hard-pass) referenced by the template Justfile are not present in this repo's Justfile. This section is therefore untracked, not clean."
 
 [ecosystem]
-part-of = ["RSR Framework", "stapeln ecosystem"]
-depends-on = ["stapeln", "selur-compose", "cerro-torre", "svalinn", "vordr", "k9-svc"]
-
-# ---------------------------------------------------------------------------
-# NOTE FOR CONSUMERS: When using this template to create a new repo, reset
-# the fields above to your project's values and replace all {{PLACEHOLDER}}
-# tokens. The milestones above describe the TEMPLATE's evolution, not yours.
-# ---------------------------------------------------------------------------
+part-of = ["BoJ platform", "hyperpolymath estate"]
+depends-on = ["hyperpolymath/standards"]
+consumed-by = ["hyperpolymath/boj-server", "panll"]

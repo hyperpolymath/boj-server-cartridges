@@ -17,7 +17,7 @@
 // this .so from overwriting boj-invoke's SIGSEGV handler at dlopen time.
 
 const std = @import("std");
-const shim = @import("cartridge_shim");
+pub const shim = @import("cartridge_shim");
 
 // Use the C clock_gettime directly — straightforward, no Zig TLS involved.
 const c = @cImport({
@@ -35,15 +35,15 @@ var init_done: bool = false;
 
 // ─── Five-symbol ADR-0006 ABI ────────────────────────────────────────────────
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return "boj-health-mcp";
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return "0.1.0";
 }
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     var ts: c.struct_timespec = undefined;
     _ = c.clock_gettime(c.CLOCK_MONOTONIC, &ts);
     init_time_ms = ts.tv_sec * 1000 + @divTrunc(ts.tv_nsec, 1_000_000);
@@ -51,11 +51,11 @@ export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {
+pub export fn boj_cartridge_deinit() callconv(.c) void {
     init_done = false;
 }
 
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

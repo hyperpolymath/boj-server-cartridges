@@ -72,7 +72,7 @@ fn initPool() void {
 
 /// Allocate a session slot and store the API token.
 /// Returns slot index (0-based) or -1 on failure.
-export fn cf_session_create(token_ptr: [*c]const u8, token_len: usize) c_int {
+pub export fn cf_session_create(token_ptr: [*c]const u8, token_len: usize) c_int {
     pool_mutex.lock();
     defer pool_mutex.unlock();
     initPool();
@@ -92,7 +92,7 @@ export fn cf_session_create(token_ptr: [*c]const u8, token_len: usize) c_int {
 }
 
 /// Return the current state of a session slot.
-export fn cf_session_state(slot_index: c_int) c_int {
+pub export fn cf_session_state(slot_index: c_int) c_int {
     pool_mutex.lock();
     defer pool_mutex.unlock();
 
@@ -102,7 +102,7 @@ export fn cf_session_state(slot_index: c_int) c_int {
 }
 
 /// Transition a session to a new state (validates transition before applying).
-export fn cf_session_transition(slot_index: c_int, new_state: c_int) c_int {
+pub export fn cf_session_transition(slot_index: c_int, new_state: c_int) c_int {
     pool_mutex.lock();
     defer pool_mutex.unlock();
 
@@ -118,7 +118,7 @@ export fn cf_session_transition(slot_index: c_int, new_state: c_int) c_int {
 }
 
 /// Release a session slot.
-export fn cf_session_destroy(slot_index: c_int) void {
+pub export fn cf_session_destroy(slot_index: c_int) void {
     pool_mutex.lock();
     defer pool_mutex.unlock();
 
@@ -128,12 +128,12 @@ export fn cf_session_destroy(slot_index: c_int) void {
 
 /// Check whether a DNS record type supports Cloudflare proxying.
 /// Returns 1 if proxyable (A=1, AAAA=2, CNAME=3), 0 otherwise.
-export fn cf_record_type_is_proxyable(record_type_int: c_int) c_int {
+pub export fn cf_record_type_is_proxyable(record_type_int: c_int) c_int {
     return if (record_type_int >= 1 and record_type_int <= 3) 1 else 0;
 }
 
 /// Check whether a proxied record provides IPv6 (always true when proxied).
-export fn cf_proxied_provides_ipv6(proxied: c_int) c_int {
+pub export fn cf_proxied_provides_ipv6(proxied: c_int) c_int {
     return if (proxied != 0) 1 else 0;
 }
 
@@ -141,27 +141,27 @@ export fn cf_proxied_provides_ipv6(proxied: c_int) c_int {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "cloudflare-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

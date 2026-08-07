@@ -6,25 +6,25 @@
 const std = @import("std");
 
 /// Get a config value by key. Returns 0 if found, -1 if missing.
-export fn conflow_get_config(key: [*c]const u8) i32 {
+pub export fn conflow_get_config(key: [*c]const u8) i32 {
     if (key == null) return -1;
     return 0; // Stub
 }
 
 /// Apply a config blob. Returns number of entries applied, or -1 on error.
-export fn conflow_apply_config(blob: [*c]const u8) i32 {
+pub export fn conflow_apply_config(blob: [*c]const u8) i32 {
     if (blob == null) return -1;
     return 0; // Stub
 }
 
 /// Validate a config blob. Returns 0 if valid, error count otherwise.
-export fn conflow_validate_config(blob: [*c]const u8) i32 {
+pub export fn conflow_validate_config(blob: [*c]const u8) i32 {
     if (blob == null) return -1;
     return 0; // Stub — valid
 }
 
 /// Diff two config blobs. Returns number of differences.
-export fn conflow_diff_config(a: [*c]const u8, b: [*c]const u8) u32 {
+pub export fn conflow_diff_config(a: [*c]const u8, b: [*c]const u8) u32 {
     if (a == null or b == null) return 0;
     return 0; // Stub
 }
@@ -33,27 +33,27 @@ export fn conflow_diff_config(a: [*c]const u8, b: [*c]const u8) u32 {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "conflow-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

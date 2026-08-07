@@ -6,24 +6,24 @@
 const std = @import("std");
 
 /// List repository count.
-export fn reposystem_list_repos_count() u32 {
+pub export fn reposystem_list_repos_count() u32 {
     return 0; // Stub
 }
 
 /// Check health of a repo. Returns 0=green, 1=yellow, 2=red, 3=unknown.
-export fn reposystem_check_health(repo_name: [*c]const u8) u8 {
+pub export fn reposystem_check_health(repo_name: [*c]const u8) u8 {
     if (repo_name == null) return 3;
     return 0; // Stub — green
 }
 
 /// Sync mirrors for a repo. Returns 0 on success, -1 on error.
-export fn reposystem_sync_mirrors(repo_name: [*c]const u8) i32 {
+pub export fn reposystem_sync_mirrors(repo_name: [*c]const u8) i32 {
     if (repo_name == null) return -1;
     return 0; // Stub
 }
 
 /// Run audit. Returns number of checks passed.
-export fn reposystem_run_audit(repo_name: [*c]const u8) u32 {
+pub export fn reposystem_run_audit(repo_name: [*c]const u8) u32 {
     if (repo_name == null) return 0;
     return 17; // Stub — all RSR checks pass
 }
@@ -32,27 +32,27 @@ export fn reposystem_run_audit(repo_name: [*c]const u8) u32 {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "reposystem-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

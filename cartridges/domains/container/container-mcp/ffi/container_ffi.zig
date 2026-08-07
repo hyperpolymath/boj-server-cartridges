@@ -204,7 +204,7 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 // ADR-0006 dispatch (boj_cartridge_invoke, 5th standard symbol)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 /// Run `podman ps --format json` and return the parsed container list.
 /// Uses fork+exec to avoid the std child-process machinery's /proc/environ
@@ -270,7 +270,7 @@ fn containerList(out_buf: [*c]u8, in_out_len: [*c]usize) i32 {
 }
 
 /// Dispatch the cartridge.json MCP tools.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

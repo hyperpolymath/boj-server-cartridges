@@ -7,7 +7,7 @@
 // pure keyword-based port of mod.js — no regex, no heap, no network.
 
 const std = @import("std");
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 pub const ModelTier = enum(i32) {
     haiku = 0,
@@ -38,17 +38,17 @@ pub export fn router_fallback(tier: i32) i32 {
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "model-router-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
@@ -519,7 +519,7 @@ fn handleEstimateCost(
 // ADR-0006 dispatch
 // ═══════════════════════════════════════════════════════════════════════
 
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

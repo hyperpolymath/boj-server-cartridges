@@ -12,7 +12,7 @@
 
 const std = @import("std");
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "bug-filing-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.2.0";

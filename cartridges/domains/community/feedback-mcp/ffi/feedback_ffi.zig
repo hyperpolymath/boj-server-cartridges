@@ -257,7 +257,7 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 // ADR-0006 dispatch (boj_cartridge_invoke, 5th standard symbol)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 /// Parse a [*c]const u8 JSON-args pointer into a std.json.Value.
 /// Returns a parsed value on success; caller must deinit.
@@ -274,7 +274,7 @@ fn parseArgs(
 }
 
 /// Dispatch the cartridge MCP tools against the real feedback state machine.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

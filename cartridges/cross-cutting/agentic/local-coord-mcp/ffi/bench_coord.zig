@@ -310,4 +310,4 @@ pub fn main() !void {
     std.debug.print("\n", .{});
 }
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");

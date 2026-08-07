@@ -6,25 +6,25 @@
 const std = @import("std");
 
 /// Store an octad. Returns 0 on success, -1 on error.
-export fn verisimdb_store_octad(key: [*c]const u8, data: [*c]const u8) i32 {
+pub export fn verisimdb_store_octad(key: [*c]const u8, data: [*c]const u8) i32 {
     if (key == null or data == null) return -1;
     return 0; // Stub
 }
 
 /// Get an octad by key. Returns 0 on found, -1 on not found.
-export fn verisimdb_get_octad(key: [*c]const u8) i32 {
+pub export fn verisimdb_get_octad(key: [*c]const u8) i32 {
     if (key == null) return -1;
     return 0; // Stub
 }
 
 /// Detect drift. Returns number of drifted fields (0 = no drift).
-export fn verisimdb_detect_drift(key: [*c]const u8) u32 {
+pub export fn verisimdb_detect_drift(key: [*c]const u8) u32 {
     if (key == null) return 0;
     return 0; // Stub
 }
 
 /// Query audit log. Returns number of matching entries.
-export fn verisimdb_query_audit(from_ts: u64, to_ts: u64) u32 {
+pub export fn verisimdb_query_audit(from_ts: u64, to_ts: u64) u32 {
     if (to_ts < from_ts) return 0;
     return 0; // Stub
 }
@@ -33,27 +33,27 @@ export fn verisimdb_query_audit(from_ts: u64, to_ts: u64) u32 {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "verisimdb-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

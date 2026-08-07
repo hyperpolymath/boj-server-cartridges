@@ -64,7 +64,7 @@ pub fn extractPdf(allocator: std.mem.Allocator, path: []const u8) ![][]u8 {
     return pagesFromText(allocator, res.stdout);
 }
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 test "pagesFromText splits on form feed and drops a trailing empty page" {
     const pages = try pagesFromText(std.testing.allocator, "alpha\x0cbeta\x0c");

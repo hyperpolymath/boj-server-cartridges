@@ -2470,7 +2470,7 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 // ADR-0006 dispatch (boj_cartridge_invoke, 5th standard symbol)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 // ── JSON dispatch helpers ─────────────────────────────────────────────
 //
@@ -3275,7 +3275,7 @@ fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.me
 /// Dispatch the cartridge.json MCP tools — Grade B: all 20+ tools wired to
 /// real FFI calls (Task #2). Parses JSON args with page_allocator; error
 /// bodies are written to out_buf even when rc < 0.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

@@ -1,0 +1,154 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= Known issue — the `adapter/` tree does not build
+:toc: macro
+
+[WARNING]
+====
+*Do not assume any `adapter/` directory in this repository compiles.* The
+canonical template's adapter does not, no CI job builds any of them, and
+minting a new cartridge copies the defect forward.
+
+The `ffi/` layer is a different matter — it is built and tested in CI and is in
+good health. This warning is about `adapter/` only.
+====
+
+toc::[]
+
+== Status
+
+Open. Recorded 2026-08-07. Nothing here is scheduled; this note exists so that
+the tree is not mistaken for working code.
+
+== Evidence
+
+All figures below were counted on this branch's tree, not carried over from
+earlier documents.
+
+=== 1. No CI job builds any adapter
+
+`.github/workflows/zig-test.yml` is the only Zig build gate. It selects work
+with:
+
+[source,sh]
+----
+git diff --name-only "$DIFF_BASE...HEAD" -- 'cartridges/**/ffi/**' | sed 's|/ffi/.*||'
+----
+
+and then builds `"$cart/ffi"`. The glob is `ffi/` only. There is no
+corresponding `adapter/` path, so *none* of the 99 `adapter/build.zig` files has
+ever been compiled by CI. A green board says nothing about them.
+
+=== 2. The canonical template adapter fails to build
+
+`cartridges/templates/gossamer-mcp/adapter/` with the installed toolchain
+(`zig 0.16.0`):
+
+[source]
+----
+$ zig build test --summary all
+build.zig:17:10: error: no field named 'root_source_file' in struct 'Build.ExecutableOptions'
+        .root_source_file = b.path("gossamer_adapter.zig"),
+         ^~~~~~~~~~~~~~~~
+----
+
+It fails in the *build script itself*, before any cartridge code is reached.
+
+=== 3. The template adapter calls a function that does not exist
+
+`adapter/gossamer_adapter.zig:116`:
+
+[source,zig]
+----
+pub fn main() !void {
+    ffi.gossamer_init();
+----
+
+`grep -rn 'fn gossamer_init' cartridges/` returns *nothing*. There is no such
+symbol anywhere in the repository. The sibling FFI exports
+`gossamer_create_window`, `gossamer_load_panel`, `gossamer_eval_js`,
+`gossamer_get_version` and the five ADR-0006 symbols — but no `gossamer_init`.
+
+This is not confined to the template. Of the *95* adapter sources that call
+`ffi.<something>_init()`, *86* name a symbol that is not defined in their own
+sibling `ffi/` directory.
+
+=== 4. The exported functions are not visible through the module import
+
+`adapter/build.zig` imports the FFI as a Zig module:
+
+[source,zig]
+----
+const ffi_mod = b.createModule(.{ .root_source_file = b.path("../ffi/gossamer_ffi.zig") });
+adapter.root_module.addImport("gossamer_ffi", ffi_mod);
+----
+
+The template's `ffi/gossamer_ffi.zig` declares its functions as `export fn`, not
+`pub export fn` — zero `pub export fn` in that file. `export` controls C-ABI
+symbol emission; it does not make a declaration visible to another Zig file.
+Only `pub` does. So even once defects 2 and 3 are fixed, `ffi.<name>` cannot
+resolve through this import.
+
+*19* of the 99 adapter trees sit next to an `ffi/` with no `pub export fn` at
+all. The remaining 80 have some `pub export fn`, so this particular defect is
+not uniform across the tree — but it does apply to the template, and therefore
+to everything minted from it.
+
+=== 5. Minting propagates all of it
+
+`just mint` copies `cartridges/templates/gossamer-mcp/`. Verified by minting a
+throwaway cartridge:
+
+[source,sh]
+----
+$ just mint /tmp/minter-smoke.toml --dest /tmp/smoke-cart
+✓ Minted smoketest-mcp → /tmp/smoke-cart
+$ grep -n 'gossamer_init' /tmp/smoke-cart/adapter/*.zig
+/tmp/smoke-cart/adapter/gossamer_adapter.zig:116:    ffi.gossamer_init();
+----
+
+The minted adapter carries the undefined call verbatim, and the files are not
+even renamed off the `gossamer_` prefix.
+
+== This predates Zig 0.16
+
+Defects 3, 4 and 5 are version-independent — an undefined symbol and a
+visibility error are wrong under any Zig. Defect 2 is a 0.15 → 0.16 build-API
+break on top of them. Migrating the adapters to 0.16 would therefore *not* make
+them build; it would only move the first error later.
+
+== A contradiction to be aware of
+
+`.claude/CLAUDE.md` §"ABI / FFI / Adapter Baseline" states that "a cartridge is
+not complete without all three directories: `abi/`, `ffi/`, `adapter/`" and that
+authors should "not omit `adapter/` when minting or completing a cartridge — it
+is not optional scaffolding."
+
+Taken together with the evidence above, that instruction points contributors at
+99 build files that do not compile and are not gated. Both statements cannot
+usefully stand as written. This note does not attempt to resolve the design
+question — the unified-adapter shape may well be the right target — it only
+records that the tree does not currently implement it.
+
+== What is safe to rely on
+
+[cols="1,3",options="header"]
+|===
+| Layer | Status
+
+| `abi/` | Idris2 contracts. Gated by the Proofs Gate (368143a).
+| `ffi/` | Zig C-ABI implementation. Built and tested by `zig-test.yml`. *Healthy.*
+| `adapter/` | *Does not build. Not gated. See above.*
+| `panels/` | Manifest only in the template.
+|===
+
+== If you are fixing this
+
+The minimum to make one adapter build:
+
+. Update `adapter/build.zig` to the current Zig build API.
+. Add the missing `<name>_init` function to the sibling `ffi/`, or drop the call.
+. Mark the FFI functions the adapter imports as `pub export fn`.
+. Fix it in `cartridges/templates/gossamer-mcp/` first, or every future mint
+  re-introduces it.
+. Extend `zig-test.yml` to glob `adapter/` as well, so the fix cannot rot.

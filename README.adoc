@@ -19,12 +19,26 @@ toc::[]
 
 == Status
 
-🟢 *v0.1 — schema-validation strict gate live 2026-06-01.* Initial migration of
-cartridges from `boj-server/cartridges/` (snapshot 2026-05-26) is complete;
-Boj-server's catalog refactor to fetch from here has merged. Schema validator +
-CI gate run in *strict mode*: 139 manifests, *139 passing, 0 failing* (see
-link:audits/cartridge-schema-2026-06-01.md[`audits/cartridge-schema-2026-06-01.md`]).
-Drift-remediation campaigns #18 / #19 / #20 are CLOSED.
+*This repository is the sole source of BoJ cartridges.* `boj-server` retired its
+own bundled `cartridges/` tree in
+https://github.com/hyperpolymath/boj-server/pull/300[boj-server#300] (merged
+2026-08-04). There is no longer a second copy anywhere: what lands here is what
+every host fetches.
+
+🟢 *Manifests.* The schema validator runs in *strict mode* in CI and is green:
+*142 manifests, 142 passing, 0 failing* (`just validate`). Drift-remediation
+campaigns #18 / #19 / #20 are closed.
+
+🟡 *Toolchain.* `.tool-versions` pins *`zig 0.15.1`*, `deno 2.7.14`,
+`idris2 0.8.0`. A migration of all 118 FFI trees to Zig 0.16.0 is in flight in
+https://github.com/hyperpolymath/boj-server-cartridges/pull/109[#109] and is
+*not merged*; until it is, 0.15.1 is the pin that CI builds against.
+
+🔴 *Adapters.* The `adapter/` layer does not build, and no CI job compiles it —
+`zig-test.yml` globs `ffi/` only. The canonical template's adapter calls a
+function that exists nowhere in the tree, and `just mint` copies it forward.
+Full evidence in link:docs/known-issues/adapters.adoc[`docs/known-issues/adapters.adoc`].
+The `ffi/` layer is unaffected and is built and tested in CI.
 
 == What is a cartridge?
 
@@ -49,14 +63,15 @@ cartridges/
 ├── domains/                  ← cartridges grouped by functional domain
 │   ├── cloud/                ← 10 cartridges (umbrella + 9 providers)
 │   ├── database/             ← 12 cartridges (umbrella + 11 providers)
-│   ├── ci-cd/, languages/, security/, research/, …  (30 domains total)
+│   ├── ci-cd/, languages/, security/, research/, …  (31 domains total)
 ├── cross-cutting/            ← cartridges not bound to a single domain
 │   ├── agentic/              ← agent-mcp, claude-ai-mcp, model-router-mcp, …
-│   ├── nesy/                 ← nesy-mcp, ml-mcp
 │   ├── build/                ← bsp-mcp (generic BSP server)
 │   ├── debug/                ← dap-mcp (generic DAP server)
-│   ├── fleet/                ← fleet-mcp (orchestration)
-│   └── health/               ← boj-health
+│   ├── fleet/                ← fleet-mcp
+│   ├── health/               ← boj-health-mcp
+│   ├── nesy/                 ← nesy-mcp, ml-mcp
+│   └── orchestration/        ← stack-orchestrator-mcp
 └── templates/                ← canonical scaffolds for new cartridges
     └── gossamer-mcp/         ← reference template
 ....
@@ -115,7 +130,9 @@ browsability. The drift-remediation campaigns (#18 missing `category`, #19
 `auth.method` enum mismatches, #20 canonical-only / missing top-level fields /
 name-pattern renames) all closed alongside this gate flip;
 link:audits/cartridge-schema-2026-06-01.md[`audits/cartridge-schema-2026-06-01.md`]
-records the 139/139 passing baseline.
+records the 139/139 baseline *as it stood on 2026-06-01*. The tree has grown
+since: the current baseline is *142/142*. Run `just validate` for the live
+figure rather than quoting either number.
 
 Canonical schema home:
 https://github.com/hyperpolymath/standards/tree/main/cartridges[hyperpolymath/standards].
@@ -129,9 +146,38 @@ registry (the canonical default) or any other GitHub URL.
 
 == Inventory
 
-* *139 cartridges* total; 14 are canonical-only (not yet wired into a host runtime).
-* *30 functional domains* + *6 cross-cutting categories* + *1 template*.
+* *142 `cartridge.json` manifests*: 141 cartridges + 1 template scaffold
+  (`templates/gossamer-mcp`, which is not shippable and is excluded from the
+  public catalogue).
+* *31 functional domains* + *7 cross-cutting categories* (`agentic`, `build`,
+  `debug`, `fleet`, `health`, `nesy`, `orchestration`) + *1 template*.
 * Every `cartridge.json` validates strictly against `schemas/cartridge-v1.json`.
+* *12 manifests declare `"available": true`* — the Foundry Wave-1 "Golden
+  Dozen". The other 130 omit the key entirely rather than setting it to `false`,
+  so the tree records no availability claim for them either way. A count of
+  "canonical-only" cartridges cannot be derived from the manifests; earlier
+  editions of this README asserted 14, which was not verifiable then and is not
+  now.
+
+These figures come from the tree, not from a stored constant. Recount with
+`just validate` (manifest total) and `just catalog` (catalogue total).
+
+== Toolchain
+
+`.tool-versions` is authoritative:
+
+[cols="1,1,2",options="header"]
+|===
+| Tool | Pin | Used by
+
+| `zig` | *0.15.1* | `ffi/` (and, nominally, `adapter/`)
+| `deno` | 2.7.14 | `tools/validate-cartridges`, `tools/build-catalog`, `tools/cartridge-minter`
+| `idris2` | 0.8.0 | `abi/` contracts
+|===
+
+The Zig 0.16.0 migration is open in
+https://github.com/hyperpolymath/boj-server-cartridges/pull/109[#109] and has not
+merged. Build against 0.15.1 until it does.
 
 == FFI / Zig shim layout
 
@@ -139,20 +185,51 @@ Cartridges with a Zig FFI carry their own `cartridge_shim.zig` beside
 `ffi/build.zig`. Build configs resolve the shim with
 `b.path("cartridge_shim.zig")` (and `b.path("../ffi/cartridge_shim.zig")` for
 adapter siblings) — the per-cartridge layout is the de facto pattern (#29 / #31).
+
 The canonical shim source is
-link:cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig[`cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig`];
-112 of 114 in-tree shims are byte-identical to it. New FFI cartridges should copy
-that file verbatim unless they need bespoke helpers.
+link:cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig[`cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig`].
+
+*116 shims are in the tree; 115 are byte-identical to canon.* The one exception,
+`cartridges/domains/gaming/npc-mcp/ffi/cartridge_shim.zig`, is a stale copy that
+differs *only in comments* — rewrapped prose and an older heading style. Its API
+surface is identical: the same seven `RC_*` constants and the same three helpers
+(`invokeArgsNull`, `toolIs`, `writeResult`). Nothing behavioural turns on it.
+
+(The figure previously printed here, "112 of 114", did not match the tree.)
+
+*Shim drift is not currently enforced.* Nothing in CI compares a shim against
+canon, so a divergent copy would land silently — which is how the npc-mcp one
+persisted. A sync script and a `shim-drift` gate are part of
+https://github.com/hyperpolymath/boj-server-cartridges/pull/109[#109]; until that
+merges, copy the canonical file verbatim when adding an FFI cartridge and check
+it by hand:
+
+[source,sh]
+----
+find cartridges -name cartridge_shim.zig -exec md5sum {} + \
+  | awk '{print $1}' | sort -u | wc -l   # 1 == no drift
+----
+
+The five-symbol ABI the shim implements is documented in
+link:docs/decisions/ADR-0006-cartridge-invoke-abi.adoc[`ADR-0006`].
 
 == Contributing
 
-. Use the *gossamer-mcp* template as your starting point:
-  `cp -r cartridges/templates/gossamer-mcp cartridges/domains/<your-domain>/<your-cartridge-name>`.
+Full guide: link:docs/cartridge-authoring.adoc[`docs/cartridge-authoring.adoc`].
+In short:
+
+. Mint from the canonical template — write a `minter.toml`, then
+  `just mint path/to/minter.toml`. (Don't `cp -r` the template by hand; the
+  minter also does the name substitutions.)
 . Update the manifest to reflect your cartridge's name (role-suffixed), domain,
   protocols, tools.
-. New cartridges must validate cleanly against `schemas/cartridge-v1.json`:
-  `cd tools/validate-cartridges && deno task strict`.
+. `just validate` — new cartridges must validate cleanly against
+  `schemas/cartridge-v1.json`. This is the CI gate.
+. `just catalog` — regenerate the public catalogue so the site matches the tree.
 . Open a PR; auto-merge is enabled by default for this repo.
+
+Read link:docs/known-issues/adapters.adoc[`docs/known-issues/adapters.adoc`]
+before you spend time on the `adapter/` directory your mint produces.
 
 == License
 

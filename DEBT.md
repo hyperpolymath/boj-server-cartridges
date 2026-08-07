@@ -53,6 +53,7 @@ grep -rn 'gossamer_init' cartridges/templates/gossamer-mcp/
 | L-1 | HIGH | **480 files carry `CC-BY-SA-4.0` headers while root `LICENSE` is MPL-2.0, and there is no `NOTICE` and no `.reuse/dep5` to declare the split.** A scanner reading only `LICENSE` mis-attributes every one of them. The sibling repo does this correctly — copy its `NOTICE` + `.reuse/dep5` pattern. | `ls .reuse NOTICE` → absent · `grep -rl 'CC-BY-SA-4.0' --include='*.adoc' --include='*.md' . \| wc -l` → 480 |
 | L-2 | MEDIUM | 12 `_source-archive/` trees carry vendored source with **no SPDX header and no provenance record** — no statement of origin or upstream licence. | `find cartridges -type d -name _source-archive \| wc -l` |
 | L-3 | LOW | Five `minter.toml` files lack SPDX headers while every other `.toml` has one. | `git ls-files '*minter.toml' \| xargs grep -L SPDX` |
+| L-5 | MEDIUM | `cartridges/domains/gaming/idaptik-admin-mcp/panels/manifest.json` declares **`AGPL-3.0-or-later`** in an otherwise MPL-2.0 / CC-BY-SA-4.0 repo. **Flagged, deliberately not changed** — the estate has a history of licence-clobber sweeps flattening genuine AGPL work, so this needs an owner ruling, not a script. | `grep -rn AGPL cartridges --include='manifest.json'` |
 | L-4 | LOW | `.github/funding.yml` and `.github/FUNDING.yml` both exist and differ. GitHub reads only the uppercase one; the lowercase one is dead weight and also lacks SPDX. | `ls .github/[fF][uU][nN][dD][iI][nN][gG].yml` |
 
 ---
@@ -80,6 +81,7 @@ enforces it.
 |----|-----|------|----------|
 | P-1 | HIGH | **`proofs.yml` has no `schedule:` trigger.** The sibling repo added a weekly cron precisely because a proof break that already lives in `main` is otherwise never re-detected — that is how a duplicate lemma sat in main behind a green gate. This repo has 115 proofs, 23 of which had already silently rotted once, and no such backstop. | `grep -n 'schedule' .github/workflows/proofs.yml` → absent |
 | P-2 | MEDIUM | `scripts/check-trusted-base.sh` states "boj-server sanctions EXACTLY 5 class-(J) axioms". It is 4 — `charEqSym` was discharged 2026-06-24 and the enforcing constant there is `EXPECTED_AXIOMS=4`. Cross-repo stale claim. | `grep -n 'EXACTLY' scripts/check-trusted-base.sh` |
+| P-4 | MEDIUM | **18 of 126 `abi/` directories contain no `.idr` file at all** — the layer is present as scaffolding but carries no proof, while the three-layer contract implies one. | `for d in $(find cartridges -type d -name abi); do [ -z "$(find $d -name '*.idr')" ] && echo $d; done \| wc -l` |
 | P-3 | LOW | **ADR-0006 is cited by all 118 shims and every `ffi/build.zig`, but no ADR-0006 exists in this repo** — only `ADR-001-taxonomy` and `ADR-002`. Now that this repo is canonical for cartridges, the five-symbol contract must be resolvable from here. Note also the numbering clash (`ADR-00N` local vs `ADR-000N` cited). | `ls docs/decisions/` |
 
 **Positive control:** this repo's `scripts/typecheck-proofs.sh` already carries a
@@ -105,7 +107,8 @@ the protection.
 | C-1 | HIGH | `.github/workflows/main-estate-audit.yml` is **untracked**, has **no `permissions:` block**, and pins **27 actions to `@main`/`@v4`** rather than SHAs. It has therefore never run. Identical file, identical defects, in the sibling repo. | `git status --porcelain .github/workflows/` |
 | C-2 | MEDIUM | `pages.yml` (GitHub Pages via Ddraig SSG) and `pages-deploy.yml` (Cloudflare Pages) both fire on push to main, to different hosts, with no coordination. `pages.yml` copies `README.md` into its source dir — **that file does not exist** (converted to `.adoc`), so it publishes a one-line stub. | `grep -n 'README.md' .github/workflows/pages.yml` |
 | C-3 | MEDIUM | GitHub Pages 404s for this repo, and issue #97 records that the Cloudflare Pages deploy has never succeeded (missing secrets + DNS). Two deploy paths, neither demonstrably working. | `curl -s -o /dev/null -w '%{http_code}' https://hyperpolymath.github.io/boj-server-cartridges/` |
-| C-4 | LOW | `flake.nix` ships `just` alone in its dev shell while claiming to "mirror the build tooling actually present in this repo" — no `zig`, `deno` or `idris2`, so `nix develop` cannot build or test anything. | `grep -n 'packages = with pkgs' flake.nix` |
+| C-5 | HIGH | **`hypatia-scan.yml` cannot fail.** The scan runs `--exit-zero` *and* is suffixed `\|\| true` — double suppression. It is credited as a security gate and reports success unconditionally, whatever it finds. | `grep -n 'exit-zero' .github/workflows/hypatia-scan.yml` |
+| C-6 | LOW | `flake.nix` ships `just` alone in its dev shell while claiming to "mirror the build tooling actually present in this repo" — no `zig`, `deno` or `idris2`, so `nix develop` cannot build or test anything. | `grep -n 'packages = with pkgs' flake.nix` |
 
 ---
 

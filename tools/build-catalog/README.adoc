@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= build-catalog
+
+Generates link:../../site/catalog.json[`site/catalog.json`] — the data file
+behind the public registry at https://cartridges.boj-server.net/ — directly
+from the in-tree `cartridge.json` manifests.
+
+== Why this exists
+
+`site/catalog.json` used to be hand-maintained. It drifted: 139 entries against
+142 manifests, a `"generated"` stamp of `2026-06-24`, three cartridges missing
+outright, and an `available` flag that read `true` for all 139 entries when only
+twelve manifests actually declare it. The counts in `site/index.html` were
+hard-coded in six places and had to be edited by hand alongside it.
+
+Nothing regenerated any of that, so every fix was a manual patch that went stale
+again on the next cartridge. This tool removes the manual step.
+
+== Usage
+
+[cols="1,2",options="header"]
+|===
+| Command | Behaviour
+
+| `just catalog` | Rewrite `site/catalog.json` and the counts in `site/index.html`.
+| `just catalog-check` | Exit non-zero if either file has drifted. Suitable as a CI gate.
+|===
+
+Equivalently, from this directory: `deno task build` / `deno task check`.
+
+== What it emits
+
+One entry per manifest, sorted by `name`, with fields projected from the
+manifest: `name`, `version`, `description`, `tier`, `domain`, `category`,
+`protocols`, `auth` (from `auth.method`), `toolCount` (length of `tools`),
+`available` (`true` only where the manifest says so), plus `group`, `bucket` and
+`path` derived from the cartridge's location in the tree.
+
+`generated` is only advanced when the catalogue body actually changes, so a
+no-op run does not churn the file.
+
+== The template is excluded
+
+`cartridges/templates/gossamer-mcp/` is a scaffold to copy, not something a user
+can install. Listing it on the public site would advertise it as an installable
+cartridge. It is therefore skipped, which is why the site count (141) is one
+lower than the manifest count (142).
+
+== Counts
+
+The manifest count is whatever is in the tree; do not hard-code it here or in
+the site. `just validate` reports the authoritative total.

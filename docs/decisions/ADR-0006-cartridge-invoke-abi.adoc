@@ -1,0 +1,104 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= ADR-0006 — Standard `boj_cartridge_invoke` Dispatch ABI (pointer)
+:toc: macro
+
+[IMPORTANT]
+====
+*This is a pointer, not the decision record.* The normative text lives in the
+`boj-server` repository:
+
+https://github.com/hyperpolymath/boj-server/blob/main/docs/decisions/0006-cartridge-invoke-abi.md[`boj-server/docs/decisions/0006-cartridge-invoke-abi.md`]
+
+If this quick reference and that file ever disagree, *that file wins.*
+====
+
+== Why this file exists
+
+458 files in this repository cite "ADR-0006" as the authority for the
+five-symbol cartridge ABI — every `cartridge_shim.zig`, every `ffi/build.zig`.
+Until now no ADR-0006 existed here, so the contract those files are written
+against was not resolvable from the repository that defines them.
+
+That was survivable while `boj-server` still carried its own bundled
+`cartridges/` tree. It stopped being survivable when `boj-server` retired that
+tree (boj-server#300, merged 2026-08-04) and this repository became the sole
+source of cartridges. A cartridge author working here must be able to find the
+ABI contract from here.
+
+== A numbering clash you will trip over
+
+Two different ADR series are in play, and they are *not* the same sequence:
+
+[cols="1,1,2",options="header"]
+|===
+| Series | Form | Where
+
+| This repository | `ADR-00N-<slug>.adoc` | `docs/decisions/` — currently `ADR-001-taxonomy`, `ADR-002-stack-orchestrator-vs-fleet-mcp`
+| `boj-server` | `000N-<slug>.md` | `boj-server/docs/decisions/` — `0001`…`0016`
+|===
+
+So local `ADR-002` (stack-orchestrator vs fleet-mcp) has *nothing* to do with
+boj-server's `0002` (align unified Zig API stack). The in-tree citations of
+"ADR-0006" — four digits — all mean the *boj-server* series. This file is
+deliberately named `ADR-0006-…` so that grepping the cited string finds it.
+
+Renaming either series to remove the clash is out of scope here; it would
+invalidate 458 in-tree citations and a pile of cross-repo links.
+
+== Quick reference (non-normative)
+
+Status of the upstream ADR as retrieved on 2026-08-07: *Proposed*, dated
+2026-04-18. The five required symbols:
+
+[source,c]
+----
+int32_t     boj_cartridge_init(void);
+void        boj_cartridge_deinit(void);
+const char *boj_cartridge_name(void);
+const char *boj_cartridge_version(void);
+
+int32_t boj_cartridge_invoke(
+    const char *tool_name,    // NUL-terminated, caller-owned
+    const char *json_args,    // NUL-terminated JSON object, caller-owned
+    char       *out_buf,      // caller-owned output buffer
+    uintptr_t  *in_out_len    // in: capacity; out: bytes written (excl. NUL)
+);
+----
+
+Return codes — *frozen* by the ADR. New failure modes compose these through the
+error-JSON body; the integer surface does not grow without a follow-up ADR:
+
+[cols="1,3",options="header"]
+|===
+| Code | Meaning
+
+| `0` | Success. `out_buf[0..*in_out_len]` holds a JSON object with at least a `result` key.
+| `-1` | Unknown tool name for this cartridge.
+| `-2` | Invalid JSON arguments (parse failure or wrong shape).
+| `-3` | Output buffer too small; `*in_out_len` is set to the required size.
+| `-4` | Runtime error inside the tool; `out_buf` holds `{"error":…,"message":…,"details":…}`.
+| `-5` | Invariant violation / panic (the cartridge should be unloaded).
+| `-6` | Authorisation denied by cartridge-internal policy.
+|===
+
+Memory ownership: the caller allocates `out_buf` (64 KiB default in the
+`boj-invoke` CLI, override with `BOJ_INVOKE_BUFLEN`), the cartridge writes at
+most `*in_out_len` bytes and updates the pointer to the actual length, and the
+buffer remains the caller's to free. *No heap ownership crosses the FFI
+boundary.*
+
+On a `0` return a cartridge SHOULD NOT emit a top-level `error` key — that is
+reserved for the error-code path.
+
+== How this repository implements it
+
+The boilerplate lives in the shared shim, which every FFI cartridge carries a
+copy of:
+
+link:../../cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig[`cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig`]
+
+See link:../cartridge-authoring.adoc[`docs/cartridge-authoring.adoc`] for how the
+ABI, FFI and adapter layers fit together, and
+link:../known-issues/adapters.adoc[`docs/known-issues/adapters.adoc`] before you
+trust anything under `adapter/`.

@@ -24,7 +24,7 @@ When the canonical schema in `hyperpolymath/standards` advances:
 1. Open a PR here that updates `cartridge-v1.json` to the new content.
 2. Update `PINNED-SHA` with the new commit SHA in standards and the new SHA-256 of the file.
 3. The PR's description references the standards PR/commit that introduced the change.
-4. Auto-merge once CI validates that all 125 cartridge manifests still parse against the new schema.
+4. Auto-merge once CI validates that **every** cartridge manifest still parses against the new schema — `just validate`, which must report 0 failing. (The count is currently 142; it was 125 when this page was written. Read it from the validator rather than quoting a number here, so this line cannot go stale again.)
 
 ## What if they disagree?
 

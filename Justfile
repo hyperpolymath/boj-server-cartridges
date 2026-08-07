@@ -296,6 +296,26 @@ deps-audit:
     @echo "Audit complete"
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# CARTRIDGE REGISTRY
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Mint a new cartridge from a minter.toml (see docs/cartridge-authoring.adoc)
+mint config *ARGS:
+    deno run --allow-read --allow-write tools/cartridge-minter/mint.ts {{config}} {{ARGS}}
+
+# Regenerate site/catalog.json (and the counts in site/index.html) from the manifests
+catalog:
+    cd tools/build-catalog && deno task build
+
+# Fail if site/catalog.json or site/index.html has drifted from the manifests
+catalog-check:
+    cd tools/build-catalog && deno task check
+
+# Validate every cartridge.json against the pinned schema (CI gate)
+validate:
+    cd tools/validate-cartridges && deno task strict
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # DOCUMENTATION
 # ═══════════════════════════════════════════════════════════════════════════════
 

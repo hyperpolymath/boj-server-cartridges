@@ -1,15 +1,45 @@
 # SPDX-License-Identifier: MPL-2.0
-# Mustfile — Physical state contract for rsr-template-repo
+# Mustfile — Physical state contract for boj-server-cartridges
 # Author: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# Paired runner: must.ncl
+# Verb:          must
 #
 # What MUST be true about this repository. Hard requirements.
 # Run with: must check
 # Fix with: must fix (where a deterministic fix exists)
+#
+# Rewritten 2026-08-07. The previous version was rsr-template-repo's own
+# Mustfile and contained checks that could not pass here:
+#   * governance-docs required GOVERNANCE.adoc; commit c2da9ed removed it in
+#     favour of GOVERNANCE.md
+#   * template-readonly grepped .machine_readable/0-AI-MANIFEST.a2ml; the
+#     manifest lives at repo ROOT, and it carries no RSR_TEMPLATE_DO_NOT_EDIT
+#     marker
+#   * anchors-directory and self-validating-structure required directories
+#     that have never existed in this repository
+#   * no-placeholder-values grepped the whole contractiles/ directory for a
+#     brace pair that the check line itself contained — it matched itself
+#
+# EVERY `run:` line below was executed against the working tree on 2026-08-07
+# (commit 972cf0e) and exited 0. Keep it that way: a check that cannot pass is
+# worse than no check, because it trains readers to ignore red.
+
+[metadata]
+project = "boj-server-cartridges"
+version = "0.2.0"
+last-updated = "2026-08-07"
+verified-on-commit = "972cf0e"
 
 @abstract:
-Physical-state invariants for rsr-template-repo. This is the canonical
-RSR template repository. These are hard requirements — CI and pre-commit
-hooks fail if any check fails.
+Physical-state invariants for boj-server-cartridges, the canonical registry
+of BoJ capability cartridges. Hosts fetch from this repository on demand and
+no longer bundle a fallback tree, so these are hard requirements: CI and
+pre-commit hooks fail if any check fails.
+
+Every check here is deterministic, dependency-free POSIX shell run from the
+repository root. Checks that need a toolchain (deno, zig, idris2) live in
+the CI workflows and in .machine_readable/6a2/PLAYBOOK.a2ml, not here.
 @end
 
 ## File Presence
@@ -24,24 +54,41 @@ hooks fail if any check fails.
 - run: test -f README.adoc
 - severity: critical
 
-### security-policy
-- description: SECURITY.md must exist
-- run: test -f SECURITY.md
+### changelog-present
+- description: CHANGELOG.md must exist (one of the sanctioned .md exceptions)
+- run: test -f CHANGELOG.md
 - severity: critical
 
-### ai-manifest
-- description: 0-AI-MANIFEST.a2ml must exist
-- run: test -f 0-AI-MANIFEST.a2ml
+### security-policy
+- description: SECURITY.md must exist at root and in .github/
+- run: test -f SECURITY.md && test -f .github/SECURITY.md
 - severity: critical
+
+### ai-manifest-at-root
+- description: 0-AI-MANIFEST.a2ml lives at the repository ROOT, not under .machine_readable/
+- run: test -f 0-AI-MANIFEST.a2ml && test ! -f .machine_readable/0-AI-MANIFEST.a2ml
+- severity: critical
+- notes: The previous Mustfile grepped .machine_readable/0-AI-MANIFEST.a2ml, which does not exist. This check pins the correct location so the mistake cannot recur.
 
 ### governance-docs
-- description: GOVERNANCE.adoc, MAINTAINERS.adoc, CODEOWNERS must exist
-- run: test -f GOVERNANCE.adoc && test -f MAINTAINERS.adoc && test -f .github/CODEOWNERS
+- description: GOVERNANCE.md, MAINTAINERS.adoc and .github/CODEOWNERS must exist
+- run: test -f GOVERNANCE.md && test -f MAINTAINERS.adoc && test -f .github/CODEOWNERS
 - severity: critical
+- notes: GOVERNANCE is .md here, not .adoc. Commit c2da9ed removed the duplicate GOVERNANCE.adoc deliberately; do not "restore" it.
 
 ### machine-readable-dir
 - description: .machine_readable/ directory must exist
 - run: test -d .machine_readable
+- severity: critical
+
+### toolchain-pins
+- description: .tool-versions must exist and pin zig, deno and idris2
+- run: test -f .tool-versions && grep -q '^zig ' .tool-versions && grep -q '^deno ' .tool-versions && grep -q '^idris2 ' .tool-versions
+- severity: critical
+
+### dev-shell
+- description: flake.nix must exist (Nix fallback tier; there is no guix.scm here)
+- run: test -f flake.nix
 - severity: critical
 
 ## Directory Structure
@@ -62,32 +109,93 @@ hooks fail if any check fails.
 - severity: critical
 
 ### six-directory-present
-- description: 6a2 directory exists with required files
+- description: 6a2 directory exists with all six checkpoint files
 - run: test -d .machine_readable/6a2 && test -f .machine_readable/6a2/META.a2ml && test -f .machine_readable/6a2/ECOSYSTEM.a2ml && test -f .machine_readable/6a2/STATE.a2ml && test -f .machine_readable/6a2/PLAYBOOK.a2ml && test -f .machine_readable/6a2/AGENTIC.a2ml && test -f .machine_readable/6a2/NEUROSYM.a2ml
 - severity: critical
 
-### anchors-directory
-- description: anchors directory exists in 6a2
-- run: test -d .machine_readable/6a2/anchors
-- severity: warning
+## Registry Integrity
 
-### self-validating-structure
-- description: self-validating directory has k9-svc and examples
-- run: test -d .machine_readable/self-validating && test -d .machine_readable/self-validating/k9-svc && test -d .machine_readable/self-validating/examples
-- severity: warning
-
-## Template Integrity
-
-### no-placeholder-values
-- description: No placeholder values remain in template files
-- run: test -z "$(grep -r '{{' .machine_readable/contractiles/ 2>/dev/null)"
+### schema-mirror-present
+- description: The pinned schema mirror and its pinning record both exist
+- run: test -f schemas/cartridge-v1.json && test -f schemas/PINNED-SHA
 - severity: critical
-- notes: All placeholders must be substituted when copying this template
 
-### template-readonly
-- description: Template marker files are not modified
-- run: grep -q 'RSR_TEMPLATE_DO_NOT_EDIT' .machine_readable/0-AI-MANIFEST.a2ml
-- severity: warning
+### schema-mirror-sha
+- description: schemas/cartridge-v1.json content SHA-256 matches schemas/PINNED-SHA
+- run: test "$(sha256sum schemas/cartridge-v1.json | awk '{print $1}')" = "$(awk -F'"' '/content_sha256/ {print $2}' schemas/PINNED-SHA)"
+- severity: critical
+- notes: Same assertion the cartridge-schema workflow makes. A silent mirror bump must fail loudly. If you intend the bump, update PINNED-SHA in the same commit.
+
+### manifests-exist
+- description: At least one cartridge.json exists (guards against a vacuous pass on a bad checkout)
+- run: test "$(find cartridges -name cartridge.json | wc -l)" -ge 1
+- severity: critical
+- notes: A registry with zero manifests is a broken checkout, not a clean one.
+
+### taxonomy-placement
+- description: Every cartridge.json sits directly under domains/<domain>/, cross-cutting/<category>/ or templates/ (ADR-001)
+- run: test -z "$(find cartridges -name cartridge.json | grep -vE '^cartridges/(domains/[^/]+|cross-cutting/[^/]+|templates)/[^/]+/cartridge\.json$')"
+- severity: critical
+
+### validator-present
+- description: The manifest validator that enforces the schema gate is in-tree
+- run: test -f tools/validate-cartridges/main.ts && test -f tools/validate-cartridges/deno.json && test -f tools/validate-cartridges/main_test.ts
+- severity: critical
+
+### minting-template-present
+- description: The canonical minting template exists with all five layers
+- run: test -d cartridges/templates/gossamer-mcp/abi && test -d cartridges/templates/gossamer-mcp/ffi && test -d cartridges/templates/gossamer-mcp/adapter && test -f cartridges/templates/gossamer-mcp/cartridge.json && test -f cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig
+- severity: critical
+
+### proof-gate-scripts-present
+- description: Both proof-gate scripts referenced by .github/workflows/proofs.yml exist
+- run: test -f scripts/check-trusted-base.sh && test -f scripts/typecheck-proofs.sh
+- severity: critical
+
+### tooling-present
+- description: The minter and the Foundry wizard referenced by PLAYBOOK.a2ml exist
+- run: test -f tools/cartridge-minter/mint.ts && test -f tools/foundry/foundry.sh
+- severity: critical
+
+## Reference Integrity
+
+### 6a2-workflow-paths-resolve
+- description: Every workflow path cited in a 6a2 file actually exists
+- run: for p in $(grep -ho 'workflow = "[^"]*"' .machine_readable/6a2/*.a2ml | sed 's/.*"\(.*\)"/\1/'); do test -e "$p" || exit 1; done
+- severity: critical
+- notes: Added because AGENTIC.a2ml used to cite .machine_readable/bot_directives/, a path that has never existed in this repository.
+
+### no-template-project-identity
+- description: No 6a2 file claims to be a different project
+- run: test "$(awk -F'"' '/^project = /{print $2}' .machine_readable/6a2/STATE.a2ml .machine_readable/6a2/ECOSYSTEM.a2ml .machine_readable/contractiles/*.a2ml | sort -u)" = "boj-server-cartridges"
+- severity: critical
+- notes: STATE.a2ml declared rsr-template-repo and ECOSYSTEM.a2ml declared pseudoscript until 2026-08-07.
+
+### no-unsubstituted-placeholders
+- description: No unsubstituted template placeholders in the other three contractiles
+- run: test -z "$(grep -l 'PLACEHOLDER' .machine_readable/contractiles/Intentfile.a2ml .machine_readable/contractiles/Trustfile.a2ml .machine_readable/contractiles/Adjustfile.a2ml 2>/dev/null)"
+- severity: critical
+- notes: Deliberately scoped to the three sibling files rather than the whole directory. A directory-wide grep would match this check's own text — which is exactly why the previous version of this check could never pass.
+
+## Text Integrity
+
+### no-v-zig-substitution-corruption
+- description: No cartridge doc claims Zig is banned (regression guard for the v->zig find/replace)
+- run: ! git grep -qE 'zig (banned|predecessor)' -- cartridges
+- severity: critical
+- notes: A global "v" -> "zig" replacement once rewrote the estate's V-lang ban notes into claims that Zig is banned, across ~140 READMEs, in a repo whose FFI and adapter layers are Zig. V (vlang.io) is the banned language; Zig is its replacement.
+
+### no-phantom-sidelined-files
+- description: No doc references a SIDELINED-*.v.adoc file, because none exists
+- run: test -z "$(git ls-files 'cartridges/*SIDELINED*')" && ! git grep -q 'SIDELINED' -- cartridges
+- severity: critical
+- notes: 96 adapter READMEs documented SIDELINED-*.v.adoc rows for files that exist nowhere in this repository or its history. Rows removed 2026-08-07.
+
+### no-v-sources
+- description: No V-language sources anywhere (banned estate-wide 2026-04-10)
+- run: test -z "$(git ls-files 'cartridges/**/*.v')"
+- severity: critical
+- notes: Scoped to cartridges/ on purpose. Coq theorem files also use .v; there are none here, but a repo-wide check would be wrong in principle.
 
 ## Git State
 
@@ -97,6 +205,6 @@ hooks fail if any check fails.
 - severity: critical
 
 ### signed-commits
-- description: All commits must be signed
+- description: HEAD must carry a valid signature
 - run: git verify-commit HEAD
 - severity: critical

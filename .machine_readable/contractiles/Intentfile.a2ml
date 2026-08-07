@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
-# Intentfile (A2ML Canonical) — north-star contractile for rsr-template-repo
+# Intentfile (A2ML Canonical) — north-star contractile for boj-server-cartridges
 # Author: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 #
 # Paired runner: intend.ncl
@@ -18,82 +18,144 @@
 #                            grouped by horizon: near / mid / far.
 #            Non-gating — this is a report, not a gate. See the `must`
 #            contractile for hard gates.
+#
+# Rewritten 2026-08-07. The previous version was rsr-template-repo's own
+# Intentfile: it described this repository as "the master template for all
+# hyperpolymath repositories" and its probes pointed at scripts that do not
+# exist here.
+
+[metadata]
+project = "boj-server-cartridges"
+version = "0.2.0"
+last-updated = "2026-08-07"
 
 @abstract:
-North-star contractile for rsr-template-repo. This repository is the
-canonical template for Rhodium Standard Repository compliance. It provides
-the scaffold that all hyperpolymath repos should copy and customize.
+North-star contractile for boj-server-cartridges. This repository is the
+canonical registry of BoJ capability cartridges: the cartridge source tree,
+the pinned cartridge-v1 manifest schema mirror, and the validator that
+enforces it. Since hyperpolymath/boj-server#300 merged (2026-08-04) it is
+the SOLE source — no host carries a bundled fallback tree any more.
 @end
 
 ## Purpose
 
-The rsr-template-repo serves as the master template for all hyperpolymath
-repositories. It contains the complete set of contractile files, machine-readable
-specifications, and governance documentation that define the Rhodium Standard.
+Hold every BoJ cartridge in one place, in one taxonomy, behind one schema
+gate, so that any host (boj-server, panll, others) can fetch a cartridge on
+demand into a flat host-local cache and trust that its manifest is valid.
 
-Every new repository in the hyperpolymath estate should be initialized by
-copying this template and substituting the placeholder values with
-repo-specific content.
+The three-layer stack is the product, not just the manifest: Idris2 ABI
+(proof), Zig FFI (C-ABI implementation), Zig adapter (wire protocols). A
+cartridge that validates but does not build is not finished, and this
+repository should say so rather than count it as green.
 
 ## Anti-Purpose
 
 This repository is NOT:
-- A general-purpose project scaffold for external use (hyperpolymath-only)
-- A replacement for per-repo customization (all files must be bespoke)
-- A static template that never changes (evolves with RSR spec)
-- A runtime library or framework (build-time only)
+- A host. It runs nothing and serves nothing.
+- The owner of the cartridge spec. That is hyperpolymath/standards;
+  schemas/cartridge-v1.json here is a pinned MIRROR, not a source.
+- A template repository. It was scaffolded from rsr-template-repo and still
+  carries some of that scaffolding, but nothing is meant to copy FROM here
+  except cartridges/templates/gossamer-mcp/, which is the cartridge minting
+  template only.
+- A general-purpose Zig or Idris2 library. Nothing here is meant to be
+  linked against.
 
 ## If In Doubt
 
-If you are unsure whether a change is in scope, ask. Sensitive areas:
-- .machine_readable/ contractile definitions
-- RSR specification files
-- Governance templates
-- License policy documents
+Ask. Sensitive areas:
+- schemas/cartridge-v1.json and schemas/PINNED-SHA — pinned mirror; a change
+  here without a matching upstream change in hyperpolymath/standards is
+  almost always wrong.
+- cartridges/templates/gossamer-mcp/ — every mint inherits it, so a defect
+  here propagates 100+ times.
+- cartridges/**/ffi/cartridge_shim.zig — vendored by copy; hand-edits create
+  drift that nothing currently detects.
+- .machine_readable/ and 0-AI-MANIFEST.a2ml — these are what agents read
+  before doing anything else.
 
 ## Committed Next-Actions
 
-### repo-initialization
-- description: Provide just copy-and-substitute template for new repos
-- probe: test -f scripts/init-repo.sh
+### adapter-layer-compiles
+- description: The 99 cartridge adapters must actually build
+- probe: cd cartridges/templates/gossamer-mcp/adapter && zig build
+- status: declared
+- notes: BROKEN AND ACKNOWLEDGED. The template adapter calls ffi.gossamer_init, which does not exist, and the ffi `export fn` declarations are not `pub`, so the adapter cannot import them. Every minted adapter inherits the fault. Fix the template first; the 99 copies follow.
+
+### adapter-layer-is-gated
+- description: CI must build adapters, not only FFI
+- probe: grep -q "adapter" .github/workflows/zig-test.yml
+- status: declared
+- notes: zig-test.yml filters changed paths on '^cartridges/.*/ffi/' only. The entire adapter layer is invisible to CI, which is why adapter-layer-compiles went unnoticed for so long.
+
+### shim-drift-detected
+- description: Vendored cartridge_shim.zig copies must be checked against the template
+- probe: test -f tools/sync_cartridge_shim.sh
+- status: in_progress
+- notes: Proposed in open PR #109 (tools/sync_cartridge_shim.sh with --check, plus a shim-drift CI job). Not on main. Current state on main: 116 copies, 115 byte-identical, 1 divergent (cartridges/domains/gaming/npc-mcp/ffi/cartridge_shim.zig).
+
+### toolchain-pins-agree
+- description: One zig version across .tool-versions and every workflow
+- probe: test "$(awk '/^zig /{print $2}' .tool-versions)" = "$(grep -oP "version: \K0\.\d+\.\d+" .github/workflows/zig-test.yml | head -1)"
+- status: declared
+- notes: FAILS TODAY. .tool-versions says 0.15.1; zig-test.yml installs 0.15.2. Open PR #109 moves both to 0.16.0.
+
+### manifest-schema-gate-strict
+- description: Every cartridge.json validates strictly against the pinned schema
+- probe: cd tools/validate-cartridges && deno task strict
 - status: done
-- notes: Run with source scripts/init-repo.sh <new-repo-name>
+- notes: Strict since 2026-06-01. 142 total / 142 passing / 0 failing, re-verified 2026-08-07.
 
-### contractile-completeness
-- description: Every RSR contractile has an a2ml and ncl implementation
-- probe: ls .machine_readable/contractiles/*.a2ml | wc -l | grep -q "^6$"
-- status: in_progress
-- notes: Currently 6 contractile verbs: intend, must, trust, adjust, bust, dust
+### proof-gate-in-this-repo
+- description: Idris2 ABIs type-check here, not only in boj-server
+- probe: test -f scripts/typecheck-proofs.sh && test -f .github/workflows/proofs.yml
+- status: done
+- notes: Closed the hole that let 23 cartridge ABI proofs rot here while their boj-server twins stayed green (#36/#37).
 
-### automation-scripts
-- description: All repetitive tasks have just recipes
-- probe: grep -c "^# " Justfile | grep -q "^[6-9][0-9]*$"
-- status: in_progress
+### machine-readable-layer-describes-this-repo
+- description: Nothing under .machine_readable/ describes another project
+- probe: test "$(awk -F'"' '/^project = /{print $2}' .machine_readable/6a2/STATE.a2ml .machine_readable/6a2/ECOSYSTEM.a2ml .machine_readable/contractiles/*.a2ml | sort -u)" = "boj-server-cartridges"
+- status: done
+- notes: Done 2026-08-07 on branch docs/machine-readable-repair.
 
 ## Wishes
 
 ### Near Horizon
 
-#### cross-repo-validation
-- description: Tooling to validate all repos against RSR spec
+#### every-abi-dir-has-a-proof
+- description: 126 abi/ dirs but only 114 .idr files — 12 abi/ dirs hold no proof at all, and no gate flags an empty abi/
 - horizon: near
 - status: declared
 
-#### automated-substitution
-- description: Script to automate repo-specific substitution in template
+#### every-cartridge-has-a-readme
+- description: 11 of the 142 cartridge directories have no README.adoc
 - horizon: near
 - status: declared
+
+#### full-tree-build-sweep
+- description: A scheduled job that builds every cartridge, not only the ones a PR touched
+- horizon: near
+- status: in_progress
+- notes: Proposed as the `full-sweep` job in open PR #109.
 
 ### Mid Horizon
 
-#### formal-verification
-- description: Idris2 proofs for all critical contractile invariants
+#### shim-not-vendored
+- description: Find a way for a fetched cartridge to build standalone without 116 copies of the same file
 - horizon: mid
 - status: declared
+- notes: The copy exists because a host cache is flat and has no sibling paths to reach for. Any fix must not break that.
+
+#### host-side-conformance-test
+- description: A test that fetches this registry the way boj-server does and proves the flat cache is usable
+- horizon: mid
+- status: declared
+- notes: Nothing currently exercises the sole-source path from this side.
 
 ### Far Horizon
 
-#### ecosystem-visualization
-- description: Interactive graph of all hyperpolymath repos and dependencies
+#### adapters-in-affinescript
+- description: Retire the 8 TypeScript adapters and 3 ReScript panels once AffineScript MCP/LSP/VSCode bindings ship
 - horizon: far
 - status: declared
+- notes: Blocked on affinescript#446. The carve-out is approved and bounded until then.

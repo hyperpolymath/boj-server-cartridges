@@ -1,30 +1,69 @@
 # SPDX-License-Identifier: MPL-2.0
-# Trustfile — Trust boundaries and integrity invariants for rsr-template-repo
+# Trustfile — Trust boundaries and integrity invariants for boj-server-cartridges
 # Author: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# Paired runner: trust.ncl
+# Verb:          trust
 #
 # Defines what LLM/SLM agents are trusted to do without asking, and
 # integrity invariants that verify the repo has not been tampered with.
+#
+# Rewritten 2026-08-07. The previous version was rsr-template-repo's own
+# Trustfile; its deny-areas cited GOVERNANCE.adoc, which commit c2da9ed
+# removed.
+
+[metadata]
+project = "boj-server-cartridges"
+version = "0.2.0"
+last-updated = "2026-08-07"
 
 @abstract:
-Trust boundaries and integrity checks for rsr-template-repo. This file
-combines the trust-level definitions from the original TRUST.contractile
-with the integrity invariants from the old Trustfile.a2ml. It defines
-what AI agents may do autonomously and what requires human approval,
-plus checks that verify repository integrity.
+Trust boundaries and integrity checks for boj-server-cartridges. Defines
+what AI agents may do autonomously and what requires human approval, plus
+checks that verify repository integrity.
+
+Trust here is calibrated by BLAST RADIUS, not by file type. Since
+hyperpolymath/boj-server#300 merged (2026-08-04) this repository is the sole
+source of cartridges for every BoJ host, with no bundled fallback anywhere.
+A bad merge to main reaches every host on its next fetch.
 @end
 
 ## Trust Levels
 
-The rsr-template-repo operates at trust level: maximal
+The boj-server-cartridges repository operates at trust level: standard
 
 Trust levels:
 - maximal:    Agent may read, build, test, lint, format, heal freely.
-             Only destructive/external actions require approval.
+              Only destructive/external actions require approval.
 - standard:   Agent may read and build. Test/lint need approval.
 - restricted: Agent may read only. All modifications need approval.
 - minimal:    Agent may read specific files only. Everything else blocked.
 
-Current trust level: maximal
+Current trust level: standard
+
+Rationale for standard rather than maximal: this repo has no bundled
+fallback downstream, and several of its "green" signals are weaker than
+they look (hypatia-scan is advisory; zig-test only sees ffi/ paths; nothing
+builds the adapter layer). An agent that heals freely here can ship a
+regression to every host without a single red check.
+
+## Autonomous vs Approval
+
+Autonomous (no approval needed):
+- Read anything.
+- Run the read-only gates: `deno task audit`, `bash scripts/check-trusted-base.sh`,
+  `bash scripts/typecheck-proofs.sh`, `zig build test` inside a cartridge's ffi/.
+- Edit a single cartridge's own docs, tests, or ffi/ sources.
+- Recount and correct a number in .machine_readable/ when the recount
+  command and result are shown.
+
+Requires explicit approval:
+- Any edit to schemas/cartridge-v1.json or schemas/PINNED-SHA.
+- Any edit to cartridges/templates/gossamer-mcp/ — every future mint
+  inherits it.
+- Any batch edit spanning more than ~10 cartridges.
+- Any change to .github/workflows/ that removes or weakens a gate.
+- Any change to the TypeScript/ReScript carve-out list.
 
 ## Integrity Invariants
 
@@ -36,53 +75,72 @@ Current trust level: maximal
 - severity: critical
 
 #### no-private-keys
-- description: No private key files committed
-- run: "! find . -name '*.pem' -o -name '*.key' -o -name 'id_rsa' -o -name 'id_ed25519' 2>/dev/null | grep -v node_modules | head -1 | grep -q ."
+- description: No private key files tracked in git
+- run: test -z "$(git ls-files | grep -E '\.(pem|key)$|(^|/)id_rsa$|(^|/)id_ed25519$')"
+- severity: critical
+- notes: Scoped to tracked files. A `find` over the working tree would trip over local build output and, worse, could pass or fail depending on untracked junk.
+
+#### gitleaks-config-present
+- description: The gitleaks configuration the secret-scanner relies on is in-tree
+- run: test -f .gitleaks.toml
+- severity: warning
+
+### Supply Chain
+
+#### schema-mirror-integrity
+- description: The pinned schema mirror has not silently drifted
+- run: test "$(sha256sum schemas/cartridge-v1.json | awk '{print $1}')" = "$(awk -F'"' '/content_sha256/ {print $2}' schemas/PINNED-SHA)"
 - severity: critical
 
-#### no-tokens-in-source
-- description: No hardcoded API tokens in source
-- run: "! grep -rE '(api[_-]?key|secret|token|password)\s*[:=]\s*[\"'\\''][A-Za-z0-9]{16,}' --include='*.js' --include='*.ts' --include='*.res' --include='*.py' . 2>/dev/null | grep -v node_modules | head -1 | grep -q ."
+#### reusable-workflows-sha-pinned
+- description: Every hyperpolymath reusable workflow call is pinned to a 40-char SHA, not a branch
+- run: test -z "$(git ls-files -z '.github/workflows/*.yml' | xargs -0 grep -ho 'uses: hyperpolymath/[^ ]*' | grep -v '@[0-9a-f]\{40\}$')"
 - severity: critical
+- notes: Scoped to TRACKED files, which is the surface CI actually runs. Passes 2026-08-07. Known adjacent risk, deliberately not hidden — the UNTRACKED file .github/workflows/main-estate-audit.yml, sitting in the working tree since before this branch, carries 26 hyperpolymath/cicd-suite action references all pinned to @main. If it is ever committed as-is this check turns red, which is the correct outcome. Commit it with SHA pins or delete it; do not weaken this check to accommodate it.
 
 ## Provenance
 
 #### author-correct
 - description: Git author matches expected identity
-- run: "git log -1 --format='%ae' | grep -qE '(hyperpolymath|j\\.d\\.a\\.jewell)'"
+- run: git log -1 --format='%ae' | grep -qE '(hyperpolymath|j\.d\.a\.jewell|jonathan\.jewell)'
+- severity: warning
+
+#### commits-signed
+- description: HEAD carries a valid signature
+- run: git verify-commit HEAD
 - severity: warning
 
 #### license-content
-- description: LICENSE contains expected identifier
-- run: grep -q 'PMPL\|MPL\|MIT\|Apache\|LGPL' LICENSE
+- description: LICENSE contains the expected identifier
+- run: grep -q 'MPL' LICENSE
 - severity: warning
+- notes: This repo is MPL-2.0. Docs (README.adoc, ADRs, cartridge READMEs) are CC-BY-SA-4.0. Never AGPL.
 
-## Template-Specific Trust
-
-### template-files-readonly
-- description: Template scaffold files should not be modified except by maintainer
-- run: test -z "$(git status --short .machine_readable/ 2>/dev/null | grep -v '^??' || true)"
-- severity: advisory
-- notes: Changes to template files require careful review
+## Deny Areas
 
 ### trust-deny-areas
-- description: Sensitive areas from INTENT.contractile require explicit approval
-- run: echo "Check .machine_readable/ contractiles and governance docs"
+- description: Sensitive areas that require explicit approval before modification
 - severity: advisory
 - areas:
+  - schemas/
+  - cartridges/templates/gossamer-mcp/
   - .machine_readable/
-  - GOVERNANCE.adoc
+  - 0-AI-MANIFEST.a2ml
+  - GOVERNANCE.md
   - MAINTAINERS.adoc
   - .github/CODEOWNERS
+  - .github/workflows/
+- notes: GOVERNANCE is .md in this repo. The previous version of this file listed GOVERNANCE.adoc, which commit c2da9ed removed.
 
 ## Container Security
 
-#### container-images-pinned
-- description: Containerfile uses pinned base images
-- run: test ! -f Containerfile || grep -q 'cgr.dev\|@sha256:' Containerfile
-- severity: warning
-
 #### no-dockerfile
-- description: No Dockerfile (use Containerfile)
+- description: No Dockerfile (Containerfile is the estate convention)
 - run: test ! -f Dockerfile
 - severity: warning
+
+#### container-images-pinned
+- description: If a Containerfile appears, its base images must be pinned
+- run: test ! -f Containerfile || grep -q 'cgr.dev\|@sha256:' Containerfile
+- severity: warning
+- notes: Vacuously true today — there is no Containerfile in this repository. Kept as a forward guard, and flagged as vacuous so nobody reads its green as evidence of a hardened image.

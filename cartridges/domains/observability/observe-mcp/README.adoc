@@ -33,7 +33,7 @@ Three-layer stack per the BoJ cartridge standard:
 
 | ABI    | Idris2 | Formally verified state machine with dependent-type proofs
 | FFI    | Zig    | C-ABI implementation: session pool, action metrics, thread safety
-| Adapter| Zig    | Adapter bridge to the BoJ unified adapter protocol (zig predecessors sidelined)
+| Adapter| Zig    | Adapter bridge to the BoJ unified adapter protocol
 |===
 
 == Building

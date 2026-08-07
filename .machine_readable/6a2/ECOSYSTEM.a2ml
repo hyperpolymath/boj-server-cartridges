@@ -1,29 +1,58 @@
 # SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
 # ECOSYSTEM.a2ml — Ecosystem position
-# Converted from ECOSYSTEM.scm on 2026-04-14
+#
+# Rewritten 2026-08-07. The previous contents of this file described
+# `pseudoscript` (a programming language in the nextgen-typing chain) and
+# had nothing to do with this repository.
 
 [metadata]
-project = "pseudoscript"
+project = "boj-server-cartridges"
 ecosystem = "hyperpolymath"
+version = "0.2.0"
+last-updated = "2026-08-07"
 
 [position]
-type = "programming-language"
-purpose = "Pseudocode-syntax AffineScript. Write code that looks like pseudocode. Get affine resource guarantees and typed WASM out."
+type = "registry"
+purpose = "Canonical registry of BoJ capability cartridges: the cartridge source tree, the pinned cartridge-v1 manifest schema mirror, and the validator that enforces it. This repository is the sole source of cartridges for every BoJ host."
 
 [pipeline]
-position = "co-product"
-chain = "katagoria → typell → typed-wasm → PanLL"
-notes = "PseudoScript compiles to typed WasmGC. TypeLL grounds its type system. typed-wasm provides the shared binary layout and ABI conventions."
-coordination = "nextgen-typing"
+position = "source-of-truth"
+chain = "standards (schema) → boj-server-cartridges (registry) → boj-server / panll (hosts) → end users"
+notes = """
+Hosts do not vendor cartridges. boj-server's scripts/fetch-cartridges.sh
+pulls from this repository on demand into a FLAT host-local cache rooted at
+BOJ_CARTRIDGES_PATH — the hybrid domains/cross-cutting/templates layout here
+is a source-tree convenience, not the on-disk shape a host sees.
+
+The sole-source cutover is complete: hyperpolymath/boj-server#300
+("feat!: retire the bundled cartridges/ tree") merged 2026-08-04 and deleted
+boj-server's bundled cartridges/ directory. Verified 2026-08-07 — the
+cartridges path returns 404 on boj-server's default branch, and
+scripts/fetch-cartridges.sh is present.
+"""
+coordination = "boj"
 
 [related-projects]
 projects = [
-  { name = "typell", relationship = "type-theory-foundation", notes = "TypeLL's open-ended progressive framework grounds PseudoScript's type system. typell-pseudoscript bridge crate." },
-  { name = "typed-wasm", relationship = "aggregate-library", notes = "Shared binary layout conventions for WasmGC cross-language calls. PseudoScript Option[T]/Result[T,E]/String have agreed layouts here." },
-  { name = "nextgen-typing", relationship = "coordination-parent", notes = "Coordination monorepo for the type theory pipeline. Canonical architecture doc." },
-  { name = "affinescript", relationship = "foundation", notes = "PseudoScript is a syntactic face of AffineScript." },
-  { name = "rattlescript", relationship = "sibling", notes = "Both are syntactic faces of AffineScript." },
-  { name = "ephapax", relationship = "sibling-wasm-target", notes = "Both compile to typed WasmGC. Independent designs; converge at binary level via typed-wasm." },
-  { name = "katagoria", relationship = "research-upstream", notes = "Type theory research origination. Future PseudoScript type system extensions may originate there." },
-  { name = "panll", relationship = "consumer", notes = "PseudoScript is one of PanLL's development language targets." },
+  { name = "standards", relationship = "schema-upstream", notes = "hyperpolymath/standards owns the canonical cartridge spec (cartridges/CARTRIDGE-FORMAT.adoc) and JSON schema (cartridges/cartridge-v1.json). schemas/cartridge-v1.json here is a PINNED MIRROR; schemas/PINNED-SHA records the upstream commit and a content SHA-256 that CI re-verifies on every run. standards also supplies the governance, mirror, scorecard and secret-scanner reusable workflows this repo calls." },
+  { name = "boj-server", relationship = "primary-consumer", notes = "Runtime host. Fetches via scripts/fetch-cartridges.sh into BOJ_CARTRIDGES_PATH; catalog module elixir/lib/boj_rest/catalog.ex. Bundled cartridges/ tree retired in boj-server#300 (merged 2026-08-04), making this repo the sole source." },
+  { name = "panll", relationship = "consumer", notes = "Host. Consumes the same registry. Not independently verified from this repository — the claim comes from 0-AI-MANIFEST.a2ml's downstream_consumers list, not from an inspection of panll." },
+  { name = "hypatia", relationship = "scanner", notes = "Neurosymbolic scanner. Runs over this repo via .github/workflows/hypatia-scan.yml. Also the canonical home of the path_allow_prefixes fields that authorise this repo's TypeScript/ReScript adapter carve-out." },
+  { name = "gossamer", relationship = "template-lineage", notes = "cartridges/templates/gossamer-mcp is the minting template — the canonical abi/ + ffi/ + adapter/ + panels/ + tests/ scaffold and the source of the canonical cartridge_shim.zig bytes." },
+  { name = "verisimdb", relationship = "cartridge-subject", notes = "One of ~142 subjects wrapped as a cartridge. Listed as an example only; this repo has no build- or runtime dependency on it." },
 ]
+
+[dependency-posture]
+# What this repo actually needs to build and gate itself.
+build-tooling = ["just", "zig", "deno", "idris2"]
+runtime-dependencies = []
+notes = "This is a registry, not a library or a service. It exports no API and links against nothing. The only hard external dependency is the standards schema it mirrors, and that is pinned by content hash rather than fetched at build time."
+
+[non-applicable]
+# Sections the RSR ECOSYSTEM template carries that genuinely do not apply
+# here. Stated explicitly rather than left as empty or template text.
+type-theory-pipeline = "does not apply — this repository is not a language or a compiler"
+wasm-target = "does not apply — nothing here compiles to WebAssembly"
+package-registry-publication = "does not apply — cartridges are fetched from git, not published to any package registry"

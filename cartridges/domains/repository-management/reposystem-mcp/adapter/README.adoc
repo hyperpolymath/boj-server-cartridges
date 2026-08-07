@@ -16,7 +16,6 @@ gRPC-compat on **9131**, GraphQL on **9132**. Stateless.
 
 | `build.zig`                             | Zig build graph.
 | `reposystem_adapter.zig`                | Protocol dispatch. Tools: `reposystem_list_repos`, `reposystem_check_health`, `reposystem_sync_mirrors`, `reposystem_run_audit`.
-| `SIDELINED-reposystem_adapter.v.adoc`   | zig predecessor. Not built.
 |===
 
 == Invariants

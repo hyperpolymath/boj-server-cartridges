@@ -1,72 +1,157 @@
 # SPDX-License-Identifier: MPL-2.0
-# Adjustfile — Drift-tolerance contract for rsr-template-repo
+# Adjustfile — Drift-tolerance contract for boj-server-cartridges
 # Author: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# Paired runner: adjust.ncl
+# Verb:          adjust
 #
 # Cumulative-drift catchment: tolerance bands + corrective actions.
 # Authority: advisory (Yard) — continue-with-warnings; auto_fix where deterministic.
 # Run with: adjust check
 # Fix with: adjust fix (applies deterministic patches; advisory otherwise)
+#
+# Rewritten 2026-08-07. The previous version was rsr-template-repo's own
+# Adjustfile and tracked template-distribution drift, which is not a thing
+# that happens here.
+
+[metadata]
+project = "boj-server-cartridges"
+version = "0.2.0"
+last-updated = "2026-08-07"
 
 @abstract:
-Drift tolerances and corrective actions for rsr-template-repo. Unlike
-MUST (hard gate), ADJUST tracks cumulative drift against tolerance bands
-and proposes corrective actions. Advisory — it warns and trends, it does
-not block.
+Drift tolerances and corrective actions for boj-server-cartridges. Unlike
+MUST (hard gate), ADJUST tracks cumulative drift against tolerance bands and
+proposes corrective actions. Advisory — it warns and trends, it does not
+block.
+
+The dominant drift risk in this repository is REPETITION. 142 cartridges
+minted from one template means one template defect becomes 142, and one
+vendored file becomes 116 copies that nothing compares. Every band below is
+calibrated to that.
 @end
 
-## Template Drift
+## Vendored-Copy Drift
 
-### placeholder-drift
-- description: Template placeholders should be replaced when copied
-- tolerance: 0 placeholder markers in copied repos
-- corrective: Search and replace all {{PLACEHOLDER}} markers
+### cartridge-shim-drift
+- description: Every vendored cartridge_shim.zig should be byte-identical to the minting template's
+- tolerance: 0 copies differing from cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig
+- measured: 1 of 116 differs (cartridges/domains/gaming/npc-mcp/ffi/cartridge_shim.zig), measured 2026-08-07 on commit 972cf0e
+- probe: canon=$(sha256sum cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig | awk '{print $1}'); find cartridges -name cartridge_shim.zig -exec sha256sum {} \; | grep -cv "^$canon"
+- corrective: Determine whether npc-mcp's divergence is intentional. If not, copy the template bytes over it. If it is, the divergence needs a recorded reason, because nothing else in the tree explains it.
 - severity: advisory
-- notes: This check only applies to repos that copied from this template
+- notes: Open PR #109 proposes tools/sync_cartridge_shim.sh --check and a shim-drift CI job, which would move this from a measured band to an enforced one.
 
-### template-version-drift
-- description: Template version should match RSR spec version
-- tolerance: Template version matches current RSR spec
-- corrective: Update template to match latest RSR spec
+### shim-coverage
+- description: Every ffi/ with a build.zig should carry a shim beside it
+- tolerance: 0 exceptions
+- measured: 2 exceptions — cartridges/domains/languages/007-mcp/ffi and cartridges/domains/knowledge/librarian-mcp/ffi each have build.zig with no cartridge_shim.zig. A third cartridge, orchestrator-lsp-mcp, keeps its build graph at ffi/zig/build.zig and has no shim at all.
+- probe: for f in $(find cartridges -path '*/ffi/build.zig'); do d=$(dirname "$f"); test -f "$d/cartridge_shim.zig" || echo "$d"; done
+- corrective: Either add the shim or record the exception in 0-AI-MANIFEST.a2ml's invariant list. The manifest now records them rather than asserting a false universal.
+- severity: advisory
+
+## Toolchain Drift
+
+### zig-pin-agreement
+- description: One zig version across .tool-versions and every workflow that installs zig
+- tolerance: exact agreement
+- measured: DISAGREES — .tool-versions says 0.15.1, .github/workflows/zig-test.yml installs 0.15.2 (2026-08-07)
+- probe: awk '/^zig /{print $2}' .tool-versions; grep -oE 'version: [0-9]+\.[0-9]+\.[0-9]+' .github/workflows/zig-test.yml
+- corrective: Pick one. Open PR #109 moves both to 0.16.0.
+- severity: advisory
+
+### schema-pin-agreement
+- description: The upstream commit named in 0-AI-MANIFEST.a2ml should match the one in schemas/PINNED-SHA
+- tolerance: exact agreement
+- measured: DISAGREES — the manifest's upstream.schema_canonical_commit and PINNED-SHA's canonical_commit name different commits (2026-08-07)
+- probe: grep 'schema_canonical_commit' 0-AI-MANIFEST.a2ml; grep 'canonical_commit' schemas/PINNED-SHA
+- corrective: schemas/PINNED-SHA is the operative record — CI verifies against it. Update the manifest to match it, or explain in the manifest why the two differ.
+- severity: advisory
+
+## Completeness Drift
+
+### abi-dirs-without-proofs
+- description: Every abi/ directory should contain at least one Idris2 proof
+- tolerance: 0 empty abi/ dirs
+- measured: 18 of 126 abi/ dirs contain no .idr file at all (2026-08-07; 114 .idr files are unevenly distributed across the remaining 108)
+- probe: for d in $(find cartridges -type d -name abi); do test -n "$(find "$d" -name '*.idr' -print -quit)" || echo "$d"; done
+- corrective: Write the proof, or remove the empty directory so the count stops implying coverage that is not there.
+- severity: advisory
+- notes: scripts/typecheck-proofs.sh has a vacuous-pass guard for the whole run, but an individually empty abi/ still passes silently.
+
+### cartridges-without-readmes
+- description: Every cartridge directory should have a README.adoc
+- tolerance: 0 missing
+- measured: 11 of 142 cartridge directories have no README.adoc (2026-08-07)
+- probe: for f in $(find cartridges -name cartridge.json); do d=$(dirname "$f"); test -f "$d/README.adoc" || echo "$d"; done
+- corrective: Write the README, or generate a stub from cartridge.json.
 - severity: advisory
 
 ## Documentation Drift
 
-### readme-completeness
-- description: README should document all template features
-- tolerance: README covers all contractiles and directory structure
-- corrective: Update README.adoc with missing sections
+### count-staleness
+- description: Numbers asserted in docs should match a fresh recount
+- tolerance: 0 stale counts
+- measured: README.adoc still says "139 manifests, 139 passing, 0 failing"; the true figure is 142/142/0 (2026-08-07)
+- probe: cd tools/validate-cartridges && deno task audit | grep 'Manifests:'
+- corrective: Recount and update. Never carry a number forward from another artefact.
+- severity: advisory
+- notes: 0-AI-MANIFEST.a2ml's baseline was corrected 2026-08-07; README.adoc was left for a separate change so the two are not confused with one another.
+
+### adoc-not-md
+- description: General prose docs should be AsciiDoc; .md is reserved for the files GitHub special-cases by name
+- tolerance: 0 general .md under docs/
+- measured: 1 — docs/echo-types-integration-audit-2026-06-01.md (2026-08-07)
+- probe: find docs -name '*.md'
+- corrective: Convert to .adoc, or accept it and record the exception.
 - severity: advisory
 
-### example-accuracy
-- description: Examples in documentation should match actual template content
-- tolerance: All code examples in docs are accurate
-- corrective: Audit and fix examples in documentation
+### dangling-path-references
+- description: No machine-readable artefact should cite a path that does not resolve
+- tolerance: 0 dangling references
+- measured: 0 within .machine_readable/ as of 2026-08-07. One remains OUTSIDE it: .claude/CLAUDE.md still states that "Cartridge adapter/ dirs keep a SIDELINED-*.v.adoc note", and no such file exists anywhere in this repository or its history.
+- probe: grep -rn 'SIDELINED' .claude/CLAUDE.md
+- corrective: Correct that sentence in .claude/CLAUDE.md. Left unedited by the docs/machine-readable-repair branch on purpose — CLAUDE.md is operator configuration, not a machine-readable artefact, so it is reported rather than changed.
 - severity: advisory
 
 ## Structural Drift
 
 ### contractile-sync
 - description: All contractiles should have matching a2ml and ncl implementations
-- tolerance: Every .a2ml has a corresponding .ncl
-- corrective: Generate missing .ncl files from .a2ml
+- tolerance: Every .a2ml has a corresponding .ncl runner
+- measured: 0 of 6 have one — no .ncl files exist in this repository at all
+- probe: find .machine_readable/contractiles -name '*.ncl'
+- corrective: Generate the runners, or stop naming a "paired runner" in each contractile header. Today every contractile claims a runner that does not exist.
+- severity: advisory
+
+### justfile-hardlink
+- description: The RSR convention hardlinks the root Justfile to .machine_readable/contractiles/Justfile
+- tolerance: same inode
+- measured: DIFFERENT inodes and different content — .machine_readable/contractiles/Justfile is still rsr-template-repo's template Justfile (project := "rsr-template-repo"), not a link to this repo's
+- probe: stat -c '%i %n' Justfile .machine_readable/contractiles/Justfile
+- corrective: Decide whether the contractiles Justfile is meant to be a link or an independent template copy, then make it one of those two things. Out of scope for the docs/machine-readable-repair branch, which touched only .a2ml files.
 - severity: advisory
 
 ### no-broken-symlinks
-- description: No broken symbolic links in template structure
-- tolerance: 0 broken symlinks
-- corrective: Run symlink-check script
+- description: No broken symbolic links
+- tolerance: 0
+- measured: 0 (2026-08-07)
+- probe: find . -path ./.git -prune -o -xtype l -print
 - severity: advisory
 
-## Accessibility Drift
-
-### adoc-not-md
-- description: Template docs should prefer AsciiDoc
-- tolerance: New prose docs are *.adoc
-- corrective: Convert any new *.md to *.adoc
-- severity: advisory
+## Licensing Drift
 
 ### spdx-header-consistency
-- description: All template files have correct SPDX headers
-- tolerance: 0 files missing SPDX-License-Identifier
-- corrective: Add SPDX headers to files that need them
+- description: Source and machine-readable files should carry an SPDX-License-Identifier
+- tolerance: 0 missing
+- corrective: Add the identifier. MOVE an existing one if it is not on line 1 rather than adding a second — a duplicated or shadowing header is worse than a misplaced one.
+- severity: advisory
+- notes: Not measured on 2026-08-07. Recorded as unmeasured rather than assumed clean.
+
+### license-boundary
+- description: Code is MPL-2.0; documentation is CC-BY-SA-4.0; AGPL never
+- tolerance: 0 AGPL declarations outside LICENSES/ and outside files that merely name the policy
+- measured: 1 real hit — cartridges/domains/gaming/idaptik-admin-mcp/panels/manifest.json declares "spdx": "AGPL-3.0-or-later" (2026-08-07). The other grep hits are this file, Trustfile.a2ml and AGENTIC.a2ml stating the policy itself.
+- probe: git grep -n 'AGPL' -- ':!LICENSES' ':!.machine_readable'
+- corrective: Establish whether idaptik-admin-mcp's panel manifest is genuinely AGPL upstream or was clobbered by a licence sweep. Do not flip it blind — the estate has previously flattened correctly-AGPL projects with a mass rewrite.
 - severity: advisory

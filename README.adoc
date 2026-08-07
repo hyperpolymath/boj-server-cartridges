@@ -231,6 +231,25 @@ In short:
 Read link:docs/known-issues/adapters.adoc[`docs/known-issues/adapters.adoc`]
 before you spend time on the `adapter/` directory your mint produces.
 
+== Further reading
+
+In-tree — versions alongside the code:
+
+* link:docs/cartridge-authoring.adoc[`docs/cartridge-authoring.adoc`] — layer
+  contract, the five-symbol ABI, minting, gates.
+* link:docs/known-issues/adapters.adoc[`docs/known-issues/adapters.adoc`] — why
+  `adapter/` cannot be trusted.
+* link:docs/decisions/[`docs/decisions/`] — ADRs, including the
+  link:docs/decisions/ADR-0006-cartridge-invoke-abi.adoc[ADR-0006] pointer.
+
+On the https://github.com/hyperpolymath/boj-server-cartridges/wiki[wiki] —
+narrative and operational material, kept in a separate git repository
+(`…/boj-server-cartridges.wiki.git`), which is why it is not in this tree:
+
+* https://github.com/hyperpolymath/boj-server-cartridges/wiki/Refresh-Discipline[Refresh Discipline] — how hosts re-fetch.
+* https://github.com/hyperpolymath/boj-server-cartridges/wiki/Cartridge-Schema-Validation[Schema Validation] — working through manifest drift.
+* https://github.com/hyperpolymath/boj-server-cartridges/wiki/FFI-Shim-Layout[FFI Shim Layout].
+
 == License
 
 link:LICENSE[MPL-2.0]. Cartridges retain their individual SPDX identifiers per

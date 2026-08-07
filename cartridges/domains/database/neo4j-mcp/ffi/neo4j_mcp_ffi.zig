@@ -4,7 +4,7 @@
 // neo4j_mcp_ffi.zig — C-ABI FFI implementation for the neo4j-mcp cartridge.
 //
 // Implements the connection state machine defined in the Idris2 ABI layer
-// (Neo4jMcp.SafeDatabase). Thread-safe via std.Thread.Mutex. No heap
+// (Neo4jMcp.SafeDatabase). Thread-safe via shim.Mutex. No heap
 // allocations for results. State machine: Disconnected | Connected |
 // QueryRunning | Error. Designed for Neo4j graph database operations
 // over HTTP REST API and Bolt protocol. Auth: basic auth or bearer token.
@@ -73,7 +73,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = .{SessionSlot{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // C-ABI exports
@@ -81,8 +81,8 @@ var mutex: std.Thread.Mutex = .{};
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn neo4j_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(ConnState, from) catch return 0;
-    const t = std.meta.intToEnum(ConnState, to) catch return 0;
+    const f = std.enums.fromInt(ConnState, from) orelse return 0;
+    const t = std.enums.fromInt(ConnState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -210,7 +210,7 @@ pub export fn neo4j_mcp_query_count(slot_idx: c_int) c_int {
 
 /// Check if an action requires an active connection. Returns 1 (yes) or 0 (no).
 pub export fn neo4j_mcp_action_requires_connection(action: c_int) c_int {
-    const a = std.meta.intToEnum(Neo4jAction, action) catch return 0;
+    const a = std.enums.fromInt(Neo4jAction, action) orelse return 0;
     return switch (a) {
         .cypher_query,
         .explain_query,

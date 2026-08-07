@@ -32,14 +32,14 @@ export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
 /// Uses PID + nanosecond timestamp mod 1e9 for uniqueness.
 fn makeId(buf: []u8, prefix: []const u8) []const u8 {
     const pid = std.os.linux.getpid();
-    const ns = std.time.nanoTimestamp();
+    const ns = shim.nanoTimestamp();
     const ns_part: u64 = @intCast(@rem(ns, 1_000_000_000));
     return std.fmt.bufPrint(buf, "{s}{d}-{d}", .{ prefix, pid, ns_part }) catch buf[0..0];
 }
 
 /// Current epoch in milliseconds.
 fn epochMs() i64 {
-    return @intCast(@divTrunc(std.time.nanoTimestamp(), 1_000_000));
+    return @intCast(@divTrunc(shim.nanoTimestamp(), 1_000_000));
 }
 
 // ── Args parsing helper ───────────────────────────────────────────────

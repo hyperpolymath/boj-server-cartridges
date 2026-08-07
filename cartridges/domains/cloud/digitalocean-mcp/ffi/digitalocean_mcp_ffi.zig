@@ -5,7 +5,7 @@
 //
 // Implements the auth state machine defined in the Idris2 ABI layer.
 // Bearer token authentication, 5000 req/hour rate limit tracking.
-// Thread-safe via std.Thread.Mutex. No heap allocations for results.
+// Thread-safe via shim.Mutex. No heap allocations for results.
 
 const std = @import("std");
 
@@ -81,7 +81,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = .{SessionSlot{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // C-ABI exports
@@ -89,8 +89,8 @@ var mutex: std.Thread.Mutex = .{};
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn digitalocean_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(AuthState, from) catch return 0;
-    const t = std.meta.intToEnum(AuthState, to) catch return 0;
+    const f = std.enums.fromInt(AuthState, from) orelse return 0;
+    const t = std.enums.fromInt(AuthState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -157,7 +157,7 @@ pub export fn digitalocean_mcp_execute_action(slot_idx: c_int, action_code: c_in
     if (!slot.active) return -1;
     if (slot.state != .authenticated) return -2;
 
-    const action = std.meta.intToEnum(DigitaloceanAction, action_code) catch return -4;
+    const action = std.enums.fromInt(DigitaloceanAction, action_code) orelse return -4;
     _ = isDestructiveAction(action);
 
     if (slot.requests_remaining == 0) {

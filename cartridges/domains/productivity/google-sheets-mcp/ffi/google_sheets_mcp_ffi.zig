@@ -10,7 +10,7 @@
 // Actions: GetSpreadsheet, ReadRange, ListSheets, GetNamedRanges,
 //          WriteRange, AppendRows, CreateSheet, BatchRead,
 //          GetConditionalFormats, GetPivotTables
-// Thread-safe via std.Thread.Mutex. Fixed-size session pool, no heap allocations.
+// Thread-safe via shim.Mutex. Fixed-size session pool, no heap allocations.
 
 const std = @import("std");
 
@@ -65,15 +65,15 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = .{SessionSlot{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // C-ABI exports — state machine
 // ---------------------------------------------------------------------------
 
 pub export fn google_sheets_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(SessionState, from) catch return 0;
-    const t = std.meta.intToEnum(SessionState, to) catch return 0;
+    const f = std.enums.fromInt(SessionState, from) orelse return 0;
+    const t = std.enums.fromInt(SessionState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -169,7 +169,7 @@ pub export fn google_sheets_mcp_signal_error(slot_idx: c_int) c_int {
 // ---------------------------------------------------------------------------
 
 pub export fn google_sheets_mcp_record_call(slot_idx: c_int, action: c_int) c_int {
-    const act = std.meta.intToEnum(GoogleSheetsAction, action) catch return -3;
+    const act = std.enums.fromInt(GoogleSheetsAction, action) orelse return -3;
 
     mutex.lock();
     defer mutex.unlock();

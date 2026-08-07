@@ -4,7 +4,7 @@
 // clickhouse_mcp_ffi.zig — C-ABI FFI implementation for the clickhouse-mcp cartridge.
 //
 // Implements the connection state machine defined in the Idris2 ABI layer
-// (ClickhouseMcp.SafeDatabase). Thread-safe via std.Thread.Mutex. No heap
+// (ClickhouseMcp.SafeDatabase). Thread-safe via shim.Mutex. No heap
 // allocations for results. State machine: Disconnected | Connected |
 // QueryRunning | Error. Designed for ClickHouse column-oriented OLAP semantics
 // with HTTP interface at port 8123 and native TCP at port 9000.
@@ -73,7 +73,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = .{SessionSlot{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // C-ABI exports
@@ -81,8 +81,8 @@ var mutex: std.Thread.Mutex = .{};
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn clickhouse_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(ConnState, from) catch return 0;
-    const t = std.meta.intToEnum(ConnState, to) catch return 0;
+    const f = std.enums.fromInt(ConnState, from) orelse return 0;
+    const t = std.enums.fromInt(ConnState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -224,7 +224,7 @@ pub export fn clickhouse_mcp_record_insert(slot_idx: c_int) c_int {
 
 /// Check if an action requires an active connection. Returns 1 (yes) or 0 (no).
 pub export fn clickhouse_mcp_action_requires_connection(action: c_int) c_int {
-    const a = std.meta.intToEnum(ClickhouseAction, action) catch return 0;
+    const a = std.enums.fromInt(ClickhouseAction, action) orelse return 0;
     return switch (a) {
         .select_query,
         .insert_data,

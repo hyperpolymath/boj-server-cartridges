@@ -16,7 +16,7 @@ const form_feed: u8 = 0x0c;
 /// empty page (pdftotext emits a form-feed after the final page). Text with no
 /// form-feed yields a single page. The caller owns the slice and each page.
 pub fn pagesFromText(allocator: std.mem.Allocator, text: []const u8) ![][]u8 {
-    var slices: std.ArrayList([]const u8) = .{};
+    var slices: std.ArrayList([]const u8) = .empty;
     defer slices.deinit(allocator);
     var it = std.mem.splitScalar(u8, text, form_feed);
     while (it.next()) |piece| try slices.append(allocator, piece);
@@ -50,20 +50,21 @@ pub fn freePages(allocator: std.mem.Allocator, pages: [][]u8) void {
 /// if the binary cannot be spawned, ExtractionFailed if it exits non-zero.
 pub fn extractPdf(allocator: std.mem.Allocator, path: []const u8) ![][]u8 {
     const argv = [_][]const u8{ "pdftotext", path, "-" };
-    const res = std.process.Child.run(.{
-        .allocator = allocator,
+    const res = std.process.run(allocator, shim.io(), .{
         .argv = &argv,
-        .max_output_bytes = 256 * 1024 * 1024,
+        .stdout_limit = .limited(256 * 1024 * 1024),
     }) catch return Error.PdftotextUnavailable;
     defer allocator.free(res.stdout);
     defer allocator.free(res.stderr);
 
     switch (res.term) {
-        .Exited => |code| if (code != 0) return Error.ExtractionFailed,
+        .exited => |code| if (code != 0) return Error.ExtractionFailed,
         else => return Error.ExtractionFailed,
     }
     return pagesFromText(allocator, res.stdout);
 }
+
+const shim = @import("cartridge_shim.zig");
 
 test "pagesFromText splits on form feed and drops a trailing empty page" {
     const pages = try pagesFromText(std.testing.allocator, "alpha\x0cbeta\x0c");

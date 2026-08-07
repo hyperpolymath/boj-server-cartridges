@@ -5,7 +5,7 @@
 //
 // Implements the state machine defined in the Idris2 ABI layer for
 // Fly.io Machines API v1 (https://api.machines.dev/v1/).
-// Auth: Bearer token. Thread-safe via std.Thread.Mutex.
+// Auth: Bearer token. Thread-safe via shim.Mutex.
 
 const std = @import("std");
 
@@ -67,7 +67,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = .{SessionSlot{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // C-ABI exports
@@ -75,8 +75,8 @@ var mutex: std.Thread.Mutex = .{};
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn fly_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(SessionState, from) catch return 0;
-    const t = std.meta.intToEnum(SessionState, to) catch return 0;
+    const f = std.enums.fromInt(SessionState, from) orelse return 0;
+    const t = std.enums.fromInt(SessionState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -192,7 +192,7 @@ pub export fn fly_mcp_error_recover(slot_idx: c_int) c_int {
 
 /// Check if an action requires authentication. Returns 1 (yes) or 0 (no).
 pub export fn fly_mcp_action_requires_auth(action: c_int) c_int {
-    const act = std.meta.intToEnum(FlyAction, action) catch return 1;
+    const act = std.enums.fromInt(FlyAction, action) orelse return 1;
     return switch (act) {
         .list_regions => 0,
         else => 1,

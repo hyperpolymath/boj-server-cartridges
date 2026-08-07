@@ -48,7 +48,7 @@ var vaults: [MAX_VAULTS]VaultSlot = [_]VaultSlot{.{
     .access_count = 0,
 }} ** MAX_VAULTS;
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: VaultState, to: VaultState) bool {

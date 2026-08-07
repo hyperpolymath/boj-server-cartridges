@@ -48,7 +48,7 @@ var queues: [MAX_QUEUES]QueueSlot = [_]QueueSlot{.{
     .msg_count = 0,
 }} ** MAX_QUEUES;
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: QueueState, to: QueueState) bool {

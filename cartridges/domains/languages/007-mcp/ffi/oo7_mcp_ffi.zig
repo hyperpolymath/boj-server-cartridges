@@ -76,7 +76,7 @@ pub const ToolRisk = enum(c_int) {
 
 /// Session-wide state. Single-instance per adapter process.
 var g_state: SessionState = .fresh;
-var g_state_mu: std.Thread.Mutex = .{};
+var g_state_mu: shim.Mutex = .{};
 
 /// Coord-peer identity captured on OnEnter. Empty string when Degraded
 /// or Fresh. `token` is the session token returned by coord_register.
@@ -436,13 +436,13 @@ fn readMethodologyPack(
         var path_buf: [std.fs.max_path_bytes]u8 = undefined;
         const full = std.fmt.bufPrint(&path_buf, "{s}/{s}", .{ worktree, rel }) catch rel;
         if (std.fs.path.isAbsolute(full)) {
-            std.fs.accessAbsolute(full, .{}) catch {
+            std.Io.Dir.accessAbsolute(shim.io(), full, .{}) catch {
                 const missing = try std.fmt.allocPrint(allocator, "MISSING::{s}", .{rel});
                 out[i] = missing;
                 continue;
             };
         } else {
-            std.fs.cwd().access(full, .{}) catch {
+            std.Io.Dir.cwd().access(shim.io(), full, .{}) catch {
                 const missing = try std.fmt.allocPrint(allocator, "MISSING::{s}", .{rel});
                 out[i] = missing;
                 continue;
@@ -486,11 +486,11 @@ pub const TAG_MAP_PATHS = [_][]const u8{
     "/var/mnt/eclipse/repos/boj-server/cartridges/007-mcp/schemas/memory-tag-map.a2ml",
 };
 
-fn openMaybeAbsolute(path: []const u8) !std.fs.File {
+fn openMaybeAbsolute(path: []const u8) !std.Io.File {
     if (std.fs.path.isAbsolute(path)) {
-        return try std.fs.openFileAbsolute(path, .{});
+        return try std.Io.Dir.openFileAbsolute(shim.io(), path, .{});
     }
-    return try std.fs.cwd().openFile(path, .{});
+    return try std.Io.Dir.cwd().openFile(shim.io(), path, .{});
 }
 
 /// Read the tag map from disk (first candidate that exists wins).
@@ -503,11 +503,11 @@ fn readTagMap(allocator: std.mem.Allocator, worktree: []const u8) ![]u8 {
         else
             std.fmt.bufPrint(&path_buf, "{s}/{s}", .{ worktree, rel }) catch continue;
         const file = openMaybeAbsolute(full) catch continue;
-        defer file.close();
-        const stat = try file.stat();
+        defer file.close(shim.io());
+        const stat = try file.stat(shim.io());
         const buf = try allocator.alloc(u8, stat.size);
         errdefer allocator.free(buf);
-        _ = try file.readAll(buf);
+        _ = try file.readPositionalAll(shim.io(), buf, 0);
         return buf;
     }
     return error.FileNotFound;
@@ -643,7 +643,7 @@ fn coordRegister(allocator: std.mem.Allocator) !bool {
     g_peer_id_len = 0;
     g_coord_token_len = 0;
 
-    var client = std.http.Client{ .allocator = allocator };
+    var client = std.http.Client{ .allocator = allocator, .io = shim.io() };
     defer client.deinit();
 
     const uri = std.Uri.parse(COORD_REGISTER_URL) catch return false;
@@ -718,7 +718,7 @@ fn coordDeregister(allocator: std.mem.Allocator) !void {
 
     const report_url = COORD_URL ++ "/tools/coord_report_outcome";
 
-    var client = std.http.Client{ .allocator = allocator };
+    var client = std.http.Client{ .allocator = allocator, .io = shim.io() };
     defer client.deinit();
 
     const uri = std.Uri.parse(report_url) catch return;
@@ -843,3 +843,5 @@ test "matchMemories ignores non-matching tag blocks" {
     }
     try std.testing.expectEqual(@as(usize, 0), hits.len);
 }
+
+const shim = @import("cartridge_shim.zig");

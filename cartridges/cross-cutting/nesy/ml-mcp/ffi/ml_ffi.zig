@@ -65,7 +65,7 @@ var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{
     .result_len = 0,
 }} ** MAX_SESSIONS;
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: SessionState, to: SessionState) bool {

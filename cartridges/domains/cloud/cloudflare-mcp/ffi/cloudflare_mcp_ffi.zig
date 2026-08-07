@@ -4,7 +4,7 @@
 // cloudflare_mcp_ffi.zig -- C-ABI FFI for cloudflare-mcp cartridge.
 //
 // Implements the state machine defined in CloudflareMcp.SafeCloud (Idris2 ABI).
-// Auth: Bearer token (CF_API_TOKEN). Thread-safe via std.Thread.Mutex.
+// Auth: Bearer token (CF_API_TOKEN). Thread-safe via shim.Mutex.
 
 const std = @import("std");
 
@@ -57,7 +57,7 @@ const SessionSlot = struct {
 };
 
 var session_pool: [MAX_SESSIONS]SessionSlot = undefined;
-var pool_mutex: std.Thread.Mutex = .{};
+var pool_mutex: shim.Mutex = .{};
 var pool_initialised: bool = false;
 
 fn initPool() void {

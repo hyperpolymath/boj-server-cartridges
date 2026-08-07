@@ -39,7 +39,7 @@ const MAX_GATES: usize = 6;
 var passed_gates: [MAX_GATES]bool = .{ false, false, false, false, false, false };
 var gate_scores: [MAX_GATES]c_int = .{ 0, 0, 0, 0, 0, 0 };
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Reset all gate results.
 pub export fn fleet_reset() void {

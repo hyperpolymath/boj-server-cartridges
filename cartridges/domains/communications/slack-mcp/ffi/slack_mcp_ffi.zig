@@ -8,7 +8,7 @@
 // via std.http.Client, per-method rate-limit tracking (Tier 1-4), and
 // Bearer-token authentication via xoxb-* bot tokens obtained from vault-mcp.
 //
-// Thread-safe via std.Thread.Mutex. No heap allocations for result buffers.
+// Thread-safe via shim.Mutex. No heap allocations for result buffers.
 
 const std = @import("std");
 
@@ -179,7 +179,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -243,7 +243,7 @@ fn doSlackApiCall(slot: *SessionSlot, method_name: []const u8, params_json: ?[]c
     // Build Bearer auth header from stored token
     const auth_header = std.fmt.allocPrint(allocator, "Bearer {s}", .{slot.token_buf[0..slot.token_len]}) catch return 0;
 
-    var client = std.http.Client{ .allocator = allocator };
+    var client = std.http.Client{ .allocator = allocator, .io = shim.io() };
     defer client.deinit();
 
     var headers_buf: [3]std.http.Header = .{
@@ -285,8 +285,8 @@ fn doSlackApiCall(slot: *SessionSlot, method_name: []const u8, params_json: ?[]c
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn slack_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(ConnState, from) catch return 0;
-    const t = std.meta.intToEnum(ConnState, to) catch return 0;
+    const f = std.enums.fromInt(ConnState, from) orelse return 0;
+    const t = std.enums.fromInt(ConnState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -368,7 +368,7 @@ pub export fn slack_mcp_send_message(
     // Rate-limit check for send_message (Tier 3).
     const tier = actionRateTier(.send_message);
     const tier_idx: usize = @intCast(@intFromEnum(tier) - 1);
-    const now = std.time.timestamp();
+    const now = shim.timestamp();
     if (!slot.rate_trackers[tier_idx].record(now, tierBudget(tier))) {
         slot.state = .rate_limited;
         return -5;
@@ -431,7 +431,7 @@ pub export fn slack_mcp_list_channels(
 
     const tier = actionRateTier(.list_channels);
     const tier_idx: usize = @intCast(@intFromEnum(tier) - 1);
-    const now = std.time.timestamp();
+    const now = shim.timestamp();
     if (!slot.rate_trackers[tier_idx].record(now, tierBudget(tier))) {
         slot.state = .rate_limited;
         return -5;
@@ -467,7 +467,7 @@ pub export fn slack_mcp_search(
 
     const tier = actionRateTier(.search_messages);
     const tier_idx: usize = @intCast(@intFromEnum(tier) - 1);
-    const now = std.time.timestamp();
+    const now = shim.timestamp();
     if (!slot.rate_trackers[tier_idx].record(now, tierBudget(tier))) {
         slot.state = .rate_limited;
         return -5;
@@ -512,7 +512,7 @@ pub export fn slack_mcp_api_call(
     out_cap: c_int,
     out_len: *c_int,
 ) c_int {
-    const action = std.meta.intToEnum(SlackAction, action_id) catch return -6;
+    const action = std.enums.fromInt(SlackAction, action_id) orelse return -6;
 
     mutex.lock();
     defer mutex.unlock();
@@ -522,7 +522,7 @@ pub export fn slack_mcp_api_call(
 
     const tier = actionRateTier(action);
     const tier_idx: usize = @intCast(@intFromEnum(tier) - 1);
-    const now = std.time.timestamp();
+    const now = shim.timestamp();
     if (!slot.rate_trackers[tier_idx].record(now, tierBudget(tier))) {
         slot.state = .rate_limited;
         return -5;

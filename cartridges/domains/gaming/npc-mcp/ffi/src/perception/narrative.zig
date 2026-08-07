@@ -6,7 +6,7 @@ const WorldState = @import("world_state.zig").WorldState;
 /// Build a JSON string describing the current world narrative.
 /// Caller owns the returned memory.
 pub fn synthesizeContext(alloc: std.mem.Allocator, ws: *WorldState) ![]u8 {
-    var buf = std.ArrayList(u8){};
+    var buf: std.ArrayList(u8) = .empty;
     errdefer buf.deinit(alloc);
 
     var online_count: u32 = 0;

@@ -40,7 +40,7 @@ var sessions: [MAX_SESSIONS]Session = [_]Session{.{
     .was_halted = false,
 }} ** MAX_SESSIONS;
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Validate a state transition.
 fn isValidTransition(from: AgentState, to: AgentState) bool {

@@ -39,7 +39,7 @@ pub fn build(b: *std.Build) void {
         .root_module = ffi_mod,
         .linkage = .dynamic,
     });
-    lib.linkLibC();
+    lib.root_module.link_libc = true;
     // NOTE: linkSystemLibrary("hiredis") removed — stub implementation does not
     // actually call hiredis yet. Will be re-enabled when real bindings are wired.
     b.installArtifact(lib);
@@ -48,7 +48,7 @@ pub fn build(b: *std.Build) void {
     const tests = b.addTest(.{
         .root_module = ffi_mod,
     });
-    tests.linkLibC();
+    tests.root_module.link_libc = true;
 
     const run_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run FFI tests");

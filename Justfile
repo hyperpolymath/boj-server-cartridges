@@ -782,3 +782,19 @@ handover-human path=".":
 
 secret-scan-trufflehog:
     @command -v trufflehog >/dev/null && trufflehog filesystem . --only-verified || true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Cartridge minting + shim hygiene
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Mint a new cartridge from a minter.toml (see tools/cartridge-minter/README.md)
+mint config *args:
+    deno run --allow-read --allow-write tools/cartridge-minter/mint.ts {{config}} {{args}}
+
+# Re-stamp every vendored cartridge_shim.zig from the canonical template copy
+shim-sync:
+    bash tools/sync_cartridge_shim.sh
+
+# Fail if any vendored cartridge_shim.zig drifts from the canonical template copy
+shim-check:
+    bash tools/sync_cartridge_shim.sh --check

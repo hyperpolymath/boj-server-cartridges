@@ -7,7 +7,7 @@
 // service (Deno, default http://127.0.0.1:9090) to validate that required
 // secrets are present before allowing containers to start.
 //
-// Thread-safe via std.Thread.Mutex. No heap allocations for result buffers.
+// Thread-safe via shim.Mutex. No heap allocations for result buffers.
 
 const std = @import("std");
 
@@ -69,7 +69,7 @@ const GateProxy = struct {
 };
 
 var proxy: GateProxy = .{};
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -96,23 +96,30 @@ fn callRokur(path: []const u8, method: []const u8, token: []const u8) !usize {
         "curl", "-s", "-X", method, "-H", auth_header, url,
     };
 
-    var child = std.process.Child.init(&argv, std.heap.page_allocator);
-    child.stdout_behavior = .Pipe;
-    child.stderr_behavior = .Pipe;
-    try child.spawn();
+    const io = shim.io();
+    var child = try std.process.spawn(io, .{
+        .argv = &argv,
+        .stdout = .pipe,
+        .stderr = .pipe,
+    });
 
     const stdout = child.stdout.?;
-    const bytes_read = stdout.readAll(&proxy.result_buf) catch |e| {
-        _ = child.wait() catch {};
+    var stdout_reader = stdout.readerStreaming(io, &.{});
+    const bytes_read = stdout_reader.interface.readSliceShort(&proxy.result_buf) catch |e| {
+        _ = child.wait(io) catch {};
         return e;
     };
 
     const stderr = child.stderr.?;
-    const err_read = stderr.readAll(&proxy.last_error) catch 0;
+    var stderr_reader = stderr.readerStreaming(io, &.{});
+    const err_read = stderr_reader.interface.readSliceShort(&proxy.last_error) catch 0;
     proxy.last_error_len = err_read;
 
-    const term = try child.wait();
-    if (term.Exited != 0) return error.CurlFailed;
+    const term = try child.wait(io);
+    switch (term) {
+        .exited => |code| if (code != 0) return error.CurlFailed,
+        else => return error.CurlFailed,
+    }
 
     proxy.result_len = bytes_read;
     return bytes_read;
@@ -123,8 +130,8 @@ fn callRokur(path: []const u8, method: []const u8, token: []const u8) !usize {
 // ---------------------------------------------------------------------------
 
 pub export fn rokur_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(GateState, from) catch return 0;
-    const t = std.meta.intToEnum(GateState, to) catch return 0;
+    const f = std.enums.fromInt(GateState, from) orelse return 0;
+    const t = std.enums.fromInt(GateState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -137,7 +144,7 @@ pub export fn rokur_mcp_state() c_int {
 pub export fn rokur_mcp_transition(to: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
-    const target = std.meta.intToEnum(GateState, to) catch return -1;
+    const target = std.enums.fromInt(GateState, to) orelse return -1;
     if (!isValidTransition(proxy.state, target)) return -2;
     proxy.state = target;
     return 0;
@@ -146,7 +153,7 @@ pub export fn rokur_mcp_transition(to: c_int) c_int {
 pub export fn rokur_mcp_action_permitted(action: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
-    const a = std.meta.intToEnum(GateAction, action) catch return 0;
+    const a = std.enums.fromInt(GateAction, action) orelse return 0;
     return if (isActionPermitted(proxy.state, a)) 1 else 0;
 }
 

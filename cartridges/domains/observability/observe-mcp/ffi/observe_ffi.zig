@@ -49,7 +49,7 @@ var sources: [MAX_SOURCES]SourceSlot = [_]SourceSlot{.{
     .query_count = 0,
 }} ** MAX_SOURCES;
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: ObserveState, to: ObserveState) bool {

@@ -52,7 +52,7 @@ const empty_slot: ClusterSlot = .{
 
 var clusters: [MAX_CLUSTERS]ClusterSlot = [_]ClusterSlot{empty_slot} ** MAX_CLUSTERS;
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: K8sState, to: K8sState) bool {

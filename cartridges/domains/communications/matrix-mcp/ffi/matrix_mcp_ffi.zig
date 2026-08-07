@@ -5,7 +5,7 @@
 //
 // Implements the connection state machine and Matrix action dispatch defined
 // in the Idris2 ABI layer (MatrixMcp.SafeComms). Thread-safe via
-// std.Thread.Mutex. Bearer token auth with configurable homeserver URL.
+// shim.Mutex. Bearer token auth with configurable homeserver URL.
 // Transaction ID generation for idempotent PUT requests.
 
 const std = @import("std");
@@ -87,7 +87,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // C-ABI exports: state machine
@@ -95,8 +95,8 @@ var mutex: std.Thread.Mutex = .{};
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn matrix_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(ConnState, from) catch return 0;
-    const t = std.meta.intToEnum(ConnState, to) catch return 0;
+    const f = std.enums.fromInt(ConnState, from) orelse return 0;
+    const t = std.enums.fromInt(ConnState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -257,7 +257,7 @@ pub export fn matrix_mcp_validate_token(ptr: [*]const u8, len: usize) c_int {
 
 /// Check if a Matrix action code is valid. Returns 1 if valid, 0 otherwise.
 pub export fn matrix_mcp_is_valid_action(action: c_int) c_int {
-    _ = std.meta.intToEnum(MatrixAction, action) catch return 0;
+    _ = std.enums.fromInt(MatrixAction, action) orelse return 0;
     return 1;
 }
 

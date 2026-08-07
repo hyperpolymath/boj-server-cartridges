@@ -4,7 +4,7 @@
 // github_api_mcp_ffi.zig — C-ABI FFI for GitHub REST & GraphQL API cartridge.
 //
 // Implements the state machine defined in GithubApiMcp.SafeGit (Idris2 ABI).
-// Thread-safe via std.Thread.Mutex. Real HTTP dispatch to the GitHub REST and
+// Thread-safe via shim.Mutex. Real HTTP dispatch to the GitHub REST and
 // GraphQL APIs via std.http.Client. Auth tokens retrieved from vault-mcp
 // zero-knowledge proxy.
 
@@ -126,7 +126,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -152,8 +152,8 @@ fn getSlot(slot_idx: c_int) ?*SessionSlot {
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn github_api_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(AuthState, from) catch return 0;
-    const t = std.meta.intToEnum(AuthState, to) catch return 0;
+    const f = std.enums.fromInt(AuthState, from) orelse return 0;
+    const t = std.enums.fromInt(AuthState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -364,7 +364,7 @@ fn doHttpRequest(
     const uri = std.Uri.parse(url_str) catch return -5;
 
     // Create HTTP client
-    var client = std.http.Client{ .allocator = allocator };
+    var client = std.http.Client{ .allocator = allocator, .io = shim.io() };
     defer client.deinit();
 
     // Prepare extra headers: Authorization, Accept, User-Agent
@@ -516,13 +516,13 @@ pub export fn github_api_mcp_graphql(
 
 /// Check if an action code is valid. Returns 1 if valid, 0 if out of range.
 pub export fn github_api_mcp_valid_action(code: c_int) c_int {
-    _ = std.meta.intToEnum(GitHubAction, code) catch return 0;
+    _ = std.enums.fromInt(GitHubAction, code) orelse return 0;
     return 1;
 }
 
 /// Check if an action is a mutation. Returns 1 for mutation, 0 for read-only, -1 for invalid.
 pub export fn github_api_mcp_is_mutation(code: c_int) c_int {
-    const action = std.meta.intToEnum(GitHubAction, code) catch return -1;
+    const action = std.enums.fromInt(GitHubAction, code) orelse return -1;
     return if (actionIsMutation(action)) 1 else 0;
 }
 

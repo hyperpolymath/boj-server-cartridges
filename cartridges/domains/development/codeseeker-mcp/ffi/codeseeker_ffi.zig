@@ -63,7 +63,7 @@ var sessions: [MAX_SESSIONS]IndexSlot = [_]IndexSlot{.{
     .file_count = 0,
 }} ** MAX_SESSIONS;
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// djb2 hash for a null-terminated C string.
 fn hashPath(path: [*:0]const u8) u64 {

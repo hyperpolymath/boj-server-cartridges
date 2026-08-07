@@ -9,7 +9,7 @@
 // (Notion enforces ~3 requests/second), and Bearer-token authentication
 // via integration tokens obtained from vault-mcp.
 //
-// Thread-safe via std.Thread.Mutex. No heap allocations for result buffers.
+// Thread-safe via shim.Mutex. No heap allocations for result buffers.
 
 const std = @import("std");
 
@@ -169,7 +169,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -254,8 +254,8 @@ fn formatStubResponse(buf: []u8, endpoint: []const u8, method: []const u8) usize
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn notion_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(ConnState, from) catch return 0;
-    const t = std.meta.intToEnum(ConnState, to) catch return 0;
+    const f = std.enums.fromInt(ConnState, from) orelse return 0;
+    const t = std.enums.fromInt(ConnState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -317,7 +317,7 @@ pub export fn notion_mcp_api_call(
 ) c_int {
     _ = params;
 
-    const action = std.meta.intToEnum(NotionAction, action_id) catch return -6;
+    const action = std.enums.fromInt(NotionAction, action_id) orelse return -6;
 
     mutex.lock();
     defer mutex.unlock();
@@ -326,7 +326,7 @@ pub export fn notion_mcp_api_call(
     if (slot.state != .authenticated) return -2;
 
     // Rate-limit check.
-    const now = std.time.timestamp();
+    const now = shim.timestamp();
     if (!slot.rate_tracker.record(now, RATE_BUDGET)) {
         slot.state = .rate_limited;
         return -5;

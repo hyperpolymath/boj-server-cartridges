@@ -51,7 +51,7 @@ var sites: [MAX_SITES]SiteSlot = [_]SiteSlot{.{
     .content_hash = 0,
 }} ** MAX_SITES;
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: SsgState, to: SsgState) bool {

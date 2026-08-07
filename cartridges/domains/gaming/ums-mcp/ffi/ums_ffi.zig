@@ -64,7 +64,7 @@ var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{}} ** MAX_SESSIONS;
 /// this lock for the duration of its slot access, so callers from any
 /// thread (including the MCP bridge's tokio-style task pool) see a
 /// linearised view of session state.
-var sessions_mu: std.Thread.Mutex = .{};
+var sessions_mu: shim.Mutex = .{};
 
 /// Find an inactive session slot and activate it. Caller must hold
 /// `sessions_mu`.

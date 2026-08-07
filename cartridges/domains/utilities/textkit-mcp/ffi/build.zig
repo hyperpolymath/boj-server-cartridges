@@ -26,11 +26,11 @@ pub fn build(b: *std.Build) void {
         .root_module = ffi_mod,
         .linkage = .dynamic,
     });
-    lib.linkLibC();
+    lib.root_module.link_libc = true;
     b.installArtifact(lib);
 
     const tests = b.addTest(.{ .root_module = ffi_mod });
-    tests.linkLibC();
+    tests.root_module.link_libc = true;
     const run_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run FFI tests");
     test_step.dependOn(&run_tests.step);

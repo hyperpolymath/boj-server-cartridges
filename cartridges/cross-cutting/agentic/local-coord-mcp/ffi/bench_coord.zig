@@ -39,7 +39,7 @@ fn printRow(name: []const u8, elapsed_ns: u64, iters: u64) void {
 
 fn tmpBenchDir(buf: []u8) ![]u8 {
     return std.fmt.bufPrint(buf, "/tmp/boj-coord-bench-{d}-{d}", .{
-        std.time.milliTimestamp(),
+        shim.milliTimestamp(),
         std.crypto.random.int(u32),
     });
 }
@@ -309,3 +309,5 @@ pub fn main() !void {
 
     std.debug.print("\n", .{});
 }
+
+const shim = @import("cartridge_shim.zig");

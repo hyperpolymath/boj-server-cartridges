@@ -26,7 +26,7 @@ const Global = struct {
     limiter: rate_limiter.RateLimiter,
     audit_log: ?audit.AuditLog,
     persona_value: ?persona.Persona,
-    mutex: std.Thread.Mutex,
+    mutex: shim.Mutex,
 };
 
 // Zig 0.15.2: std.heap.GeneralPurposeAllocator was removed; use DebugAllocator instead.
@@ -128,7 +128,7 @@ pub export fn npc_get_raw_events(count: usize) callconv(.c) [*:0]const u8 {
     };
     defer gg.allocator.free(items);
 
-    var out = std.ArrayList(u8){};
+    var out: std.ArrayList(u8) = .empty;
     out.append(gg.allocator, '[') catch return "[]";
     for (items, 0..) |item, i| {
         if (i > 0) out.append(gg.allocator, ',') catch return "[]";
@@ -159,7 +159,7 @@ pub export fn npc_free_string(s: [*:0]const u8) callconv(.c) void {
 /// Enqueue a command for delivery to the mod. Returns 0 on success.
 pub export fn npc_enqueue_command(ptr: [*]const u8, len: usize) callconv(.c) i32 {
     const gg = state();
-    const now_ns = std.time.nanoTimestamp();
+    const now_ns = shim.nanoTimestamp();
     if (!gg.limiter.tryAcquire(@intCast(now_ns))) return -1;
     gg.queue.enqueue(ptr[0..len]) catch return -2;
     return 0;
@@ -177,7 +177,7 @@ pub export fn npc_drain_commands() callconv(.c) [*:0]const u8 {
     }
 
     // Zig 0.15.2: std.ArrayList(u8) is unmanaged — use .{} init and pass allocator to each method.
-    var out = std.ArrayList(u8){};
+    var out: std.ArrayList(u8) = .empty;
     for (items) |item| {
         out.appendSlice(gg.allocator, item) catch return "";
         out.append(gg.allocator, '\n') catch return "";
@@ -218,5 +218,7 @@ pub export fn npc_is_tool_allowed(ptr: [*]const u8, len: usize) callconv(.c) i32
 }
 
 test {
-    std.testing.refAllDeclsRecursive(@This());
+    std.testing.refAllDecls(@This());
 }
+
+const shim = @import("../cartridge_shim.zig");

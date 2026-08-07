@@ -48,7 +48,7 @@ var containers: [MAX_CONTAINERS]ContainerSlot = [_]ContainerSlot{.{
     .image_name_hash = 0,
 }} ** MAX_CONTAINERS;
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: CtrState, to: CtrState) bool {
@@ -207,40 +207,44 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 const shim = @import("cartridge_shim.zig");
 
 /// Run `podman ps --format json` and return the parsed container list.
-/// Uses posix fork+exec to avoid std.process.Child's /proc/environ dependency
-/// when loaded as a shared library.
+/// Uses fork+exec to avoid the std child-process machinery's /proc/environ
+/// dependency when loaded as a shared library. Zig 0.16 trimmed
+/// pipe/fork/dup2/execve/waitpid from std.posix; this path genuinely wants
+/// a raw fd pair, so it calls libc (std.c) directly — libc is linked.
 fn containerList(out_buf: [*c]u8, in_out_len: [*c]usize) i32 {
     const posix = std.posix;
 
     // Create a pipe for stdout.
-    const pipe_fds = posix.pipe() catch {
+    var pipe_fds: [2]std.c.fd_t = undefined;
+    if (std.c.pipe(&pipe_fds) != 0) {
         return shim.writeResult(out_buf, in_out_len,
             "{\"containers\":[],\"count\":0,\"error\":\"pipe failed\"}");
-    };
+    }
     const pipe_read = pipe_fds[0];
     const pipe_write = pipe_fds[1];
 
-    const pid = posix.fork() catch {
-        posix.close(pipe_read);
-        posix.close(pipe_write);
+    const pid = std.c.fork();
+    if (pid < 0) {
+        _ = std.c.close(pipe_read);
+        _ = std.c.close(pipe_write);
         return shim.writeResult(out_buf, in_out_len,
             "{\"containers\":[],\"count\":0,\"error\":\"fork failed\"}");
-    };
+    }
 
     if (pid == 0) {
         // Child process: wire stdout to pipe, exec podman.
-        posix.close(pipe_read);
-        posix.dup2(pipe_write, posix.STDOUT_FILENO) catch posix.exit(1);
-        posix.close(pipe_write);
+        _ = std.c.close(pipe_read);
+        if (std.c.dup2(pipe_write, posix.STDOUT_FILENO) < 0) std.c._exit(1);
+        _ = std.c.close(pipe_write);
         const argv = [_:null]?[*:0]const u8{
             "/usr/bin/podman", "ps", "--format", "json", null,
         };
-        posix.execveZ("/usr/bin/podman", &argv, &[_:null]?[*:0]const u8{null}) catch {};
-        posix.exit(1);
+        _ = std.c.execve("/usr/bin/podman", &argv, &[_:null]?[*:0]const u8{null});
+        std.c._exit(1);
     }
 
     // Parent: close write end, read stdout.
-    posix.close(pipe_write);
+    _ = std.c.close(pipe_write);
 
     var read_buf: [64 * 1024]u8 = undefined;
     var total: usize = 0;
@@ -249,8 +253,8 @@ fn containerList(out_buf: [*c]u8, in_out_len: [*c]usize) i32 {
         if (n == 0) break;
         total += n;
     }
-    posix.close(pipe_read);
-    _ = posix.waitpid(pid, 0);
+    _ = std.c.close(pipe_read);
+    _ = std.c.waitpid(pid, null, 0);
 
 
     var result_buf: [65536]u8 = undefined;

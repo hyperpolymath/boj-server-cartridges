@@ -51,7 +51,7 @@ const Session = struct {
 
 var sessions: [MAX_SESSIONS]Session = [_]Session{.{}} ** MAX_SESSIONS;
 var session_counter: u32 = 0;
-var session_mutex: std.Thread.Mutex = .{};
+var session_mutex: shim.Mutex = .{};
 
 fn nextSessionId(out: *[SESSION_ID_LEN]u8) void {
     session_counter +%= 1;
@@ -105,7 +105,7 @@ fn domainInJson(json: []const u8, domain: []const u8) bool {
 // concurrent invoke calls cannot interleave their messages on the pipe.
 
 var port_child: ?std.process.Child = null;
-var port_mutex: std.Thread.Mutex = .{};
+var port_mutex: shim.Mutex = .{};
 
 /// Spawn the Elixir adapter if not already running.
 /// Uses std.heap.page_allocator so the argv slice outlives this call.

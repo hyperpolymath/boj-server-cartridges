@@ -6,7 +6,7 @@
 // Implements the auth state machine defined in the Idris2 ABI layer.
 // Two-phase authentication: POST /v2/users/login -> JWT bearer token.
 // Pull rate limit tracking: 100 (anonymous) / 200 (authenticated) per 6 hours.
-// Thread-safe via std.Thread.Mutex. No heap allocations for results.
+// Thread-safe via shim.Mutex. No heap allocations for results.
 
 const std = @import("std");
 
@@ -90,7 +90,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = .{SessionSlot{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // C-ABI exports
@@ -98,8 +98,8 @@ var mutex: std.Thread.Mutex = .{};
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn docker_hub_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(AuthState, from) catch return 0;
-    const t = std.meta.intToEnum(AuthState, to) catch return 0;
+    const f = std.enums.fromInt(AuthState, from) orelse return 0;
+    const t = std.enums.fromInt(AuthState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -166,7 +166,7 @@ pub export fn docker_hub_mcp_execute_action(slot_idx: c_int, action_code: c_int)
     const slot = &sessions[idx];
     if (!slot.active) return -1;
 
-    const action = std.meta.intToEnum(DockerHubAction, action_code) catch return -4;
+    const action = std.enums.fromInt(DockerHubAction, action_code) orelse return -4;
 
     // Check auth requirement
     if (!actionAllowsAnonymous(action) and slot.state != .authenticated) return -2;

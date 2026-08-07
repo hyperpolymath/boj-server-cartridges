@@ -48,7 +48,7 @@ var workspaces: [MAX_WORKSPACES]WorkspaceSlot = [_]WorkspaceSlot{.{
     .plan_hash = 0,
 }} ** MAX_WORKSPACES;
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: IacState, to: IacState) bool {

@@ -102,8 +102,8 @@ export fn opsm_state(slot_idx: u32) i32 {
 
 /// Check if a state transition is valid.
 export fn opsm_can_transition(from: u8, to: u8) i32 {
-    const from_state = std.meta.intToEnum(RegState, from) catch return 0;
-    const to_state = std.meta.intToEnum(RegState, to) catch return 0;
+    const from_state = std.enums.fromInt(RegState, from) orelse return 0;
+    const to_state = std.enums.fromInt(RegState, to) orelse return 0;
 
     const valid = switch (from_state) {
         .disconnected => to_state == .connected,

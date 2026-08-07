@@ -81,7 +81,7 @@ var sessions: [MAX_SESSIONS]LangSession = [_]LangSession{.{
     .name_len = 0,
 }} ** MAX_SESSIONS;
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Validate a state transition.
 fn isValidTransition(from: LangState, to: LangState) bool {
@@ -328,25 +328,26 @@ fn runCurlPost(endpoint: [:0]const u8, body: [:0]const u8) ![]u8 {
         "-X", "POST", "-H", "Content-Type: application/json",
         "-d", body, endpoint,
     };
-    var child = std.process.Child.init(&argv, std.heap.page_allocator);
-    child.stdout_behavior = .Pipe;
-    child.stderr_behavior = .Pipe;
-    try child.spawn();
-
     const alloc = std.heap.page_allocator;
-    var stdout_list: std.ArrayList(u8) = .empty;
-    var stderr_list: std.ArrayList(u8) = .empty;
-    defer stderr_list.deinit(alloc);
+    const result = try std.process.run(alloc, shim.io(), .{
+        .argv = &argv,
+        .stdout_limit = .limited(65536),
+        .stderr_limit = .limited(65536),
+    });
+    alloc.free(result.stderr);
 
-    try child.collectOutput(alloc, &stdout_list, &stderr_list, 65536);
-    const term = try child.wait();
-
-    if (term.Exited != 0) {
-        stdout_list.deinit(alloc);
-        return error.CurlFailed;
+    switch (result.term) {
+        .exited => |code| if (code != 0) {
+            alloc.free(result.stdout);
+            return error.CurlFailed;
+        },
+        else => {
+            alloc.free(result.stdout);
+            return error.CurlFailed;
+        },
     }
 
-    return stdout_list.toOwnedSlice(alloc);
+    return result.stdout;
 }
 
 // ═══════════════════════════════════════════════════════════════════════

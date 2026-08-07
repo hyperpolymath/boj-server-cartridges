@@ -48,7 +48,7 @@ var forges: [MAX_FORGES]ForgeSlot = [_]ForgeSlot{.{
     .selected_repo_hash = 0,
 }} ** MAX_FORGES;
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: GitState, to: GitState) bool {

@@ -9,7 +9,7 @@
 // Actions: SearchDashboards, GetDashboard, CreateDashboard, DeleteDashboard,
 //          QueryDatasource, ListAlerts, CreateAnnotation, ListDatasources,
 //          ListFolders, Health
-// Thread-safe via std.Thread.Mutex. Fixed-size session pool, no heap allocations.
+// Thread-safe via shim.Mutex. Fixed-size session pool, no heap allocations.
 
 const std = @import("std");
 
@@ -68,7 +68,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = .{SessionSlot{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // C-ABI exports — state machine
@@ -76,8 +76,8 @@ var mutex: std.Thread.Mutex = .{};
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn grafana_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(SessionState, from) catch return 0;
-    const t = std.meta.intToEnum(SessionState, to) catch return 0;
+    const f = std.enums.fromInt(SessionState, from) orelse return 0;
+    const t = std.enums.fromInt(SessionState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -182,7 +182,7 @@ pub export fn grafana_mcp_signal_error(slot_idx: c_int) c_int {
 /// Record an API call on a session. Returns 0 on success.
 /// Error codes: -1 = invalid slot, -2 = rate limited/error state, -3 = invalid action.
 pub export fn grafana_mcp_record_call(slot_idx: c_int, action: c_int) c_int {
-    const act = std.meta.intToEnum(GrafanaAction, action) catch return -3;
+    const act = std.enums.fromInt(GrafanaAction, action) orelse return -3;
 
     mutex.lock();
     defer mutex.unlock();

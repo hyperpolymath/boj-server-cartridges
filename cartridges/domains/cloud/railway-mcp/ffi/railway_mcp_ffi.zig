@@ -5,7 +5,7 @@
 //
 // Implements the state machine defined in the Idris2 ABI layer for
 // Railway GraphQL API v2 (https://backboard.railway.app/graphql/v2).
-// Auth: Bearer token. Thread-safe via std.Thread.Mutex.
+// Auth: Bearer token. Thread-safe via shim.Mutex.
 
 const std = @import("std");
 
@@ -69,7 +69,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = .{SessionSlot{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // C-ABI exports
@@ -77,8 +77,8 @@ var mutex: std.Thread.Mutex = .{};
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn railway_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(SessionState, from) catch return 0;
-    const t = std.meta.intToEnum(SessionState, to) catch return 0;
+    const f = std.enums.fromInt(SessionState, from) orelse return 0;
+    const t = std.enums.fromInt(SessionState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -198,7 +198,7 @@ pub export fn railway_mcp_error_recover(slot_idx: c_int) c_int {
 
 /// All Railway actions require auth. Returns 1 always.
 pub export fn railway_mcp_action_requires_auth(action: c_int) c_int {
-    _ = std.meta.intToEnum(RailwayAction, action) catch return 1;
+    _ = std.enums.fromInt(RailwayAction, action) orelse return 1;
     return 1;
 }
 

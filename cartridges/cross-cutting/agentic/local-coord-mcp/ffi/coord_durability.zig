@@ -109,8 +109,11 @@ fn vdb_replay_events(cb: ReplayCb) void {
     _ = cb;
 }
 
-var log_file: ?std.fs.File = null;
-var mutex: std.Thread.Mutex = .{};
+var log_file: ?std.Io.File = null;
+// Append cursor — Zig 0.16's `std.Io.File` has no seek API; writes are
+// positional, so the module tracks the end-of-log offset under `mutex`.
+var log_end: u64 = 0;
+var mutex: shim.Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Open / close / truncate / status
@@ -131,14 +134,15 @@ pub fn openWithDir(dir: []const u8) bool {
     if (log_file != null) return true;
     if (dir.len == 0 or dir.len >= 256) return false;
 
-    std.fs.cwd().makePath(dir) catch return false;
+    const io = shim.io();
+    std.Io.Dir.cwd().createDirPath(io, dir) catch return false;
 
     var path_buf: [512]u8 = undefined;
     const log_path = std.fmt.bufPrint(&path_buf, "{s}/{s}", .{ dir, LOG_FILE_NAME }) catch return false;
 
-    const f = std.fs.cwd().createFile(log_path, .{ .truncate = false, .read = true }) catch return false;
-    f.seekFromEnd(0) catch {
-        f.close();
+    const f = std.Io.Dir.cwd().createFile(io, log_path, .{ .truncate = false, .read = true }) catch return false;
+    log_end = f.length(io) catch {
+        f.close(io);
         return false;
     };
     log_file = f;
@@ -150,13 +154,13 @@ pub fn openWithDir(dir: []const u8) bool {
 /// is set (Task #7b). VeriSimDB does not gate file-backend success.
 pub fn open() bool {
     // Arm VeriSimDB supplementary backend.
-    if (std.posix.getenv(VDB_ENV_VAR)) |ep| {
+    if (shim.getenv(VDB_ENV_VAR)) |ep| {
         if (ep.len > 0 and ep.len <= VDB_ENDPOINT_MAX) {
             @memcpy(vdb_endpoint[0..ep.len], ep);
             vdb_endpoint_len = ep.len;
         }
     }
-    const env = std.posix.getenv(ENV_VAR) orelse return false;
+    const env = shim.getenv(ENV_VAR) orelse return false;
     if (env.len == 0) return false;
     return openWithDir(env);
 }
@@ -166,8 +170,9 @@ pub fn close() void {
     mutex.lock();
     defer mutex.unlock();
     if (log_file) |f| {
-        f.close();
+        f.close(shim.io());
         log_file = null;
+        log_end = 0;
     }
 }
 
@@ -176,8 +181,8 @@ pub fn truncate() void {
     mutex.lock();
     defer mutex.unlock();
     const f = log_file orelse return;
-    f.setEndPos(0) catch {};
-    f.seekTo(0) catch {};
+    f.setLength(shim.io(), 0) catch {};
+    log_end = 0;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -197,13 +202,14 @@ pub fn append(event: EventType, payload: []const u8) void {
     mutex.lock();
     defer mutex.unlock();
     const f = log_file orelse return;
+    const io = shim.io();
 
     var hdr: [HEADER_SIZE]u8 = undefined;
     std.mem.writeInt(u32, hdr[0..4], MAGIC, .little);
     std.mem.writeInt(u16, hdr[4..6], @intFromEnum(event), .little);
     std.mem.writeInt(u16, hdr[6..8], FORMAT_VERSION, .little);
     std.mem.writeInt(u32, hdr[8..12], @intCast(payload.len), .little);
-    std.mem.writeInt(u64, hdr[12..20], @intCast(std.time.milliTimestamp()), .little);
+    std.mem.writeInt(u64, hdr[12..20], @intCast(shim.milliTimestamp()), .little);
 
     var crc = std.hash.Crc32.init();
     crc.update(&hdr);
@@ -211,9 +217,14 @@ pub fn append(event: EventType, payload: []const u8) void {
     var trailer: [TRAILER_SIZE]u8 = undefined;
     std.mem.writeInt(u32, &trailer, crc.final(), .little);
 
-    f.writeAll(&hdr) catch return;
-    if (payload.len > 0) f.writeAll(payload) catch return;
-    f.writeAll(&trailer) catch return;
+    f.writePositionalAll(io, &hdr, log_end) catch return;
+    log_end += hdr.len;
+    if (payload.len > 0) {
+        f.writePositionalAll(io, payload, log_end) catch return;
+        log_end += payload.len;
+    }
+    f.writePositionalAll(io, &trailer, log_end) catch return;
+    log_end += trailer.len;
 }
 
 /// Callback shape for replay(). The callback is invoked once per valid
@@ -229,16 +240,18 @@ pub fn replay(cb: ReplayCb) void {
     mutex.lock();
     defer mutex.unlock();
     const f = log_file orelse return;
+    const io = shim.io();
 
-    f.seekTo(0) catch return;
+    var pos: u64 = 0;
 
     var hdr: [HEADER_SIZE]u8 = undefined;
     var payload_buf: [MAX_PAYLOAD]u8 = undefined;
     var trailer: [TRAILER_SIZE]u8 = undefined;
 
     while (true) {
-        const n = f.readAll(&hdr) catch break;
+        const n = f.readPositionalAll(io, &hdr, pos) catch break;
         if (n < HEADER_SIZE) break;
+        pos += n;
 
         const magic = std.mem.readInt(u32, hdr[0..4], .little);
         if (magic != MAGIC) break;
@@ -249,12 +262,14 @@ pub fn replay(cb: ReplayCb) void {
         if (payload_len > MAX_PAYLOAD) break;
 
         if (payload_len > 0) {
-            const pn = f.readAll(payload_buf[0..payload_len]) catch break;
+            const pn = f.readPositionalAll(io, payload_buf[0..payload_len], pos) catch break;
             if (pn < payload_len) break;
+            pos += pn;
         }
 
-        const tn = f.readAll(&trailer) catch break;
+        const tn = f.readPositionalAll(io, &trailer, pos) catch break;
         if (tn < TRAILER_SIZE) break;
+        pos += tn;
 
         var crc = std.hash.Crc32.init();
         crc.update(&hdr);
@@ -265,8 +280,7 @@ pub fn replay(cb: ReplayCb) void {
         const event: EventType = @enumFromInt(event_raw);
         cb(event, payload_buf[0..payload_len]);
     }
-
-    f.seekFromEnd(0) catch {};
+    // Appends continue at `log_end` (positional writes) — no seek needed.
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -650,8 +664,8 @@ fn tReset() void {
 
 fn tTempDir(buf: []u8) ![]u8 {
     return std.fmt.bufPrint(buf, "/tmp/boj-coord-dur-test-{d}-{d}", .{
-        std.time.milliTimestamp(),
-        std.crypto.random.int(u32),
+        shim.milliTimestamp(),
+        shim.randomInt(u32),
     });
 }
 
@@ -667,7 +681,7 @@ test "disabled when dir unset" {
 test "open creates dir and log file" {
     var buf: [256]u8 = undefined;
     const dir = try tTempDir(&buf);
-    defer std.fs.cwd().deleteTree(dir) catch {};
+    defer std.Io.Dir.cwd().deleteTree(shim.io(), dir) catch {};
     close();
 
     try std.testing.expect(openWithDir(dir));
@@ -679,7 +693,7 @@ test "open creates dir and log file" {
 test "append and replay round-trip peer add" {
     var buf: [256]u8 = undefined;
     const dir = try tTempDir(&buf);
-    defer std.fs.cwd().deleteTree(dir) catch {};
+    defer std.Io.Dir.cwd().deleteTree(shim.io(), dir) catch {};
     close();
 
     try std.testing.expect(openWithDir(dir));
@@ -708,7 +722,7 @@ test "append and replay round-trip peer add" {
 test "replay stops at CRC corruption" {
     var buf: [256]u8 = undefined;
     const dir = try tTempDir(&buf);
-    defer std.fs.cwd().deleteTree(dir) catch {};
+    defer std.Io.Dir.cwd().deleteTree(shim.io(), dir) catch {};
     close();
 
     try std.testing.expect(openWithDir(dir));
@@ -718,13 +732,13 @@ test "replay stops at CRC corruption" {
     close();
 
     // Corrupt the tail by overwriting the last CRC byte.
+    const io = shim.io();
     var path_buf: [512]u8 = undefined;
     const path = try std.fmt.bufPrint(&path_buf, "{s}/coord.log", .{dir});
-    const f = try std.fs.cwd().openFile(path, .{ .mode = .read_write });
-    defer f.close();
-    const size = try f.getEndPos();
-    try f.seekTo(size - 1);
-    _ = try f.write(&[_]u8{0xFF});
+    const f = try std.Io.Dir.cwd().openFile(io, path, .{ .mode = .read_write });
+    defer f.close(io);
+    const size = try f.length(io);
+    try f.writePositionalAll(io, &[_]u8{0xFF}, size - 1);
 
     // Replay should recover the first two records, stop at the corrupt tail.
     try std.testing.expect(openWithDir(dir));
@@ -738,7 +752,7 @@ test "replay stops at CRC corruption" {
 test "replay decodes every event type" {
     var buf: [256]u8 = undefined;
     const dir = try tTempDir(&buf);
-    defer std.fs.cwd().deleteTree(dir) catch {};
+    defer std.Io.Dir.cwd().deleteTree(shim.io(), dir) catch {};
     close();
 
     try std.testing.expect(openWithDir(dir));
@@ -790,3 +804,5 @@ test "replay decodes every event type" {
     try std.testing.expectEqualSlices(u8, "proof-analysis", tr.tag);
     try std.testing.expectEqual(@as(u8, 85), tr.confidence_pct);
 }
+
+const shim = @import("cartridge_shim.zig");

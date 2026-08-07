@@ -68,7 +68,8 @@ fn respondOnEnter(
     out: *std.ArrayList(u8),
 ) !u16 {
     var result = ffi.onEnter(allocator, worktree, session_hint) catch |e| {
-        try out.writer(allocator).print(
+        try out.print(
+            allocator,
             "{{\"success\":false,\"error\":\"on_enter_failed\",\"detail\":\"{s}\"}}",
             .{@errorName(e)},
         );
@@ -76,7 +77,10 @@ fn respondOnEnter(
     };
     defer result.deinit(allocator);
 
-    var w = out.writer(allocator);
+    var aw: std.Io.Writer.Allocating = .fromArrayList(allocator, out);
+    defer out.* = aw.toArrayList();
+    const w = &aw.writer;
+
     try w.writeAll("{\"success\":true,\"peer_id\":");
     try writeJsonString(w, result.peer_id);
     try w.writeAll(",\"coord_state\":");
@@ -96,7 +100,8 @@ fn respondOnExit(
     out: *std.ArrayList(u8),
 ) !u16 {
     var result = ffi.onExit(allocator, worktree, reason) catch |e| {
-        try out.writer(allocator).print(
+        try out.print(
+            allocator,
             "{{\"success\":false,\"error\":\"on_exit_failed\",\"detail\":\"{s}\"}}",
             .{@errorName(e)},
         );
@@ -104,7 +109,10 @@ fn respondOnExit(
     };
     defer result.deinit(allocator);
 
-    var w = out.writer(allocator);
+    var aw: std.Io.Writer.Allocating = .fromArrayList(allocator, out);
+    defer out.* = aw.toArrayList();
+    const w = &aw.writer;
+
     try w.writeAll("{\"success\":true,\"coord_state\":");
     try writeJsonString(w, result.coord_state);
     try w.writeAll(",\"drift_findings\":");
@@ -170,7 +178,8 @@ fn dispatchTool(
     }
 
     const recipe = ffi.recipeFor(tool) orelse {
-        try out.writer(allocator).print(
+        try out.print(
+            allocator,
             "{{\"success\":false,\"error\":\"unknown_tool\",\"tool\":\"{s}\"}}",
             .{tool},
         );
@@ -191,7 +200,8 @@ fn dispatchTool(
     if (extractKey(body, "args", &args_buf)) |v| extra_list.appendAssumeCapacity(v);
 
     var inv = ffi.invokeRecipe(allocator, recipe, extra_list.items, worktree) catch |e| {
-        try out.writer(allocator).print(
+        try out.print(
+            allocator,
             "{{\"success\":false,\"error\":\"invoke_failed\",\"recipe\":\"{s}\",\"detail\":\"{s}\"}}",
             .{ recipe, @errorName(e) },
         );
@@ -202,7 +212,10 @@ fn dispatchTool(
     const cleaned_stderr = try stripKnownNoise(allocator, inv.stderr);
     defer if (cleaned_stderr.ptr != inv.stderr.ptr) allocator.free(cleaned_stderr);
 
-    var w = out.writer(allocator);
+    var aw: std.Io.Writer.Allocating = .fromArrayList(allocator, out);
+    defer out.* = aw.toArrayList();
+    const w = &aw.writer;
+
     try w.writeAll("{\"success\":");
     try w.writeAll(if (inv.exit_code == 0) "true" else "false");
     try w.print(",\"exit_code\":{d},\"recipe\":", .{inv.exit_code});
@@ -256,48 +269,51 @@ fn stripKnownNoise(allocator: std.mem.Allocator, stderr: []const u8) ![]const u8
 // ═══════════════════════════════════════════════════════════════════════
 
 pub fn main() !void {
-    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
+    // Zig 0.16 renamed GeneralPurposeAllocator to DebugAllocator.
+    var gpa: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
     // Worktree: cwd by default, or $OO7_WORKTREE if set.
-    var env_map = try std.process.getEnvMap(allocator);
-    defer env_map.deinit();
-    const worktree = env_map.get("OO7_WORKTREE") orelse ".";
+    // Zig 0.16 removed std.process.getEnvMap; the shared ADR-0006 shim's
+    // libc-backed getenv is the estate replacement.
+    const worktree: []const u8 = ffi.shim.getenv("OO7_WORKTREE") orelse ".";
 
-    const addr = std.net.Address.initIp4(BIND_ADDR, BIND_PORT);
-    var listener = try addr.listen(.{ .reuse_address = true });
-    defer listener.deinit();
+    // One process-wide runtime, shared with the cartridge behind the ABI.
+    const io = ffi.shim.io();
+    const addr: std.Io.net.IpAddress = .{ .ip4 = .{ .bytes = BIND_ADDR, .port = BIND_PORT } };
+    var listener = try addr.listen(io, .{ .reuse_address = true });
+    defer listener.deinit(io);
 
     std.log.info("007-mcp adapter listening on 127.0.0.1:{d} (worktree={s})", .{ BIND_PORT, worktree });
 
     while (true) {
-        var conn = listener.accept() catch |e| {
-            std.log.warn("accept failed: {}", .{e});
+        const stream = listener.accept(io) catch |e| {
+            std.log.warn("accept failed: {t}", .{e});
             continue;
         };
-        handleConn(allocator, worktree, &conn) catch |e| {
-            std.log.warn("connection handler failed: {}", .{e});
+        handleConn(io, allocator, worktree, stream) catch |e| {
+            std.log.warn("connection handler failed: {t}", .{e});
         };
-        conn.stream.close();
+        stream.close(io);
     }
 }
 
 fn handleConn(
+    io: std.Io,
     allocator: std.mem.Allocator,
     worktree: []const u8,
-    conn: *std.net.Server.Connection,
+    stream: std.Io.net.Stream,
 ) !void {
     var header_buf: [MAX_HEADER_BYTES]u8 = undefined;
-    var total: usize = 0;
+    var stream_reader = stream.reader(io, &header_buf);
+    const r = &stream_reader.interface;
     // Read until we see the end of headers (\r\n\r\n).
-    while (total < header_buf.len) {
-        const n = try conn.stream.read(header_buf[total..]);
-        if (n == 0) break;
-        total += n;
-        if (std.mem.indexOf(u8, header_buf[0..total], "\r\n\r\n") != null) break;
+    while (r.buffered().len < header_buf.len) {
+        r.fillMore() catch break;
+        if (std.mem.indexOf(u8, r.buffered(), "\r\n\r\n") != null) break;
     }
-    const buf = header_buf[0..total];
+    const buf = r.buffered();
     const eoh = std.mem.indexOf(u8, buf, "\r\n\r\n") orelse return;
     const head = buf[0..eoh];
 
@@ -316,10 +332,11 @@ fn handleConn(
     var status: u16 = 404;
 
     if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path, "/health")) {
-        try resp.writer(allocator).writeAll("{\"success\":true,\"health\":\"ok\"}");
+        try resp.appendSlice(allocator, "{\"success\":true,\"health\":\"ok\"}");
         status = 200;
     } else if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path, "/status")) {
-        try resp.writer(allocator).print(
+        try resp.print(
+            allocator,
             "{{\"success\":true,\"state\":{d},\"peer_id\":\"{s}\"}}",
             .{ @intFromEnum(ffi.state()), ffi.peerId() },
         );
@@ -336,22 +353,22 @@ fn handleConn(
         }
         status = try dispatchTool(allocator, worktree, tool, body_buf[0..bbuf_len], &resp);
     } else {
-        try resp.writer(allocator).writeAll("{\"success\":false,\"error\":\"not_found\"}");
+        try resp.appendSlice(allocator, "{\"success\":false,\"error\":\"not_found\"}");
     }
 
-    try writeHttpResponse(conn.stream, status, resp.items);
+    try writeHttpResponse(io, stream, status, resp.items);
 }
 
-fn writeHttpResponse(stream: std.net.Stream, status: u16, body: []const u8) !void {
+fn writeHttpResponse(io: std.Io, stream: std.Io.net.Stream, status: u16, body: []const u8) !void {
     var header: [256]u8 = undefined;
-    const phrase = statusPhrase(status);
-    const hdr = try std.fmt.bufPrint(
-        &header,
+    var stream_writer = stream.writer(io, &header);
+    const w = &stream_writer.interface;
+    try w.print(
         "HTTP/1.1 {d} {s}\r\nContent-Type: application/json\r\nContent-Length: {d}\r\nConnection: close\r\n\r\n",
-        .{ status, phrase, body.len },
+        .{ status, statusPhrase(status), body.len },
     );
-    _ = try stream.writeAll(hdr);
-    _ = try stream.writeAll(body);
+    try w.writeAll(body);
+    try w.flush();
 }
 
 fn statusPhrase(s: u16) []const u8 {

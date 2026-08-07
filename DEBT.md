@@ -68,6 +68,7 @@ enforces it.
 |----|-----|------|----------|
 | T-1 | HIGH | **92 of 142 FFI implementations return canned stub JSON** (`"status":"stub"`). The per-file headers are honest about it; the scale is the debt — roughly two-thirds of the advertised surface is not wired to anything. | `grep -rl '"status":"stub"' cartridges --include='*_ffi.zig' \| wc -l` → 92 |
 | T-2 | HIGH | **130 of 142 manifests omit `available` entirely**; 12 set it `true`; none sets it `false`. The field is the host's only machine-readable signal for "this is real", and for most cartridges it is simply absent. | `grep -rL '"available"' cartridges --include='cartridge.json' \| wc -l` |
+| T-4 | HIGH | *(fix in flight, #113)* **The public site overstated availability 139-to-12.** `site/catalog.json` was hand-maintained with no generator and claimed `available: true` for **all 139** entries, while only **12** manifests say so. The catalogue was advertising availability the manifests do not back — the exact invariant this estate exists to protect, violated on the public surface. | compare `site/catalog.json` `available` fields against `grep -rl '"available": true' cartridges` → 12 |
 | T-3 | MEDIUM | The stub↔available invariant is **honoured but unenforced here**: no cartridge advertising `available: true` returns a stub. The gate that checks this (`tests/truthfulness_check.sh`) lives in boj-server, which no longer holds the cartridges. The check should run where the manifests are. | cross-check the 12 `available: true` manifests against their `*_ffi.zig` |
 
 ---
@@ -121,7 +122,7 @@ the protection.
 | D-3 | MEDIUM | Machine-specific binary paths in distributed config: `lsp-mcp/presets.json` points at a user-specific `rust-analyzer`; `codeseeker-mcp` FFI has `/home/hyper/repos/myproject`. | `git grep -n '/home/hyper'` |
 | D-4 | MEDIUM | *(remediation in flight)* **A `v` → `zig` find/replace corrupted ~140 adapter READMEs and `PLAYBOOK.a2ml`**, which now read as *banning Zig* ("Banned: ziguage", "zig ban validator") in a repo whose entire FFI layer is Zig. The banned language was **V**, which Zig replaced. Agent-hostile: it is machine-readable content asserting the opposite of the truth. | `grep -rln 'zig banned 2026-04-10\|zig predecessor' cartridges \| wc -l` |
 | D-5 | MEDIUM | *(remediation in flight)* `.machine_readable/6a2/` is **another repository's boilerplate**: `STATE.a2ml` says `project = "rsr-template-repo"`, `ECOSYSTEM.a2ml` says `project = "pseudoscript"`. An agent following `0-AI-MANIFEST.a2ml`'s read order is fed facts about two unrelated projects. | `grep -n '^project' .machine_readable/6a2/*.a2ml` |
-| D-6 | LOW | `site/catalog.json` is hand-maintained with **no generator**, so the public site's counts drift permanently and it is already missing in-tree cartridges. | `grep -rl catalog.json .github/ tools/ scripts/ Justfile` → nothing |
+| D-6 | LOW | *(fix in flight, #113)* `site/catalog.json` is hand-maintained with **no generator**, so the public site's counts drift permanently and it is already missing in-tree cartridges. | `grep -rl catalog.json .github/ tools/ scripts/ Justfile` → nothing |
 
 ---
 

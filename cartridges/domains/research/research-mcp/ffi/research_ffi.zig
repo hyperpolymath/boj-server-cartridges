@@ -67,7 +67,7 @@ var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{
     .result_len = 0,
 }} ** MAX_SESSIONS;
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: SessionState, to: SessionState) bool {
@@ -202,11 +202,11 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 // ADR-0006 dispatch (boj_cartridge_invoke, 5th standard symbol)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha — each arm
 /// returns a stub JSON body shaped to the tool's intended response.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

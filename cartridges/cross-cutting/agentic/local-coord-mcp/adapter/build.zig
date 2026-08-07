@@ -23,6 +23,9 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    // The sibling FFI library links libc (see ../ffi/build.zig); the
+    // adapter embeds the same source, so it must link it too.
+    ffi_mod.link_libc = true;
     ffi_mod.addImport("cartridge_shim", shim_mod);
 
     const adapter_mod = b.createModule(.{
@@ -37,4 +40,12 @@ pub fn build(b: *std.Build) void {
         .root_module = adapter_mod,
     });
     b.installArtifact(adapter);
+
+    const run_step = b.step("run", "Run the local-coord-mcp adapter");
+    run_step.dependOn(&b.addRunArtifact(adapter).step);
+
+    const adapter_tests = b.addTest(.{ .root_module = adapter_mod });
+    const run_tests = b.addRunArtifact(adapter_tests);
+    const test_step = b.step("test", "Run local-coord-mcp adapter tests");
+    test_step.dependOn(&run_tests.step);
 }

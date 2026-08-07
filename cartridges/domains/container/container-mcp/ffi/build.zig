@@ -33,6 +33,7 @@ pub fn build(b: *std.Build) void {
     const ctr_tests = b.addTest(.{
         .root_module = ctr_mod,
     });
+    ctr_tests.root_module.link_libc = true;
 
     const run_tests = b.addRunArtifact(ctr_tests);
 
@@ -52,6 +53,7 @@ pub fn build(b: *std.Build) void {
         .root_module = lib_mod,
         .linkage = .dynamic,
     });
+    lib.root_module.link_libc = true;
     b.installArtifact(lib);
 
     const lib_step = b.step("lib", "Build shared library");

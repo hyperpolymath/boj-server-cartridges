@@ -53,7 +53,7 @@ pub const DnsResult = extern struct {
 
 /// Resolve a domain using DNS-over-QUIC (RFC 9250).
 /// Returns a DnsResult with the answer and DNSSEC validation state.
-export fn dns_shield_resolve_doq(
+pub export fn dns_shield_resolve_doq(
     domain: [*:0]const u8,
     record_type: RecordType,
     result: *DnsResult,
@@ -62,7 +62,7 @@ export fn dns_shield_resolve_doq(
 }
 
 /// Resolve a domain using DNS-over-HTTPS (RFC 8484).
-export fn dns_shield_resolve_doh(
+pub export fn dns_shield_resolve_doh(
     domain: [*:0]const u8,
     record_type: RecordType,
     result: *DnsResult,
@@ -72,7 +72,7 @@ export fn dns_shield_resolve_doh(
 
 /// Validate DNSSEC signatures for a response.
 /// Returns the validation state (0=validated, 1=untrusted, 2=insecure, 3=bogus).
-export fn dns_shield_validate_dnssec(
+pub export fn dns_shield_validate_dnssec(
     domain: [*:0]const u8,
     record_type: RecordType,
 ) DnssecState {
@@ -87,7 +87,7 @@ export fn dns_shield_validate_dnssec(
 
 /// Check CAA records for a domain to verify CA authorization.
 /// Returns 0 if the CA is authorized, -1 if not, -2 if no CAA records.
-export fn dns_shield_check_caa(
+pub export fn dns_shield_check_caa(
     domain: [*:0]const u8,
     ca_domain: [*:0]const u8,
 ) i32 {
@@ -99,12 +99,12 @@ export fn dns_shield_check_caa(
 }
 
 /// Flush the DNS cache for all encrypted resolvers.
-export fn dns_shield_flush_cache() void {
+pub export fn dns_shield_flush_cache() void {
     // Clear any cached DoQ/DoH responses.
 }
 
 /// Get the DNS Shield cartridge version.
-export fn dns_shield_version() [*:0]const u8 {
+pub export fn dns_shield_version() [*:0]const u8 {
     return "0.5.0";
 }
 
@@ -137,27 +137,27 @@ fn resolve_encrypted(
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "dns-shield-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

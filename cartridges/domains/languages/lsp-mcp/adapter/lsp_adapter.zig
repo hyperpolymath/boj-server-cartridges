@@ -185,7 +185,7 @@ const TYPES_JSON =
 fn parseSlot(body: []const u8) ?c_int {
     const needle = "\"slot\":";
     const idx = std.mem.indexOf(u8, body, needle) orelse return null;
-    const rest = std.mem.trimLeft(u8, body[idx + needle.len ..], " \t\r\n");
+    const rest = std.mem.trimStart(u8, body[idx + needle.len ..], " \t\r\n");
     var end: usize = 0;
     while (end < rest.len and rest[end] >= '0' and rest[end] <= '9') : (end += 1) {}
     if (end == 0) return null;
@@ -196,7 +196,7 @@ fn parseSlot(body: []const u8) ?c_int {
 fn parseCapability(body: []const u8) ?c_int {
     const needle = "\"capability\":";
     const idx = std.mem.indexOf(u8, body, needle) orelse return null;
-    const rest = std.mem.trimLeft(u8, body[idx + needle.len ..], " \t\r\n");
+    const rest = std.mem.trimStart(u8, body[idx + needle.len ..], " \t\r\n");
     var end: usize = 0;
     while (end < rest.len and rest[end] >= '0' and rest[end] <= '9') : (end += 1) {}
     if (end == 0) return null;
@@ -264,7 +264,7 @@ fn dispatchRest(
     }
 
     if (std.mem.startsWith(u8, target, "/sessions/")) {
-        const slot_opt = pathSlot(std.mem.trimRight(u8, target, "/"));
+        const slot_opt = pathSlot(std.mem.trimEnd(u8, target, "/"));
 
         // GET /sessions/:slot/state
         if (method == .GET and std.mem.endsWith(u8, target, "/state")) {
@@ -589,11 +589,14 @@ fn dispatchGraphql(
 
 const Protocol = enum { rest, grpc, graphql };
 
-fn handleConnection(conn: std.net.Server.Connection, protocol: Protocol) void {
-    defer conn.stream.close();
+fn handleConnection(io: std.Io, stream: std.Io.net.Stream, protocol: Protocol) void {
+    defer stream.close(io);
 
     var read_buf: [8192]u8 = undefined;
-    var http_srv = std.http.Server.init(conn, &read_buf);
+    var write_buf: [8192]u8 = undefined;
+    var stream_reader = stream.reader(io, &read_buf);
+    var stream_writer = stream.writer(io, &write_buf);
+    var http_srv = std.http.Server.init(&stream_reader.interface, &stream_writer.interface);
 
     var request = http_srv.receiveHead() catch return;
 
@@ -602,8 +605,9 @@ fn handleConnection(conn: std.net.Server.Connection, protocol: Protocol) void {
     var body_len: usize = 0;
     if (request.head.content_length) |cl| {
         const to_read: usize = @min(cl, body_buf.len);
-        var reader = request.reader() catch return;
-        body_len = reader.readAll(body_buf[0..to_read]) catch 0;
+        var body_reader_buf: [8192]u8 = undefined;
+        const reader = request.readerExpectContinue(&body_reader_buf) catch return;
+        body_len = reader.readSliceShort(body_buf[0..to_read]) catch 0;
     }
 
     var resp_buf: [4096]u8 = undefined;
@@ -667,17 +671,17 @@ fn handleConnection(conn: std.net.Server.Connection, protocol: Protocol) void {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const ListenerCtx = struct {
-    listener: *std.net.Server,
+    server: *std.Io.net.Server,
     protocol: Protocol,
 };
 
-fn listenLoop(ctx: ListenerCtx) void {
+fn listenLoop(io: std.Io, ctx: ListenerCtx) void {
     while (true) {
-        const conn = ctx.listener.accept() catch |err| {
-            std.log.err("accept error on {s} listener: {}", .{ @tagName(ctx.protocol), err });
+        const stream = ctx.server.accept(io) catch |err| {
+            std.log.err("accept error on {s} listener: {t}", .{ @tagName(ctx.protocol), err });
             continue;
         };
-        handleConnection(conn, ctx.protocol);
+        handleConnection(io, stream, ctx.protocol);
     }
 }
 
@@ -689,29 +693,38 @@ pub fn main() !void {
     // Initialise the FFI session table
     _ = ffi.boj_cartridge_init();
 
-    const rest_addr = try std.net.Address.parseIp4("0.0.0.0", REST_PORT);
-    const grpc_addr = try std.net.Address.parseIp4("0.0.0.0", GRPC_PORT);
-    const gql_addr  = try std.net.Address.parseIp4("0.0.0.0", GQL_PORT);
+    // One process-wide runtime, shared with the cartridge behind the ABI.
+    const io = ffi.shim.io();
 
-    var rest_listener = try rest_addr.listen(.{ .reuse_address = true });
-    defer rest_listener.deinit();
-    var grpc_listener = try grpc_addr.listen(.{ .reuse_address = true });
-    defer grpc_listener.deinit();
-    var gql_listener  = try gql_addr.listen(.{ .reuse_address = true });
-    defer gql_listener.deinit();
+    // Loopback-only: a cartridge adapter is INTERNAL and sits behind the
+    // http-capability-gateway (ADR-0004). These three listeners bound
+    // 0.0.0.0 before the 0.16 port — that was a public ingress.
+    const rest_addr: std.Io.net.IpAddress = .{ .ip4 = .loopback(REST_PORT) };
+    const grpc_addr: std.Io.net.IpAddress = .{ .ip4 = .loopback(GRPC_PORT) };
+    const gql_addr: std.Io.net.IpAddress = .{ .ip4 = .loopback(GQL_PORT) };
+
+    var rest_listener = try rest_addr.listen(io, .{ .reuse_address = true });
+    defer rest_listener.deinit(io);
+    var grpc_listener = try grpc_addr.listen(io, .{ .reuse_address = true });
+    defer grpc_listener.deinit(io);
+    var gql_listener = try gql_addr.listen(io, .{ .reuse_address = true });
+    defer gql_listener.deinit(io);
 
     std.log.info("{s} REST     :{d}", .{ CARTRIDGE, REST_PORT });
     std.log.info("{s} gRPC-compat :{d}", .{ CARTRIDGE, GRPC_PORT });
     std.log.info("{s} GraphQL  :{d}", .{ CARTRIDGE, GQL_PORT });
 
     const t_rest = try std.Thread.spawn(.{}, listenLoop, .{
-        ListenerCtx{ .listener = &rest_listener, .protocol = .rest },
+        io,
+        ListenerCtx{ .server = &rest_listener, .protocol = .rest },
     });
     const t_grpc = try std.Thread.spawn(.{}, listenLoop, .{
-        ListenerCtx{ .listener = &grpc_listener, .protocol = .grpc },
+        io,
+        ListenerCtx{ .server = &grpc_listener, .protocol = .grpc },
     });
     const t_gql = try std.Thread.spawn(.{}, listenLoop, .{
-        ListenerCtx{ .listener = &gql_listener, .protocol = .graphql },
+        io,
+        ListenerCtx{ .server = &gql_listener, .protocol = .graphql },
     });
 
     t_rest.join();

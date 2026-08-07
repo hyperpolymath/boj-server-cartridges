@@ -9,7 +9,7 @@
 // instances, Private-Token authentication (token obtained from vault-mcp),
 // and rate-limit tracking.
 //
-// Thread-safe via std.Thread.Mutex. Fixed-size session pool, no heap
+// Thread-safe via shim.Mutex. Fixed-size session pool, no heap
 // allocations for results.
 
 const std = @import("std");
@@ -126,7 +126,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -161,8 +161,8 @@ fn ensureDefaults(slot: *SessionSlot) void {
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn gitlab_api_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(SessionState, from) catch return 0;
-    const t = std.meta.intToEnum(SessionState, to) catch return 0;
+    const f = std.enums.fromInt(SessionState, from) orelse return 0;
+    const t = std.enums.fromInt(SessionState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -331,7 +331,7 @@ pub export fn gitlab_api_mcp_request(
     const url_str = std.fmt.allocPrint(allocator, "{s}/api/{s}{s}", .{ base_url, api_version, path_slice }) catch return -4;
 
     // Determine HTTP method
-    const http_method_enum = std.meta.intToEnum(HttpMethod, method) catch return -4;
+    const http_method_enum = std.enums.fromInt(HttpMethod, method) orelse return -4;
     const http_method: std.http.Method = switch (http_method_enum) {
         .get => .GET,
         .post => .POST,
@@ -346,7 +346,7 @@ pub export fn gitlab_api_mcp_request(
     const uri = std.Uri.parse(url_str) catch return -4;
 
     // Create HTTP client
-    var client = std.http.Client{ .allocator = allocator };
+    var client = std.http.Client{ .allocator = allocator, .io = shim.io() };
     defer client.deinit();
 
     var headers_buf: [3]std.http.Header = .{
@@ -461,7 +461,7 @@ pub export fn gitlab_api_mcp_graphql(
 
     const uri = std.Uri.parse(url_str) catch return -4;
 
-    var client = std.http.Client{ .allocator = allocator };
+    var client = std.http.Client{ .allocator = allocator, .io = shim.io() };
     defer client.deinit();
 
     var headers_buf: [3]std.http.Header = .{
@@ -554,7 +554,7 @@ pub export fn gitlab_api_mcp_setup_mirror(
 
     const uri = std.Uri.parse(url_str) catch return -4;
 
-    var client = std.http.Client{ .allocator = allocator };
+    var client = std.http.Client{ .allocator = allocator, .io = shim.io() };
     defer client.deinit();
 
     var headers_buf_mirror: [3]std.http.Header = .{
@@ -711,27 +711,27 @@ pub export fn gitlab_api_mcp_reset() void {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "gitlab-api-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

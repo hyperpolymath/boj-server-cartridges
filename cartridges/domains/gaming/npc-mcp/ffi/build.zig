@@ -20,13 +20,13 @@ pub fn build(b: *std.Build) void {
         .linkage = .dynamic,
         .root_module = ffi_mod,
     });
-    lib.linkLibC();
+    lib.root_module.link_libc = true;
     b.installArtifact(lib);
 
     // Unit tests: the cartridge ABI plus the perception core it imports
     // (npcmcp.zig pulls every perception/command module via refAllDeclsRecursive).
     const tests = b.addTest(.{ .root_module = ffi_mod });
-    tests.linkLibC();
+    tests.root_module.link_libc = true;
     const run_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run FFI and core unit tests");
     test_step.dependOn(&run_tests.step);
@@ -48,3 +48,4 @@ pub fn build(b: *std.Build) void {
     const integration_step = b.step("integration", "Run integration tests");
     integration_step.dependOn(&run_integration.step);
 }
+

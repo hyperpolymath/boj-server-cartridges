@@ -75,7 +75,7 @@ var connections: [MAX_CONNECTIONS]ConnectionSlot = [_]ConnectionSlot{.{
 /// INVARIANT: Every C-ABI export function acquires this mutex before accessing
 /// `connections`. Internal helpers (isValidTransition, appendJsonEscaped) are
 /// pure and do not need the mutex.
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: ConnState, to: ConnState) bool {
@@ -98,7 +98,7 @@ pub export fn db_connect(backend: c_int) c_int {
 
     // SAFETY: validate that backend is a known DatabaseBackend value before
     // calling @enumFromInt, which would panic on invalid values
-    const valid_backend = std.meta.intToEnum(DatabaseBackend, backend) catch return -1;
+    const valid_backend = std.enums.fromInt(DatabaseBackend, backend) orelse return -1;
 
     for (&connections, 0..) |*slot, i| {
         if (!slot.active) {
@@ -267,14 +267,14 @@ pub export fn db_query_error(slot_idx: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 ///
-/// HARDENED: Uses std.meta.intToEnum instead of raw @enumFromInt to return
+/// HARDENED: Uses std.enums.fromInt instead of raw @enumFromInt to return
 /// -1 on invalid enum values rather than panicking/triggering UB.
 pub export fn db_can_transition(from: c_int, to: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
     // SAFETY: validate enum range before conversion — @enumFromInt panics on invalid values
-    const f = std.meta.intToEnum(ConnState, from) catch return -1;
-    const t = std.meta.intToEnum(ConnState, to) catch return -1;
+    const f = std.enums.fromInt(ConnState, from) orelse return -1;
+    const t = std.enums.fromInt(ConnState, to) orelse return -1;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -349,12 +349,12 @@ pub export fn db_execute_sql(slot: u8, sql_ptr: [*]const u8, sql_len: usize, out
 
     // Use sqlite3_exec with a callback to collect results into a JSON array.
     // We accumulate into a fixed-size arena backed by a stack buffer, using
-    // ArrayListUnmanaged (Zig 0.15 API).
+    // ArrayListUnmanaged (Zig 0.16 API: zero state is spelled `.empty`).
     var result_buf: [65536]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&result_buf);
     const allocator = fba.allocator();
 
-    var json_out = std.ArrayListUnmanaged(u8){};
+    var json_out: std.ArrayListUnmanaged(u8) = .empty;
     json_out.appendSlice(allocator, "[") catch {
         connections[idx].state = .err;
         return -5;
@@ -607,37 +607,32 @@ fn runCurlPost(endpoint: [:0]const u8, body: [:0]const u8) ![]u8 {
         body,
         endpoint,
     };
-    var child = std.process.Child.init(&argv, std.heap.page_allocator);
-    child.stdout_behavior = .Pipe;
-    child.stderr_behavior = .Pipe;
-    try child.spawn();
-
-    // Collect stdout via the standard API
+    // Zig 0.16: std.process.Child.init/spawn/collectOutput became
+    // std.process.run over a std.Io handle — use the shim's shared Io.
     const alloc = std.heap.page_allocator;
-    var stdout_list: std.ArrayList(u8) = .empty;
-    var stderr_list: std.ArrayList(u8) = .empty;
-    defer stderr_list.deinit(alloc);
-
-    try child.collectOutput(alloc, &stdout_list, &stderr_list, 65536);
-    const term = try child.wait();
+    const result = try std.process.run(alloc, shim.io(), .{
+        .argv = &argv,
+        .stdout_limit = .limited(65536),
+    });
+    alloc.free(result.stderr);
 
     // SAFETY: check that process exited normally (not signalled/stopped)
-    // before inspecting exit code. Accessing .Exited on a Signal term is UB.
-    switch (term) {
-        .Exited => |code| {
+    // before inspecting exit code. Accessing .exited on a signal term is UB.
+    switch (result.term) {
+        .exited => |code| {
             if (code != 0) {
-                stdout_list.deinit(alloc);
+                alloc.free(result.stdout);
                 return error.CurlFailed;
             }
         },
         else => {
             // Process was killed by signal, stopped, or unknown termination
-            stdout_list.deinit(alloc);
+            alloc.free(result.stdout);
             return error.CurlFailed;
         },
     }
 
-    return stdout_list.toOwnedSlice(alloc);
+    return result.stdout;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -875,11 +870,11 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 // ADR-0006 dispatch (boj_cartridge_invoke, 5th standard symbol)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha — each arm
 /// returns a stub JSON body shaped to the tool's intended response.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

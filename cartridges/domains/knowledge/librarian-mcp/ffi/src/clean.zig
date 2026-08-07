@@ -18,7 +18,7 @@ fn isSpaceOrTab(c: u8) bool {
 /// horizontal whitespace, a newline, more horizontal whitespace, then a word
 /// character become the two word characters joined. The caller owns the slice.
 fn dehyphenate(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
-    var out: std.ArrayList(u8) = .{};
+    var out: std.ArrayList(u8) = .empty;
     errdefer out.deinit(allocator);
     var i: usize = 0;
     while (i < text.len) {
@@ -46,7 +46,7 @@ fn dehyphenate(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
 /// horizontal whitespace) collapse to one space, runs of horizontal whitespace
 /// collapse to one space, and the result is trimmed.
 fn reflowParagraph(allocator: std.mem.Allocator, para: []const u8) ![]u8 {
-    var out: std.ArrayList(u8) = .{};
+    var out: std.ArrayList(u8) = .empty;
     errdefer out.deinit(allocator);
     var i: usize = 0;
     while (i < para.len) {
@@ -72,7 +72,7 @@ pub fn clean(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
     const dehyphenated = try dehyphenate(allocator, text);
     defer allocator.free(dehyphenated);
 
-    var out: std.ArrayList(u8) = .{};
+    var out: std.ArrayList(u8) = .empty;
     errdefer out.deinit(allocator);
 
     // Split on blank-line paragraph breaks: a newline, optional horizontal

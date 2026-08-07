@@ -14,41 +14,33 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    const target   = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    // ── lsp_ffi module (state machine from sibling directory) ──────────────
-    // Imported directly by the adapter — no shared-library linking needed.
     const ffi_mod = b.createModule(.{
         .root_source_file = b.path("../ffi/lsp_ffi.zig"),
         .target = target,
         .optimize = optimize,
     });
 
-    // ── lsp-adapter executable ─────────────────────────────────────────────
+    const adapter_mod = b.createModule(.{
+        .root_source_file = b.path("lsp_adapter.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    adapter_mod.addImport("lsp_ffi", ffi_mod);
+
     const adapter = b.addExecutable(.{
         .name = "lsp-adapter",
-        .root_source_file = b.path("lsp_adapter.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = adapter_mod,
     });
-    adapter.root_module.addImport("lsp_ffi", ffi_mod);
     b.installArtifact(adapter);
 
-    // ── run step ───────────────────────────────────────────────────────────
-    const run_cmd  = b.addRunArtifact(adapter);
-    const run_step = b.step("run", "Run lsp-adapter (REST :9016, gRPC :9017, GraphQL :9018)");
-    run_step.dependOn(&run_cmd.step);
+    const run_step = b.step("run", "Run the lsp-mcp adapter");
+    run_step.dependOn(&b.addRunArtifact(adapter).step);
 
-    // ── tests ──────────────────────────────────────────────────────────────
-    const tests = b.addTest(.{
-        .root_source_file = b.path("lsp_adapter.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    tests.root_module.addImport("lsp_ffi", ffi_mod);
-
-    const run_tests  = b.addRunArtifact(tests);
-    const test_step  = b.step("test", "Run adapter unit tests");
+    const adapter_tests = b.addTest(.{ .root_module = adapter_mod });
+    const run_tests = b.addRunArtifact(adapter_tests);
+    const test_step = b.step("test", "Run lsp-mcp adapter tests");
     test_step.dependOn(&run_tests.step);
 }

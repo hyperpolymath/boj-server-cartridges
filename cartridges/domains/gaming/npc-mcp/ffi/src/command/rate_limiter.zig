@@ -14,7 +14,7 @@ pub const RateLimiter = struct {
     burst: u32,
     tokens: f64,
     last_nanos: i64,
-    mutex: std.Thread.Mutex = .{},
+    mutex: shim.Mutex = .{},
 
     pub fn init(cfg: RateLimiterConfig) RateLimiter {
         return .{
@@ -67,3 +67,5 @@ test "rate limiter — refills over time" {
     // 100ms later — should have one token back
     try testing.expect(rl.tryAcquire(100_000_000));
 }
+
+pub const shim = @import("../../cartridge_shim.zig");

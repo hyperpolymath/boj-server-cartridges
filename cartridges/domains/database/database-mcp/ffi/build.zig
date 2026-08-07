@@ -34,8 +34,8 @@ pub fn build(b: *std.Build) void {
     const db_tests = b.addTest(.{
         .root_module = db_mod,
     });
-    db_tests.linkSystemLibrary("sqlite3");
-    db_tests.linkLibC();
+    db_tests.root_module.linkSystemLibrary("sqlite3", .{});
+    db_tests.root_module.link_libc = true;
 
     const run_tests = b.addRunArtifact(db_tests);
 
@@ -55,8 +55,8 @@ pub fn build(b: *std.Build) void {
         .root_module = lib_mod,
         .linkage = .dynamic,
     });
-    lib.linkSystemLibrary("sqlite3");
-    lib.linkLibC();
+    lib.root_module.linkSystemLibrary("sqlite3", .{});
+    lib.root_module.link_libc = true;
     b.installArtifact(lib);
 
     const lib_step = b.step("lib", "Build shared library");

@@ -43,7 +43,7 @@ pub fn chunkPages(
     defer arena.deinit();
     const scratch = arena.allocator();
 
-    var tokens: std.ArrayList(Token) = .{};
+    var tokens: std.ArrayList(Token) = .empty;
     for (pages, 1..) |raw, page| {
         const cleaned = try clean.clean(scratch, raw);
         var it = std.mem.tokenizeAny(u8, cleaned, " \t\n");
@@ -52,7 +52,7 @@ pub fn chunkPages(
         }
     }
 
-    var chunks: std.ArrayList(Chunk) = .{};
+    var chunks: std.ArrayList(Chunk) = .empty;
     errdefer {
         for (chunks.items) |c| allocator.free(c.text);
         chunks.deinit(allocator);
@@ -66,7 +66,7 @@ pub fn chunkPages(
         const window = tokens.items[start..end];
         if (window.len == 0) break;
 
-        var text: std.ArrayList(u8) = .{};
+        var text: std.ArrayList(u8) = .empty;
         errdefer text.deinit(allocator);
         var page_start = window[0].page;
         var page_end = window[0].page;

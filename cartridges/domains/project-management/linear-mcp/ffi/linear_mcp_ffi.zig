@@ -8,7 +8,7 @@
 // rate-limit tracking, and Bearer-token authentication via API keys obtained
 // from vault-mcp.
 //
-// Thread-safe via std.Thread.Mutex. No heap allocations for result buffers.
+// Thread-safe via shim.Mutex. No heap allocations for result buffers.
 
 const std = @import("std");
 
@@ -136,7 +136,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -209,8 +209,8 @@ fn formatStubResponse(buf: []u8, operation: []const u8) usize {
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn linear_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(ConnState, from) catch return 0;
-    const t = std.meta.intToEnum(ConnState, to) catch return 0;
+    const f = std.enums.fromInt(ConnState, from) orelse return 0;
+    const t = std.enums.fromInt(ConnState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -266,7 +266,7 @@ pub export fn linear_mcp_graphql_call(
 ) c_int {
     _ = params;
 
-    const action = std.meta.intToEnum(LinearAction, action_id) catch return -6;
+    const action = std.enums.fromInt(LinearAction, action_id) orelse return -6;
 
     mutex.lock();
     defer mutex.unlock();
@@ -275,7 +275,7 @@ pub export fn linear_mcp_graphql_call(
     if (slot.state != .authenticated) return -2;
 
     // Rate-limit check.
-    const now = std.time.timestamp();
+    const now = shim.timestamp();
     if (!slot.rate_tracker.record(now, RATE_BUDGET)) {
         slot.state = .rate_limited;
         return -5;
@@ -376,22 +376,22 @@ pub export fn linear_mcp_reset() void {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "linear-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
@@ -440,7 +440,7 @@ pub const TOOLS = [_][]const u8{
 /// honest: the probe only passes here because the cartridge does not claim to
 /// serve Linear over the FFI. Wiring a real transport in is the prerequisite
 /// for ever setting `available: true`.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

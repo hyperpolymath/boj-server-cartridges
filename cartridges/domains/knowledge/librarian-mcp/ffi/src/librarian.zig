@@ -26,7 +26,7 @@ var g_allocator: std.heap.DebugAllocator(.{}) = .init;
 
 const State = struct {
     allocator: std.mem.Allocator,
-    root: std.fs.Dir,
+    root: std.Io.Dir,
 };
 
 var g_state: ?State = null;
@@ -45,15 +45,16 @@ pub export fn librarian_init(root_ptr: [*]const u8, root_len: usize) callconv(.c
 
     const path: []const u8 = if (root_len > 0) root_ptr[0..root_len] else "boj-librarian";
 
-    std.fs.cwd().makePath(path) catch return -3;
-    const dir = std.fs.cwd().openDir(path, .{ .iterate = true }) catch return -4;
+    const io = shim.io();
+    std.Io.Dir.cwd().createDirPath(io, path) catch return -3;
+    const dir = std.Io.Dir.cwd().openDir(io, path, .{ .iterate = true }) catch return -4;
     g_state = State{ .allocator = a, .root = dir };
     return 0;
 }
 
 pub export fn librarian_shutdown() callconv(.c) i32 {
     if (g_state) |*s| {
-        s.root.close();
+        s.root.close(shim.io());
         g_state = null;
     }
     _ = g_allocator.deinit();
@@ -267,7 +268,7 @@ pub export fn librarian_list() callconv(.c) [*:0]const u8 {
     }
     // Each entry owns its strings: the collection is freed per iteration, so
     // borrowing its slices into the output would be a use-after-free.
-    var outs: std.ArrayList(InfoOut) = .{};
+    var outs: std.ArrayList(InfoOut) = .empty;
     defer {
         for (outs.items) |o| {
             a.free(o.name);
@@ -343,5 +344,10 @@ fn errJsonDyn(a: std.mem.Allocator, msg: []const u8) [*:0]const u8 {
 }
 
 test {
-    std.testing.refAllDeclsRecursive(@This());
+    // Zig 0.16 removed refAllDeclsRecursive; refAllDecls references every
+    // pub decl (including the module imports above), which is enough to pull
+    // in each module's file-level tests.
+    std.testing.refAllDecls(@This());
 }
+
+pub const shim = @import("cartridge_shim.zig");

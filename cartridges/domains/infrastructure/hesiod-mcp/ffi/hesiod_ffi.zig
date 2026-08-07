@@ -3,26 +3,27 @@
 //
 // hesiod-mcp FFI — ADR-0006 five-symbol cartridge ABI implementation.
 //
-// Real DNS implementation via std.net.getAddressList (wraps getaddrinfo).
+// Real DNS implementation via std.Io.net.HostName.lookup (Zig 0.16 —
+// std.net.getAddressList was removed; the resolver now lives on std.Io).
 // Supports A/AAAA record lookup, reverse DNS, and bulk lookups.
 
 const std = @import("std");
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "hesiod-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
@@ -37,16 +38,71 @@ fn getStringField(obj: std.json.Value, field: []const u8, default: []const u8) [
     return val.string;
 }
 
-/// Format a std.net.Address as "ip" (no port suffix).
+/// Format a std.Io.net.IpAddress as "ip" (no port suffix).
 /// Writes into buf, returns a slice. Returns null if formatting fails.
-fn formatIp(addr: std.net.Address, buf: []u8) ?[]const u8 {
-    // {f} invokes the format method on std.net.Address, producing "ip:port"
+fn formatIp(addr: std.Io.net.IpAddress, buf: []u8) ?[]const u8 {
+    // {f} invokes the format method on std.Io.net.IpAddress, producing "ip:port"
     const full = std.fmt.bufPrint(buf, "{f}", .{addr}) catch return null;
-    // std.net.Address formats as "ip:port" — strip the trailing ":port"
+    // std.Io.net.IpAddress formats as "ip:port" — strip the trailing ":port"
     if (std.mem.lastIndexOf(u8, full, ":")) |colon| {
         return full[0..colon];
     }
     return full;
+}
+
+/// Resolve `hostname` on the shim's shared Io and append each address of
+/// the requested family (A = IPv4, AAAA = IPv6) as a JSON string entry
+/// (`"ip",...`) into `answers_buf` starting at `answers_len.*`.
+/// Returns false if the name is invalid or the lookup failed.
+fn appendLookupAnswers(
+    hostname: []const u8,
+    want_ipv4: bool,
+    answers_buf: []u8,
+    answers_len: *usize,
+) bool {
+    const HostName = std.Io.net.HostName;
+    const io = shim.io();
+
+    const host = HostName.init(hostname) catch return false;
+
+    // `lookup` fills the queue and closes it before returning; a capacity
+    // of 32 satisfies its "no blocking at capacity >= 16" guarantee.
+    var lookup_buffer: [32]HostName.LookupResult = undefined;
+    var lookup_queue: std.Io.Queue(HostName.LookupResult) = .init(&lookup_buffer);
+    host.lookup(io, &lookup_queue, .{ .port = 0 }) catch return false;
+
+    var first = true;
+    while (lookup_queue.getOneUncancelable(io)) |res| {
+        const addr = switch (res) {
+            .address => |a| a,
+            .canonical_name => continue,
+        };
+        var ip_buf: [64]u8 = undefined;
+        const ip = formatIp(addr, &ip_buf) orelse continue;
+
+        // Filter by record type: A = IPv4, AAAA = IPv6
+        const is_ipv4 = (addr == .ip4);
+        if (want_ipv4 != is_ipv4) continue;
+
+        // Append comma separator after first entry
+        if (!first) {
+            if (answers_len.* + 1 >= answers_buf.len) break;
+            answers_buf[answers_len.*] = ',';
+            answers_len.* += 1;
+        }
+        first = false;
+
+        // Append "\"ip\""
+        const entry = std.fmt.bufPrint(
+            answers_buf[answers_len.*..],
+            "\"{s}\"",
+            .{ip},
+        ) catch break;
+        answers_len.* += entry.len;
+    } else |err| switch (err) {
+        error.Closed => {},
+    }
+    return true;
 }
 
 // ─── dns_lookup ──────────────────────────────────────────────────────
@@ -113,18 +169,14 @@ fn doDnsLookup(
         return shim.writeResult(out_buf, in_out_len, result);
     }
 
-    // Use a fresh arena for getAddressList — hostname is now a separate stack copy.
-    var lookup_mem: [64 * 1024]u8 = undefined;
-    var lookup_fba = std.heap.FixedBufferAllocator.init(&lookup_mem);
-    const allocator = lookup_fba.allocator();
-
     // Build answers array as a string
     var answers_buf: [4096]u8 = undefined;
     var answers_len: usize = 0;
     answers_buf[answers_len] = '[';
     answers_len += 1;
 
-    const addr_list = std.net.getAddressList(allocator, hostname, 0) catch {
+    const want_ipv4 = std.mem.eql(u8, record_type, "A");
+    if (!appendLookupAnswers(hostname, want_ipv4, &answers_buf, &answers_len)) {
         var result_buf: [512]u8 = undefined;
         const result = std.fmt.bufPrint(
             &result_buf,
@@ -132,35 +184,6 @@ fn doDnsLookup(
             .{ hostname, record_type },
         ) catch return shim.RC_RUNTIME_ERROR;
         return shim.writeResult(out_buf, in_out_len, result);
-    };
-    defer addr_list.deinit();
-
-    var first = true;
-    for (addr_list.addrs) |addr| {
-        var ip_buf: [64]u8 = undefined;
-        const ip = formatIp(addr, &ip_buf) orelse continue;
-
-        // Filter by record type: A = IPv4, AAAA = IPv6
-        const family = addr.any.family;
-        const want_ipv4 = std.mem.eql(u8, record_type, "A");
-        const is_ipv4 = (family == std.posix.AF.INET);
-        if (want_ipv4 != is_ipv4) continue;
-
-        // Append comma separator after first entry
-        if (!first) {
-            if (answers_len + 1 >= answers_buf.len) break;
-            answers_buf[answers_len] = ',';
-            answers_len += 1;
-        }
-        first = false;
-
-        // Append "\"ip\""
-        const entry = std.fmt.bufPrint(
-            answers_buf[answers_len..],
-            "\"{s}\"",
-            .{ip},
-        ) catch break;
-        answers_len += entry.len;
     }
 
     if (answers_len + 1 < answers_buf.len) {
@@ -322,45 +345,16 @@ fn doDnsBulkLookup(
         }
         count += 1;
 
-        // Do the lookup using a per-host arena so there's no aliasing.
+        // Do the per-host lookup.
         var answers_buf: [2048]u8 = undefined;
         var answers_len: usize = 0;
         answers_buf[answers_len] = '[';
         answers_len += 1;
 
         if (is_addr_type) {
-            var lookup_mem: [32 * 1024]u8 = undefined;
-            var lookup_fba = std.heap.FixedBufferAllocator.init(&lookup_mem);
-            const lookup_alloc = lookup_fba.allocator();
-
-            if (std.net.getAddressList(lookup_alloc, hostname, 0)) |addr_list| {
-                defer addr_list.deinit();
-                var first = true;
-                for (addr_list.addrs) |addr| {
-                    var ip_buf: [64]u8 = undefined;
-                    const ip = formatIp(addr, &ip_buf) orelse continue;
-
-                    const family = addr.any.family;
-                    const want_ipv4 = std.mem.eql(u8, record_type, "A");
-                    const is_ipv4 = (family == std.posix.AF.INET);
-                    if (want_ipv4 != is_ipv4) continue;
-
-                    if (!first) {
-                        if (answers_len + 1 >= answers_buf.len) break;
-                        answers_buf[answers_len] = ',';
-                        answers_len += 1;
-                    }
-                    first = false;
-                    const entry = std.fmt.bufPrint(
-                        answers_buf[answers_len..],
-                        "\"{s}\"",
-                        .{ip},
-                    ) catch break;
-                    answers_len += entry.len;
-                }
-            } else |_| {
-                // lookup failed — empty answers array
-            }
+            const want_ipv4 = std.mem.eql(u8, record_type, "A");
+            // lookup failed — empty answers array
+            _ = appendLookupAnswers(hostname, want_ipv4, &answers_buf, &answers_len);
         }
 
         if (answers_len + 1 < answers_buf.len) {
@@ -395,7 +389,7 @@ fn doDnsBulkLookup(
 
 // ─── ADR-0006 dispatch ───────────────────────────────────────────────
 
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

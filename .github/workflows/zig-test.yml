@@ -1,3 +1,4 @@
+# This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
 # This workflow is managed by gh actions-lock.
 # Builds and tests the Zig FFI of any cartridge whose ffi/ changed. Adapted
@@ -18,6 +19,10 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    # Weekly full-estate sweep (see the full-sweep job). PR/push runs keep
+    # the fast changed-cartridge scoping.
+    - cron: "0 5 * * 1"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -49,20 +54,20 @@ jobs:
           if [ "$EVENT" = pull_request ]; then
             git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null \
               && changed=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null) \
-              && { printf '%s\n' "$changed" | grep -qE '^cartridges/.*/ffi/' && run=true || run=false; }
+              && { printf '%s\n' "$changed" | grep -qE '^cartridges/.*/(ffi|adapter)/' && run=true || run=false; }
           elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
             changed=$(git diff --name-only "${BEFORE}...${GITHUB_SHA}" 2>/dev/null) \
-              && { printf '%s\n' "$changed" | grep -qE '^cartridges/.*/ffi/' && run=true || run=false; }
+              && { printf '%s\n' "$changed" | grep -qE '^cartridges/.*/(ffi|adapter)/' && run=true || run=false; }
           fi
           printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
           echo "relevant=$run; changed files:"; printf '%s\n' "${changed:-<none computed>}"
 
   zig-test:
-    name: Build and test Zig cartridge FFI
+    name: Build and test Zig cartridge FFI + adapter
     needs: changes
     if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
@@ -75,9 +80,9 @@ jobs:
       - name: Setup Zig
         uses: mlugg/setup-zig@v2.2.1
         with:
-          version: 0.15.2
+          version: 0.16.0
 
-      - name: Build and test changed cartridges
+      - name: Build and test changed cartridges (ffi + adapter)
         run: |
           set -euo pipefail
           # Determine changed cartridges (by ffi dir) — on push, diff against
@@ -90,14 +95,16 @@ jobs:
             DIFF_BASE="HEAD~1"
           fi
 
-          # A cartridge root is the directory that holds ffi/. Strip the trailing
-          # ffi/... segment from each changed path; works for any nesting depth
-          # (domains/<d>/<name>/ffi, cross-cutting/<c>/<name>/ffi, …).
-          changed="$(git diff --name-only "$DIFF_BASE...HEAD" -- 'cartridges/**/ffi/**' \
-            | sed 's|/ffi/.*||' | sort -u)"
+          # A cartridge root is the directory that holds ffi/ or adapter/.
+          # Strip the trailing ffi/... or adapter/... segment from each changed
+          # path; works for any nesting depth (domains/<d>/<name>/ffi,
+          # cross-cutting/<c>/<name>/adapter, …).
+          changed="$(git diff --name-only "$DIFF_BASE...HEAD" \
+              -- 'cartridges/**/ffi/**' 'cartridges/**/adapter/**' \
+            | sed -E 's#/(ffi|adapter)/.*##' | sort -u)"
 
           if [ -z "$changed" ]; then
-            echo "No cartridge FFI changes detected."
+            echo "No cartridge FFI or adapter changes detected."
             exit 0
           fi
 
@@ -108,5 +115,75 @@ jobs:
             else
               echo "no ffi/build.zig — skipping"
             fi
+            # `zig build` is the real adapter gate: it compiles the executable,
+            # so main() and the listener paths are analysed. `zig build test`
+            # then runs whatever inline tests the adapter declares.
+            if [ -f "$cart/adapter/build.zig" ]; then
+              ( cd "$cart/adapter" && zig build --summary all && zig build test --summary all )
+            else
+              echo "no adapter/build.zig — skipping"
+            fi
             echo "::endgroup::"
           done
+
+  shim-drift:
+    name: Shim drift check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Verify every cartridge_shim.zig matches the canonical template copy
+        run: bash tools/sync_cartridge_shim.sh --check
+
+  # Weekly + on-demand full-estate build: every cartridge ffi/ and adapter/,
+  # not just the changed set. Not a required context, so it cannot strand PRs;
+  # dispatch it as the proof gate after toolchain bumps.
+  full-sweep:
+    name: Full FFI + adapter sweep (all cartridges)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v2.2.1
+        with:
+          version: 0.16.0
+      - name: Build and test every cartridge ffi
+        run: |
+          set -uo pipefail
+          fail=0
+          while IFS= read -r bz; do
+            d=$(dirname "$bz")
+            echo "::group::$d"
+            if (cd "$d" && zig build test --summary none); then
+              echo "PASS $d"
+            else
+              echo "::error::FAIL $d"
+              fail=$((fail+1))
+            fi
+            echo "::endgroup::"
+          done < <(find cartridges -path '*/ffi/build.zig' | sort)
+          echo "ffi failures: $fail"
+          exit "$fail"
+
+      - name: Build and test every cartridge adapter
+        if: always()
+        run: |
+          set -uo pipefail
+          fail=0
+          while IFS= read -r bz; do
+            d=$(dirname "$bz")
+            echo "::group::$d"
+            # `zig build` compiles the executable — main() and the listener
+            # paths are analysed, so this cannot pass vacuously.
+            if (cd "$d" && zig build --summary none && zig build test --summary none); then
+              echo "PASS $d"
+            else
+              echo "::error::FAIL $d"
+              fail=$((fail+1))
+            fi
+            echo "::endgroup::"
+          done < <(find cartridges -path '*/adapter/build.zig' | sort)
+          echo "adapter failures: $fail"
+          exit "$fail"

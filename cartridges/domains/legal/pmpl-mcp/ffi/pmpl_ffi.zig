@@ -16,26 +16,26 @@ pub const ProvenanceEntry = extern struct {
 };
 
 /// Create a new provenance chain root from an entry.
-export fn pmpl_create_chain(entry: *const ProvenanceEntry) i32 {
+pub export fn pmpl_create_chain(entry: *const ProvenanceEntry) i32 {
     _ = entry;
     return 0; // Success
 }
 
 /// Extend a chain with a new entry. Validates license compatibility and parent hash.
-export fn pmpl_extend_chain(parent_hash: [*:0]const u8, entry: *const ProvenanceEntry) i32 {
+pub export fn pmpl_extend_chain(parent_hash: [*:0]const u8, entry: *const ProvenanceEntry) i32 {
     _ = parent_hash;
     _ = entry;
     return 0;
 }
 
 /// Verify the integrity of a provenance chain by checking all BLAKE3 hashes.
-export fn pmpl_verify_chain(root_hash: [*:0]const u8) i32 {
+pub export fn pmpl_verify_chain(root_hash: [*:0]const u8) i32 {
     _ = root_hash;
     return 0; // Chain valid
 }
 
 /// Hash a file's content using BLAKE3.
-export fn pmpl_hash_artifact(path: [*:0]const u8, out_hash: [*]u8, out_len: *u32) i32 {
+pub export fn pmpl_hash_artifact(path: [*:0]const u8, out_hash: [*]u8, out_len: *u32) i32 {
     _ = path;
     // Return a placeholder BLAKE3 hash (64 hex chars).
     const placeholder = "0000000000000000000000000000000000000000000000000000000000000000";
@@ -45,13 +45,13 @@ export fn pmpl_hash_artifact(path: [*:0]const u8, out_hash: [*]u8, out_len: *u32
 }
 
 /// Check if a license is PMPL-compatible.
-export fn pmpl_compatible(license: License) bool {
+pub export fn pmpl_compatible(license: License) bool {
     return switch (license) {
         .pmpl, .mpl2, .mit, .apache2, .bsd2, .bsd3 => true,
     };
 }
 
-export fn pmpl_version() [*:0]const u8 {
+pub export fn pmpl_version() [*:0]const u8 {
     return "0.5.0";
 }
 
@@ -59,27 +59,27 @@ export fn pmpl_version() [*:0]const u8 {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "pmpl-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

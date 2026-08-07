@@ -7,22 +7,22 @@
 // All state is ephemeral per-invocation; IDs are derived from PID + nanoseconds.
 
 const std = @import("std");
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "local-memory-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
@@ -32,14 +32,14 @@ export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
 /// Uses PID + nanosecond timestamp mod 1e9 for uniqueness.
 fn makeId(buf: []u8, prefix: []const u8) []const u8 {
     const pid = std.os.linux.getpid();
-    const ns = std.time.nanoTimestamp();
+    const ns = shim.nanoTimestamp();
     const ns_part: u64 = @intCast(@rem(ns, 1_000_000_000));
     return std.fmt.bufPrint(buf, "{s}{d}-{d}", .{ prefix, pid, ns_part }) catch buf[0..0];
 }
 
 /// Current epoch in milliseconds.
 fn epochMs() i64 {
-    return @intCast(@divTrunc(std.time.nanoTimestamp(), 1_000_000));
+    return @intCast(@divTrunc(shim.nanoTimestamp(), 1_000_000));
 }
 
 // ── Args parsing helper ───────────────────────────────────────────────
@@ -414,7 +414,7 @@ fn memoryProfileGet(
 
 // ── ADR-0006 dispatch ─────────────────────────────────────────────────
 
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

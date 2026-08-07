@@ -21,6 +21,9 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     adapter_mod.addImport("oo7_mcp_ffi", ffi_mod);
+    // The adapter reads $OO7_WORKTREE through the shim's libc-backed
+    // getenv (Zig 0.16 removed std.process.getEnvMap), so it must link libc.
+    adapter_mod.link_libc = true;
 
     const adapter = b.addExecutable(.{
         .name = "oo7_adapter",

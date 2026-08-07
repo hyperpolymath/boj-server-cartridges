@@ -76,7 +76,7 @@ pub const ToolRisk = enum(c_int) {
 
 /// Session-wide state. Single-instance per adapter process.
 var g_state: SessionState = .fresh;
-var g_state_mu: std.Thread.Mutex = .{};
+var g_state_mu: shim.Mutex = .{};
 
 /// Coord-peer identity captured on OnEnter. Empty string when Degraded
 /// or Fresh. `token` is the session token returned by coord_register.
@@ -245,36 +245,31 @@ pub fn invokeRecipe(
     argv_list.appendAssumeCapacity(recipe);
     for (argv_extra) |a| argv_list.appendAssumeCapacity(a);
 
-    var child = std.process.Child.init(argv_list.items, allocator);
-    child.cwd = worktree;
-    child.stdin_behavior = .Ignore;
-    child.stdout_behavior = .Pipe;
-    child.stderr_behavior = .Pipe;
-
-    child.spawn() catch return error.SpawnFailed;
-
-    var stdout_buf: std.ArrayList(u8) = .empty;
-    defer stdout_buf.deinit(allocator);
-    var stderr_buf: std.ArrayList(u8) = .empty;
-    defer stderr_buf.deinit(allocator);
-
-    child.collectOutput(allocator, &stdout_buf, &stderr_buf, MAX_CAPTURE) catch {
-        _ = child.kill() catch {};
-        return error.OutputTooLarge;
+    // Zig 0.16: Child.init/spawn/collectOutput/wait were folded into
+    // std.process.run, which takes the Io handle and enforces the capture
+    // limit itself. Uses the shim's process-wide Io.
+    const run_result = std.process.run(allocator, shim.io(), .{
+        .argv = argv_list.items,
+        .cwd = .{ .path = worktree },
+        .stdout_limit = .limited(MAX_CAPTURE),
+        .stderr_limit = .limited(MAX_CAPTURE),
+    }) catch |e| return switch (e) {
+        error.StreamTooLong => error.OutputTooLarge,
+        error.OutOfMemory => error.OutOfMemory,
+        else => error.SpawnFailed,
     };
 
-    const term = child.wait() catch return error.SpawnFailed;
-    const exit_code: i32 = switch (term) {
-        .Exited => |c| @intCast(c),
-        .Signal => |s| -@as(i32, @intCast(s)),
-        .Stopped => -1,
-        .Unknown => -1,
+    // 0.16 lower-cased the Term tags and typed the signal as posix.SIG.
+    const exit_code: i32 = switch (run_result.term) {
+        .exited => |c| @intCast(c),
+        .signal => |s| -@as(i32, @intCast(@intFromEnum(s))),
+        .stopped, .unknown => -1,
     };
 
     return .{
         .exit_code = exit_code,
-        .stdout = stdout_buf.toOwnedSlice(allocator) catch return error.OutOfMemory,
-        .stderr = stderr_buf.toOwnedSlice(allocator) catch return error.OutOfMemory,
+        .stdout = run_result.stdout,
+        .stderr = run_result.stderr,
     };
 }
 
@@ -436,13 +431,13 @@ fn readMethodologyPack(
         var path_buf: [std.fs.max_path_bytes]u8 = undefined;
         const full = std.fmt.bufPrint(&path_buf, "{s}/{s}", .{ worktree, rel }) catch rel;
         if (std.fs.path.isAbsolute(full)) {
-            std.fs.accessAbsolute(full, .{}) catch {
+            std.Io.Dir.accessAbsolute(shim.io(), full, .{}) catch {
                 const missing = try std.fmt.allocPrint(allocator, "MISSING::{s}", .{rel});
                 out[i] = missing;
                 continue;
             };
         } else {
-            std.fs.cwd().access(full, .{}) catch {
+            std.Io.Dir.cwd().access(shim.io(), full, .{}) catch {
                 const missing = try std.fmt.allocPrint(allocator, "MISSING::{s}", .{rel});
                 out[i] = missing;
                 continue;
@@ -486,11 +481,11 @@ pub const TAG_MAP_PATHS = [_][]const u8{
     "/var/mnt/eclipse/repos/boj-server/cartridges/007-mcp/schemas/memory-tag-map.a2ml",
 };
 
-fn openMaybeAbsolute(path: []const u8) !std.fs.File {
+fn openMaybeAbsolute(path: []const u8) !std.Io.File {
     if (std.fs.path.isAbsolute(path)) {
-        return try std.fs.openFileAbsolute(path, .{});
+        return try std.Io.Dir.openFileAbsolute(shim.io(), path, .{});
     }
-    return try std.fs.cwd().openFile(path, .{});
+    return try std.Io.Dir.cwd().openFile(shim.io(), path, .{});
 }
 
 /// Read the tag map from disk (first candidate that exists wins).
@@ -503,11 +498,11 @@ fn readTagMap(allocator: std.mem.Allocator, worktree: []const u8) ![]u8 {
         else
             std.fmt.bufPrint(&path_buf, "{s}/{s}", .{ worktree, rel }) catch continue;
         const file = openMaybeAbsolute(full) catch continue;
-        defer file.close();
-        const stat = try file.stat();
+        defer file.close(shim.io());
+        const stat = try file.stat(shim.io());
         const buf = try allocator.alloc(u8, stat.size);
         errdefer allocator.free(buf);
-        _ = try file.readAll(buf);
+        _ = try file.readPositionalAll(shim.io(), buf, 0);
         return buf;
     }
     return error.FileNotFound;
@@ -643,7 +638,7 @@ fn coordRegister(allocator: std.mem.Allocator) !bool {
     g_peer_id_len = 0;
     g_coord_token_len = 0;
 
-    var client = std.http.Client{ .allocator = allocator };
+    var client = std.http.Client{ .allocator = allocator, .io = shim.io() };
     defer client.deinit();
 
     const uri = std.Uri.parse(COORD_REGISTER_URL) catch return false;
@@ -718,7 +713,7 @@ fn coordDeregister(allocator: std.mem.Allocator) !void {
 
     const report_url = COORD_URL ++ "/tools/coord_report_outcome";
 
-    var client = std.http.Client{ .allocator = allocator };
+    var client = std.http.Client{ .allocator = allocator, .io = shim.io() };
     defer client.deinit();
 
     const uri = std.Uri.parse(report_url) catch return;
@@ -733,7 +728,8 @@ fn coordDeregister(allocator: std.mem.Allocator) !void {
         .location = .{ .uri = uri },
         .extra_headers = &header_buf,
         .payload = payload,
-        .response_storage = .ignore,
+        // 0.16: FetchOptions.response_storage was replaced by response_writer;
+        // leaving it null discards the body, which is what we want here.
     }) catch {};
 }
 
@@ -843,3 +839,5 @@ test "matchMemories ignores non-matching tag blocks" {
     }
     try std.testing.expectEqual(@as(usize, 0), hits.len);
 }
+
+pub const shim = @import("cartridge_shim.zig");

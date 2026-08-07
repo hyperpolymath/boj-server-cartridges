@@ -138,11 +138,11 @@ fn sourceResponseJson(slot: c_int, success: bool, output: []const u8, buf: []u8)
 }
 
 fn errorJson(buf: []u8, msg: []const u8, code: c_int) []const u8 {
-    return std.fmt.bufPrint(buf, \\{{"error":"{s}","code":{d}}}, .{ msg, code }) catch buf[0..0];
+    return std.fmt.bufPrint(buf, "{{\"error\":\"{s}\",\"code\":{d}}}", .{ msg, code }) catch buf[0..0];
 }
 
 fn healthJson(buf: []u8) []const u8 {
-    return std.fmt.bufPrint(buf, \\{{"status":"ok","cartridge":"{s}","version":"{s}"}}, .{ CARTRIDGE, VERSION }) catch buf[0..0];
+    return std.fmt.bufPrint(buf, "{{\"status\":\"ok\",\"cartridge\":\"{s}\",\"version\":\"{s}\"}}", .{ CARTRIDGE, VERSION }) catch buf[0..0];
 }
 
 const TYPES_JSON =
@@ -159,7 +159,7 @@ fn parseIntField(body: []const u8, field: []const u8) ?c_int {
     var buf: [32]u8 = undefined;
     const needle = std.fmt.bufPrint(&buf, "\"{s}\":", .{field}) catch return null;
     const idx = std.mem.indexOf(u8, body, needle) orelse return null;
-    const rest = std.mem.trimLeft(u8, body[idx + needle.len ..], " \t\r\n");
+    const rest = std.mem.trimStart(u8, body[idx + needle.len ..], " \t\r\n");
     var end: usize = 0;
     while (end < rest.len and rest[end] >= '0' and rest[end] <= '9') : (end += 1) {}
     if (end == 0) return null;
@@ -273,7 +273,7 @@ fn dispatchRest(method: std.http.Method, target: []const u8, body: []const u8, r
     }
 
     if (std.mem.startsWith(u8, target, "/sessions/")) {
-        const slot_opt = pathSlot(std.mem.trimRight(u8, target, "/"));
+        const slot_opt = pathSlot(std.mem.trimEnd(u8, target, "/"));
 
         if (method == .GET and std.mem.endsWith(u8, target, "/state")) {
             const slot = slot_opt orelse return .{ .status = bad, .body = errorJson(resp, "missing slot", -1) };
@@ -303,7 +303,7 @@ fn dispatchRest(method: std.http.Method, target: []const u8, body: []const u8, r
             const slot = slot_opt orelse return .{ .status = bad, .body = errorJson(resp, "missing slot", -1) };
             const r = ffi.lang_session_end(slot);
             if (r < 0) return .{ .status = bad, .body = errorJson(resp, "end session failed", r) };
-            return .{ .status = ok, .body = std.fmt.bufPrint(resp, \\{{"slot":{d},"released":true}}, .{slot}) catch resp[0..0] };
+            return .{ .status = ok, .body = std.fmt.bufPrint(resp, "{{\"slot\":{d},\"released\":true}}", .{slot}) catch resp[0..0] };
         }
     }
 
@@ -362,7 +362,7 @@ fn dispatchGrpc(target: []const u8, body: []const u8, resp: []u8) Response {
     if (std.mem.eql(u8, rpc, "EndSession")) {
         const r = ffi.lang_session_end(slot);
         if (r < 0) return .{ .status = bad, .body = errorJson(resp, "end session failed", r) };
-        return .{ .status = ok, .body = std.fmt.bufPrint(resp, \\{{"slot":{d},"released":true}}, .{slot}) catch resp[0..0] };
+        return .{ .status = ok, .body = std.fmt.bufPrint(resp, "{{\"slot\":{d},\"released\":true}}", .{slot}) catch resp[0..0] };
     }
 
     return .{ .status = std.http.Status.not_found, .body = errorJson(resp, "unknown gRPC method", -1) };
@@ -377,9 +377,9 @@ fn dispatchGraphql(q: []const u8, resp: []u8) Response {
     const bad = std.http.Status.bad_request;
     const has = std.mem.indexOf;
 
-    if (has(u8, q, "__schema") != null) return .{ .status = ok, .body = std.fmt.bufPrint(resp, \\{{"data":{{"__schema":{{"sdl":"{s}"}}}}}}, .{GRAPHQL_SCHEMA}) catch resp[0..0] };
-    if (has(u8, q, "health") != null and has(u8, q, "mutation") == null) return .{ .status = ok, .body = std.fmt.bufPrint(resp, \\{{"data":{{"health":{s}}}}}, .{healthJson(resp)}) catch resp[0..0] };
-    if (has(u8, q, "types")  != null and has(u8, q, "mutation") == null) return .{ .status = ok, .body = std.fmt.bufPrint(resp, \\{{"data":{{"types":{s}}}}}, .{TYPES_JSON}) catch resp[0..0] };
+    if (has(u8, q, "__schema") != null) return .{ .status = ok, .body = std.fmt.bufPrint(resp, "{{\"data\":{{\"__schema\":{{\"sdl\":\"{s}\"}}}}}}", .{GRAPHQL_SCHEMA}) catch resp[0..0] };
+    if (has(u8, q, "health") != null and has(u8, q, "mutation") == null) return .{ .status = ok, .body = std.fmt.bufPrint(resp, "{{\"data\":{{\"health\":{s}}}}}", .{healthJson(resp)}) catch resp[0..0] };
+    if (has(u8, q, "types")  != null and has(u8, q, "mutation") == null) return .{ .status = ok, .body = std.fmt.bufPrint(resp, "{{\"data\":{{\"types\":{s}}}}}", .{TYPES_JSON}) catch resp[0..0] };
 
     if (has(u8, q, "createSession") != null) {
         const lang_id = parseIntField(q, "langId") orelse 2;
@@ -388,7 +388,7 @@ fn dispatchGraphql(q: []const u8, resp: []u8) Response {
         const name = parseStringField(q, "name", &key_buf) orelse "session";
         const slot = ffi.lang_session_start_dialect(lang_id, dialect, name.ptr, name.len);
         if (slot < 0) return .{ .status = bad, .body = errorJson(resp, "no slots available", slot) };
-        return .{ .status = ok, .body = std.fmt.bufPrint(resp, \\{{"data":{{"createSession":{s}}}}}, .{sessionJson(slot, resp)}) catch resp[0..0] };
+        return .{ .status = ok, .body = std.fmt.bufPrint(resp, "{{\"data\":{{\"createSession\":{s}}}}}", .{sessionJson(slot, resp)}) catch resp[0..0] };
     }
 
     const slot = parseIntField(q, "slot") orelse return .{ .status = bad, .body = errorJson(resp, "could not determine slot", -1) };
@@ -398,26 +398,26 @@ fn dispatchGraphql(q: []const u8, resp: []u8) Response {
         const url = parseStringField(q, "url", &key_buf) orelse return .{ .status = bad, .body = errorJson(resp, "missing url", -1) };
         const r = ffi.lang_session_set_url(slot, url.ptr, url.len);
         if (r < 0) return .{ .status = bad, .body = errorJson(resp, "set url failed", r) };
-        return .{ .status = ok, .body = std.fmt.bufPrint(resp, \\{{"data":{{"setUrl":{s}}}}}, .{sessionJson(slot, resp)}) catch resp[0..0] };
+        return .{ .status = ok, .body = std.fmt.bufPrint(resp, "{{\"data\":{{\"setUrl\":{s}}}}}", .{sessionJson(slot, resp)}) catch resp[0..0] };
     }
     if (has(u8, q, "typecheck") != null) {
         var key_buf: [16]u8 = undefined;
         const source = parseStringField(q, "source", &key_buf) orelse "";
         const r = runSourceOp(slot, source, .typecheck, resp);
-        return .{ .status = r.status, .body = std.fmt.bufPrint(resp, \\{{"data":{{"typecheck":{s}}}}}, .{r.body}) catch resp[0..0] };
+        return .{ .status = r.status, .body = std.fmt.bufPrint(resp, "{{\"data\":{{\"typecheck\":{s}}}}}", .{r.body}) catch resp[0..0] };
     }
     if (has(u8, q, "eval") != null) {
         var key_buf: [16]u8 = undefined;
         const source = parseStringField(q, "source", &key_buf) orelse "";
         const r = runSourceOp(slot, source, .eval, resp);
-        return .{ .status = r.status, .body = std.fmt.bufPrint(resp, \\{{"data":{{"eval":{s}}}}}, .{r.body}) catch resp[0..0] };
+        return .{ .status = r.status, .body = std.fmt.bufPrint(resp, "{{\"data\":{{\"eval\":{s}}}}}", .{r.body}) catch resp[0..0] };
     }
     if (has(u8, q, "endSession") != null) {
         const r = ffi.lang_session_end(slot);
         if (r < 0) return .{ .status = bad, .body = errorJson(resp, "end session failed", r) };
-        return .{ .status = ok, .body = std.fmt.bufPrint(resp, \\{{"data":{{"endSession":{{"slot":{d},"released":true}}}}}}, .{slot}) catch resp[0..0] };
+        return .{ .status = ok, .body = std.fmt.bufPrint(resp, "{{\"data\":{{\"endSession\":{{\"slot\":{d},\"released\":true}}}}}}", .{slot}) catch resp[0..0] };
     }
-    if (has(u8, q, "session") != null) return .{ .status = ok, .body = std.fmt.bufPrint(resp, \\{{"data":{{"session":{s}}}}}, .{sessionJson(slot, resp)}) catch resp[0..0] };
+    if (has(u8, q, "session") != null) return .{ .status = ok, .body = std.fmt.bufPrint(resp, "{{\"data\":{{\"session\":{s}}}}}", .{sessionJson(slot, resp)}) catch resp[0..0] };
 
     return .{ .status = bad, .body = errorJson(resp, "unrecognised GraphQL operation", -1) };
 }
@@ -427,20 +427,24 @@ fn dispatchGraphql(q: []const u8, resp: []u8) Response {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const Protocol = enum { rest, grpc, graphql };
-const ListenerCtx = struct { listener: *std.net.Server, protocol: Protocol };
+const ListenerCtx = struct { server: *std.Io.net.Server, protocol: Protocol };
 
-fn handleConnection(conn: std.net.Server.Connection, protocol: Protocol) void {
-    defer conn.stream.close();
+fn handleConnection(io: std.Io, stream: std.Io.net.Stream, protocol: Protocol) void {
+    defer stream.close(io);
     var read_buf: [8192]u8 = undefined;
-    var http_srv = std.http.Server.init(conn, &read_buf);
+    var write_buf: [8192]u8 = undefined;
+    var stream_reader = stream.reader(io, &read_buf);
+    var stream_writer = stream.writer(io, &write_buf);
+    var http_srv = std.http.Server.init(&stream_reader.interface, &stream_writer.interface);
     var request = http_srv.receiveHead() catch return;
 
     var body_buf: [262144]u8 = undefined;
     var body_len: usize = 0;
     if (request.head.content_length) |cl| {
         const to_read: usize = @min(cl, body_buf.len);
-        var reader = request.reader() catch return;
-        body_len = reader.readAll(body_buf[0..to_read]) catch 0;
+        var body_reader_buf: [8192]u8 = undefined;
+        const reader = request.readerExpectContinue(&body_reader_buf) catch return;
+        body_len = reader.readSliceShort(body_buf[0..to_read]) catch 0;
     }
 
     var resp_buf: [4096]u8 = undefined;
@@ -467,31 +471,40 @@ fn handleConnection(conn: std.net.Server.Connection, protocol: Protocol) void {
     }
 }
 
-fn listenLoop(ctx: ListenerCtx) void {
+fn listenLoop(io: std.Io, ctx: ListenerCtx) void {
     while (true) {
-        const conn = ctx.listener.accept() catch |err| {
-            std.log.err("accept error on {s}: {}", .{ @tagName(ctx.protocol), err });
+        const stream = ctx.server.accept(io) catch |err| {
+            std.log.err("accept error on {s}: {t}", .{ @tagName(ctx.protocol), err });
             continue;
         };
-        handleConnection(conn, ctx.protocol);
+        handleConnection(io, stream, ctx.protocol);
     }
 }
 
 pub fn main() !void {
     _ = ffi.boj_cartridge_init();
 
-    var rest_listener = try (try std.net.Address.parseIp4("0.0.0.0", REST_PORT)).listen(.{ .reuse_address = true });
-    defer rest_listener.deinit();
-    var grpc_listener = try (try std.net.Address.parseIp4("0.0.0.0", GRPC_PORT)).listen(.{ .reuse_address = true });
-    defer grpc_listener.deinit();
-    var gql_listener  = try (try std.net.Address.parseIp4("0.0.0.0", GQL_PORT)).listen(.{ .reuse_address = true });
-    defer gql_listener.deinit();
+    // One process-wide runtime, shared with the cartridge behind the ABI.
+    const io = ffi.shim.io();
+
+    // Loopback-only: a cartridge adapter is INTERNAL and sits behind the
+    // http-capability-gateway (ADR-0004). These three listeners bound
+    // 0.0.0.0 before the 0.16 port — that was a public ingress.
+    const rest_addr: std.Io.net.IpAddress = .{ .ip4 = .loopback(REST_PORT) };
+    var rest_listener = try rest_addr.listen(io, .{ .reuse_address = true });
+    defer rest_listener.deinit(io);
+    const grpc_addr: std.Io.net.IpAddress = .{ .ip4 = .loopback(GRPC_PORT) };
+    var grpc_listener = try grpc_addr.listen(io, .{ .reuse_address = true });
+    defer grpc_listener.deinit(io);
+    const gql_addr: std.Io.net.IpAddress = .{ .ip4 = .loopback(GQL_PORT) };
+    var gql_listener = try gql_addr.listen(io, .{ .reuse_address = true });
+    defer gql_listener.deinit(io);
 
     std.log.info("{s} REST :{d}  gRPC :{d}  GraphQL :{d}", .{ CARTRIDGE, REST_PORT, GRPC_PORT, GQL_PORT });
 
-    const t_rest = try std.Thread.spawn(.{}, listenLoop, .{ ListenerCtx{ .listener = &rest_listener, .protocol = .rest } });
-    const t_grpc = try std.Thread.spawn(.{}, listenLoop, .{ ListenerCtx{ .listener = &grpc_listener, .protocol = .grpc } });
-    const t_gql  = try std.Thread.spawn(.{}, listenLoop, .{ ListenerCtx{ .listener = &gql_listener,  .protocol = .graphql } });
+    const t_rest = try std.Thread.spawn(.{}, listenLoop, .{ io, ListenerCtx{ .server = &rest_listener, .protocol = .rest } });
+    const t_grpc = try std.Thread.spawn(.{}, listenLoop, .{ io, ListenerCtx{ .server = &grpc_listener, .protocol = .grpc } });
+    const t_gql  = try std.Thread.spawn(.{}, listenLoop, .{ io, ListenerCtx{ .server = &gql_listener,  .protocol = .graphql } });
 
     t_rest.join();
     t_grpc.join();

@@ -13,34 +13,39 @@ pub const AuditEntry = struct {
 
 pub const AuditLog = struct {
     allocator: std.mem.Allocator,
-    file: std.fs.File,
-    mutex: std.Thread.Mutex = .{},
+    file: std.Io.File,
+    // Append cursor — Zig 0.16's `std.Io.File` has no seek API; writes are
+    // positional, so the log tracks its end offset under `mutex`.
+    end: u64,
+    mutex: shim.Mutex = .{},
 
     pub fn open(allocator: std.mem.Allocator, path: []const u8) !AuditLog {
-        const file = try std.fs.createFileAbsolute(path, .{
+        const io = shim.io();
+        const file = try std.Io.Dir.createFileAbsolute(io, path, .{
             .truncate = false,
             .read = false,
         });
-        try file.seekFromEnd(0);
-        return .{ .allocator = allocator, .file = file };
+        const end = try file.length(io);
+        return .{ .allocator = allocator, .file = file, .end = end };
     }
 
     pub fn close(self: *AuditLog) void {
-        self.file.close();
+        self.file.close(shim.io());
     }
 
     pub fn record(self: *AuditLog, e: AuditEntry) !void {
         self.mutex.lock();
         defer self.mutex.unlock();
 
-        var line = std.ArrayList(u8){};
+        var line: std.ArrayList(u8) = .empty;
         defer line.deinit(self.allocator);
         try line.print(
             self.allocator,
             "{{\"ts\":{d},\"tool\":\"{s}\",\"op\":{d},\"decision\":\"{s}\",\"id\":\"{s}\",\"result\":\"{s}\"}}\n",
             .{ e.ts_ms, e.tool, e.operation_code, e.decision, e.command_id, e.result },
         );
-        try self.file.writeAll(line.items);
+        try self.file.writePositionalAll(shim.io(), line.items, self.end);
+        self.end += line.items.len;
     }
 };
 
@@ -48,7 +53,8 @@ test "audit — writes line per call" {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
 
-    const path = try tmp.dir.realpathAlloc(testing.allocator, ".");
+    const io = shim.io();
+    const path = try tmp.dir.realPathFileAlloc(io, ".", testing.allocator);
     defer testing.allocator.free(path);
     const full_path = try std.fs.path.join(testing.allocator, &.{ path, "audit.log" });
     defer testing.allocator.free(full_path);
@@ -65,9 +71,11 @@ test "audit — writes line per call" {
         .result = "ok",
     });
 
-    const content = try tmp.dir.readFileAlloc(testing.allocator, "audit.log", 4096);
+    const content = try tmp.dir.readFileAlloc(io, "audit.log", testing.allocator, .limited(4096));
     defer testing.allocator.free(content);
 
     try testing.expect(std.mem.indexOf(u8, content, "npc_say") != null);
     try testing.expect(std.mem.indexOf(u8, content, "cmd-1") != null);
 }
+
+pub const shim = @import("../../cartridge_shim.zig");

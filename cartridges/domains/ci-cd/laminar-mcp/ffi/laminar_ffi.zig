@@ -6,25 +6,25 @@
 const std = @import("std");
 
 /// Create a pipeline. Returns pipeline ID or 0 on failure.
-export fn laminar_create_pipeline(name: [*c]const u8) u32 {
+pub export fn laminar_create_pipeline(name: [*c]const u8) u32 {
     if (name == null) return 0;
     return 1; // Stub
 }
 
 /// Run the next stage. Returns 0 on success, -1 on error.
-export fn laminar_run_stage(pipeline_id: u32, stage_name: [*c]const u8) i32 {
+pub export fn laminar_run_stage(pipeline_id: u32, stage_name: [*c]const u8) i32 {
     if (pipeline_id == 0 or stage_name == null) return -1;
     return 0; // Stub
 }
 
 /// Get pipeline status: 0=pending, 1=running, 2=succeeded, 3=failed, 4=cancelled.
-export fn laminar_get_status(pipeline_id: u32) u8 {
+pub export fn laminar_get_status(pipeline_id: u32) u8 {
     if (pipeline_id == 0) return 3; // Failed for invalid ID
     return 1; // Stub — running
 }
 
 /// Cancel a pipeline. Returns 0 on success.
-export fn laminar_cancel_pipeline(pipeline_id: u32) i32 {
+pub export fn laminar_cancel_pipeline(pipeline_id: u32) i32 {
     if (pipeline_id == 0) return -1;
     return 0; // Stub
 }
@@ -33,27 +33,27 @@ export fn laminar_cancel_pipeline(pipeline_id: u32) i32 {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "laminar-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

@@ -34,13 +34,21 @@ find cartridges -path '*/adapter/build.zig' | wc -l    # 99
 grep -rn 'gossamer_init' cartridges/templates/gossamer-mcp/
 ```
 
+> **Update 2026-08-07:** PR #114 takes this to **99/99 green** on
+> `zig build && zig build test`, wires the adapter glob into CI, and rebuilds the
+> template properly. Two follow-ups it deliberately does *not* do are recorded as
+> A-4 and A-5 below.
+
 ---
 
 ## Adapters — A
 
 | ID | Sev | Item | Evidence |
 |----|-----|------|----------|
-| A-1 | HIGH | 99 `adapter/build.zig` trees, none built by CI, template broken at the call site (see above). Needs: fix the template wiring, port the cloned `std.net` listener to `std.Io.net`, rewrite the 99 build files to the shape `cartridges/domains/config/k9iser-mcp/adapter/build.zig` already uses (it is the only 0.16-valid one), then extend `zig-test.yml`'s glob. | `find cartridges -path '*/adapter/build.zig' \| wc -l` |
+| A-1 | HIGH | *(fix in flight, #114 — 99/99 now green)* 99 `adapter/build.zig` trees, none built by CI, template broken at the call site (see above). Needs: fix the template wiring, port the cloned `std.net` listener to `std.Io.net`, rewrite the 99 build files to the shape `cartridges/domains/config/k9iser-mcp/adapter/build.zig` already uses (it is the only 0.16-valid one), then extend `zig-test.yml`'s glob. | `find cartridges -path '*/adapter/build.zig' \| wc -l` |
+| A-4 | HIGH | **The 90 cloned adapters fake their dispatch.** They match a tool name and return a hand-written `"<tool> forwarded"` string **without ever calling `boj_cartridge_invoke`** — contradicting the "response passthrough" invariant stated in their own READMEs. #114 fixed the template properly but ported the 90 semantics-preserving; converting them is a wire-behaviour change across 90 cartridges and wants its own PR. | `grep -rl 'forwarded' cartridges --include='*_adapter.zig' \| wc -l` |
+| A-5 | MEDIUM | **Adapter test coverage is 4 of 99.** Only gossamer, k9iser, bug-filing and 007 declare inline tests, so `zig build test` is vacuous for the other 95; `zig build` is what makes the CI job failable. Recorded rather than papered over — generating assertions would have been wrong somewhere (only 56 of 94 clones even route `/status`). | count adapters declaring `test "` |
+| A-6 | LOW | **FIXED by #114, retained for provenance.** `bsp`, `dap`, `lang` and `lsp` each bound **`0.0.0.0` on three listeners — 12 public ingresses** — against ADR-0004 and their own READMEs, which say adapters are loopback-only behind the capability gateway. Now loopback. | `git show <base>:…/bsp_adapter.zig \| grep 0.0.0.0` |
 | A-2 | MEDIUM | 125 `adapter/` dirs exist but only 99 have a `build.zig` — 26 are scaffolding that nothing, including the new `full-sweep`, will ever touch. Same shape on the FFI side: 131 `ffi/` dirs, 118 with a `build.zig`. | `find cartridges -type d -name adapter \| wc -l` vs `find cartridges -path '*/adapter/build.zig' \| wc -l` |
 | A-3 | MEDIUM | `.claude/CLAUDE.md` documents an invariant the tree violates ("not complete without all three directories"). Either the invariant or the tree has to give; right now the document is the thing that is wrong. | `grep -n 'not complete without' .claude/CLAUDE.md` |
 

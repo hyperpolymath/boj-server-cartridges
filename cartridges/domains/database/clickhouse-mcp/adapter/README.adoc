@@ -17,7 +17,6 @@ Exposes this cartridge's FFI over the wire protocols declared in
 
 | `build.zig`  | Zig build graph — depends on the sibling `ffi` target.
 | `clickhouse_mcp_adapter.zig` | Protocol dispatch (112 lines). Tool catalogue matches `cartridge.json`.
-| `SIDELINED-*.v.adoc` | zig predecessor(s). Not built — zig banned 2026-04-10.
 |===
 
 == Invariants

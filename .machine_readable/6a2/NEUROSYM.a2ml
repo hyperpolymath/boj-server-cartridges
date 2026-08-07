@@ -3,21 +3,54 @@
 #
 # NEUROSYM.a2ml — Neurosymbolic integration metadata
 # Configuration for Hypatia scanning and symbolic reasoning.
+#
+# Rewritten 2026-08-07. Every section below was previously a commented-out
+# rsr-template-repo placeholder, so this file asserted nothing at all while
+# appearing to configure a scanner. It now describes what actually runs.
 
 [metadata]
-version = "0.1.0"
-last-updated = "2026-04-11"
+version = "0.2.0"
+last-updated = "2026-08-07"
 
 [hypatia-config]
 scan-enabled = true
-scan-depth = "standard"  # quick | standard | deep
-report-format = "logtalk"
+scan-depth = "standard"   # quick | standard | deep
+report-format = "sarif"   # findings are emitted as JSON then converted to SARIF
+workflow = ".github/workflows/hypatia-scan.yml"
+scanner-source = "hyperpolymath/hypatia (cloned and escript-built in CI; not pinned to a tag or SHA)"
+triggers = "push to main/master/develop, pull_request to main/master, weekly cron (Sun 00:00), workflow_dispatch"
+gating = "advisory"
+gating-note = "The scan runs with --exit-zero and `|| true`, so findings NEVER fail the job. It publishes SARIF to code scanning and comments on the PR. Treat a green Hypatia check as 'the scanner ran', not as 'the repo is clean'."
+sarif-upload = true
+sarif-empty-upload-intentional = true  # clears stale alerts when the repo goes clean
 
 [symbolic-rules]
-# Custom symbolic rules for this project
-# - { name = "no-unsafe-ffi", pattern = "believe_me|unsafeCoerce", severity = "critical" }
+# Rules enforced in this repo. These are hard gates unless marked advisory.
+rules = [
+  { name = "zero-axiom-trusted-base", script = "scripts/check-trusted-base.sh", pattern = "believe_me|assert_total|assert_smaller|idris_crash|sorry", scope = "cartridges/**/*.idr, tools/**/*.idr", sanctioned-count = 0, severity = "critical", gating = "hard", notes = "boj-server sanctions exactly 5 class-(J) axioms in its SafetyLemmas module. This repo holds only LEAF cartridge ABIs plus the Foundry design proof, so the sanctioned count here is 0. The script excludes matches inside -- and ||| comments." },
+  { name = "idris2-typecheck-all", script = "scripts/typecheck-proofs.sh", scope = "every .idr under cartridges/**/abi, checked individually from its abi/ root, plus tools/foundry/proof/Foundry.idr", severity = "critical", gating = "hard", notes = "Per-file `idris2 --check`, not an .ipkg build, so a stale .ipkg cannot hide a rotted module. Carries an explicit vacuous-pass guard: PASS=0 is treated as FAILURE, because a gate that verifies nothing is worse than no gate." },
+  { name = "schema-strict", script = "tools/validate-cartridges (deno task strict)", scope = "every cartridges/**/cartridge.json", severity = "critical", gating = "hard", notes = "Strict since 2026-06-01. Also re-verifies schemas/cartridge-v1.json's SHA-256 against schemas/PINNED-SHA so a silent mirror bump fails loudly." },
+  { name = "typescript_detected / rescript_detected", source = "hyperpolymath/hypatia cicd_rules", scope = "repo-wide", severity = "medium", gating = "advisory", notes = "This repo carries an APPROVED carve-out for cartridges/**/adapter/**/*.ts (8 adapters) and cartridges/**/panels/**/*.res (3 files). The authority is the path_allow_prefixes field on the hypatia rules themselves; .claude/CLAUDE.md mirrors it for humans. tools/*.ts is NOT carved out." },
+]
+
+[symbolic-surface]
+# What there actually is to reason over. Recounted 2026-08-07 on commit c2da9ed.
+abi-dirs = 126                    # find cartridges -type d -name abi | wc -l
+idris-proof-files = 114           # find cartridges -path '*/abi/*' -name '*.idr' | wc -l
+idris-files-with-default-total = 94
+unsound-constructs-outside-comments = 0
+unsound-construct-comment-mentions = 1  # fleet-mcp/abi/FleetMcp/SafeFleet.idr:14 — a ||| doc line naming believe_me; correctly excluded by the scanner
+notes = "126 abi/ dirs but only 114 .idr files: 12 abi/ dirs hold no Idris2 proof at all. That is a real gap, not a counting artefact, and no gate currently flags an empty abi/."
 
 [neural-config]
-# Neural pattern detection settings
-# confidence-threshold = 0.85
-# model = "hypatia-v2"
+# No neural/ML component runs in this repository. Hypatia's rule engine is
+# symbolic (Logtalk/Elixir rules over parsed sources); the "neurosymbolic"
+# label describes Hypatia's architecture upstream, not a model invoked here.
+# Stated explicitly rather than left as commented placeholders.
+model = "none"
+confidence-threshold = "not applicable — no probabilistic classifier is used"
+inference-runtime = "not applicable"
+
+[nesy-cartridges-are-not-this]
+# Disambiguation, because the names collide and have caused confusion.
+note = "cartridges/cross-cutting/nesy/ (nesy-mcp, ml-mcp) are cartridges that EXPOSE neurosymbolic tooling to a host. They are subjects of this registry, not part of its own analysis pipeline. Nothing in this file configures them."

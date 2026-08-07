@@ -8,12 +8,12 @@ cartridges.boj-server.net — canonical MCP cartridge registry for the BoJ ecosy
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BoJ Cartridge Registry — 139 open-source MCP cartridges</title>
-  <meta name="description" content="Canonical registry of 139 open-source MCP cartridges for the Bundle of Joy (BoJ) server. Browse by domain, search by name, and contribute new cartridges.">
+  <title>BoJ Cartridge Registry — 141 open-source MCP cartridges</title>
+  <meta name="description" content="Canonical registry of 141 open-source MCP cartridges for the Bundle of Joy (BoJ) server. Browse by domain, search by name, and contribute new cartridges.">
   <link rel="canonical" href="https://cartridges.boj-server.net/">
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
-  <meta property="og:title" content="BoJ Cartridge Registry — 139 open-source MCP cartridges">
-  <meta property="og:description" content="Canonical registry of 139 open-source MCP cartridges for the Bundle of Joy (BoJ) server.">
+  <meta property="og:title" content="BoJ Cartridge Registry — 141 open-source MCP cartridges">
+  <meta property="og:description" content="Canonical registry of 141 open-source MCP cartridges for the Bundle of Joy (BoJ) server.">
   <meta property="og:url" content="https://cartridges.boj-server.net/">
   <meta property="og:type" content="website">
   <link rel="stylesheet" href="/assets/style.css">
@@ -24,7 +24,7 @@ cartridges.boj-server.net — canonical MCP cartridge registry for the BoJ ecosy
   <div class="container">
     <p class="eyebrow">cartridges.boj-server.net</p>
     <h1>BoJ Cartridge Registry</h1>
-    <p class="tagline">The canonical source for <strong>139 open-source MCP cartridges</strong> — browse, search, and contribute to the <a href="https://boj-server.net/">Bundle of Joy</a> ecosystem.</p>
+    <p class="tagline">The canonical source for <strong>141 open-source MCP cartridges</strong> — browse, search, and contribute to the <a href="https://boj-server.net/">Bundle of Joy</a> ecosystem.</p>
     <div class="badges">
       <a class="badge badge-license" href="https://github.com/hyperpolymath/boj-server-cartridges/blob/main/LICENSE">MPL-2.0</a>
       <a class="badge badge-src" href="https://github.com/hyperpolymath/boj-server-cartridges">Registry source</a>
@@ -41,7 +41,7 @@ cartridges.boj-server.net — canonical MCP cartridge registry for the BoJ ecosy
 <main class="container">
   <section id="catalogue" aria-labelledby="catalogue-heading">
     <h2 id="catalogue-heading">Cartridge catalogue</h2>
-    <p class="lead">All <span id="total-count">139</span> cartridges — search by name or description, filter by group or tier.</p>
+    <p class="lead">All <span id="total-count">141</span> cartridges — search by name or description, filter by group or tier.</p>
     <div class="cat-controls" role="search">
       <label class="visually-hidden" for="q">Search cartridges</label>
       <input id="q" type="search" placeholder="Search cartridges…" autocomplete="off" spellcheck="false" aria-label="Search cartridges">
@@ -69,7 +69,7 @@ cartridges.boj-server.net — canonical MCP cartridge registry for the BoJ ecosy
       </div>
       <div class="card-flat">
         <strong>2. Add your cartridge</strong>
-        <p>Place your cartridge under <code>cartridges/&lt;category&gt;/&lt;bucket&gt;/&lt;name&gt;-mcp/</code>. Include a <code>boj.toml</code> manifest.</p>
+        <p>Run <code>just mint</code>, or copy <code>cartridges/templates/gossamer-mcp/</code> to <code>cartridges/&lt;group&gt;/&lt;bucket&gt;/&lt;name&gt;-mcp/</code>. Include a <code>cartridge.json</code> manifest.</p>
       </div>
       <div class="card-flat">
         <strong>3. Update the catalogue</strong>

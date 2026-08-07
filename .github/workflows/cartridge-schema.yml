@@ -1,5 +1,6 @@
 # This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
+# This workflow is managed by gh actions-lock.
 # Cartridge manifest validation — runs the validator on every push / PR.
 # STRICT MODE: fails the job on any manifest that doesn't validate against
 # the pinned schema. Flipped from audit to strict on 2026-06-01 after the

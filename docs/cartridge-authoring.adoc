@@ -1,0 +1,212 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= Authoring a BoJ cartridge
+:toc: macro
+:toclevels: 3
+
+How to build a cartridge in this repository: what the layers are, what the ABI
+contract requires, how to mint, and which gates have to pass.
+
+This repository is the *sole* source of BoJ cartridges. `boj-server` retired its
+bundled `cartridges/` tree in boj-server#300 (merged 2026-08-04), so anything
+landed here ships to every downstream host on its next fetch.
+
+toc::[]
+
+== Before you start
+
+Read link:known-issues/adapters.adoc[`docs/known-issues/adapters.adoc`]. The
+`adapter/` layer described below does not currently build and is not covered by
+any CI job. The guide documents the intended contract; that note documents what
+is actually true of the tree today.
+
+== The layer stack
+
+A cartridge is a directory holding up to five layers. Languages are fixed — the
+estate does not accept substitutions here:
+
+[cols="1,1,3",options="header"]
+|===
+| Layer | Language | Role
+
+| `abi/`
+| Idris2
+| The formally verified contract. Dependent-type proofs of the cartridge's state
+machine or exposure-gate invariants. `%default total`; no `believe_me`,
+`postulate` or `assert_total` in the trusted core.
+
+| `ffi/`
+| Zig
+| The C-ABI implementation. Exposes the five-symbol dispatch surface (see below).
+This is the layer that actually gets built and tested in CI.
+
+| `adapter/`
+| Zig
+| The loopback API/service surface that fronts the FFI. *Currently non-functional
+across the tree — see the known-issues note.*
+
+| `panels/`
+| ReScript
+| VSCode extension-host UI, where the cartridge has one. Template ships a
+`manifest.json` only.
+
+| `tests/`
+| shell + Zig
+| Integration, parity and benchmark scripts.
+|===
+
+`mod.js` at the cartridge root is the JS entry point, and `cartridge.json` is the
+manifest that everything else is checked against.
+
+TypeScript and ReScript are permitted in `adapter/` and `panels/` by an explicit
+estate carve-out (MCP/LSP SDKs and the VSCode API are not yet available in
+AffineScript). That exemption does not extend to any other layer.
+
+== The five-symbol ABI contract
+
+Every cartridge FFI exposes exactly these symbols, and no client is expected to
+know anything else about it:
+
+[source,c]
+----
+int32_t     boj_cartridge_init(void);
+void        boj_cartridge_deinit(void);
+const char *boj_cartridge_name(void);
+const char *boj_cartridge_version(void);
+
+int32_t boj_cartridge_invoke(
+    const char *tool_name,    // NUL-terminated, caller-owned
+    const char *json_args,    // NUL-terminated JSON object, caller-owned
+    char       *out_buf,      // caller-owned output buffer
+    uintptr_t  *in_out_len    // in: capacity; out: bytes written (excl. NUL)
+);
+----
+
+The point of `boj_cartridge_invoke` is that tool dispatch happens *inside* the
+cartridge, by name. A host never links against per-tool symbols.
+
+Return codes are frozen: `0` success, `-1` unknown tool, `-2` invalid JSON args,
+`-3` output buffer too small (with `*in_out_len` set to the size required), `-4`
+runtime error with an error-JSON body, `-5` invariant violation, `-6`
+authorisation denied. New failure modes compose these through the error body —
+the integer surface does not grow without a follow-up ADR.
+
+No heap ownership crosses the FFI boundary. The caller allocates and frees
+`out_buf`; the cartridge writes at most `*in_out_len` bytes and updates the
+pointer to what it actually wrote.
+
+Full contract and rationale:
+link:decisions/ADR-0006-cartridge-invoke-abi.adoc[`ADR-0006`] (a pointer — the
+normative record lives in `boj-server`).
+
+=== The shared shim
+
+You do not implement the boilerplate yourself. Every FFI cartridge carries a copy
+of `cartridge_shim.zig` beside its `ffi/build.zig`, holding the return-code
+constants and the buffer-handling helpers:
+
+link:../cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig[`cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig`]
+
+is canonical. Copies are expected to be byte-identical to it; see
+link:../README.adoc#_ffi_zig_shim_layout[README §"FFI / Zig shim layout"] for the
+current divergence count.
+
+== Naming
+
+A cartridge name must match:
+
+[source]
+----
+^[a-z0-9-]+-(mcp|lsp|dap|bsp|debug|format|lint|build|nesy|agentic|fleet)$
+----
+
+The suffix declares the role — `-mcp` Model Context Protocol, `-lsp` Language
+Server Protocol, `-dap` Debug Adapter, `-bsp` Build Server, and so on. One domain
+may carry several cartridges across roles (`database-mcp`, `database-lsp`,
+`database-format`).
+
+== Where it goes
+
+[cols="1,2",options="header"]
+|===
+| Path | For
+
+| `cartridges/domains/<domain>/<name>/` | Cartridges bound to one functional domain.
+| `cartridges/cross-cutting/<category>/<name>/` | Cartridges not bound to a single domain: `agentic`, `build`, `debug`, `fleet`, `health`, `nesy`, `orchestration`.
+| `cartridges/templates/<name>/` | Scaffolds. Not shipped to the public catalogue.
+|===
+
+Taxonomy ratified in link:decisions/ADR-001-taxonomy.adoc[`ADR-001-taxonomy.adoc`].
+
+== Minting
+
+Write a `minter.toml`:
+
+[source,toml]
+----
+name = "example-mcp"
+description = "What it does, in one line"
+version = "0.1.0"
+domain = "productivity"
+protocols = ["MCP"]
+tier = "Teranga"
+# category = "cross-cutting"   # then also set subcategory
+----
+
+Then:
+
+[source,sh]
+----
+just mint path/to/minter.toml
+----
+
+This copies the canonical template, substitutes the name through
+`cartridge.json`, `mod.js` and `README.adoc`, and drops the `minter.toml` into
+the new cartridge for reproducibility. Pass `--dest <path>` to override the
+derived location.
+
+The minter does *not* rename the template's Zig source files — they arrive as
+`gossamer_ffi.zig` / `gossamer_adapter.zig` and you rename them yourself.
+
+`tier` is `Teranga` (experimental) or `Ayo` (production-grade). Start at
+`Teranga`. Set `"available": true` in the manifest only when the cartridge is
+genuinely wired into a host runtime — twelve cartridges currently claim it.
+
+== Gates
+
+Run these before opening a PR:
+
+[cols="1,2",options="header"]
+|===
+| Command | What it checks
+
+| `just validate`
+| Every `cartridge.json` against `schemas/cartridge-v1.json`, in strict mode. This is the CI gate — it blocks the PR. Current baseline: 142 manifests, 142 passing, 0 failing.
+
+| `just catalog`
+| Regenerates `site/catalog.json` and the counts in `site/index.html` from the manifests. Run it whenever you add or remove a cartridge.
+
+| `just catalog-check`
+| Fails if the catalogue has drifted. Cheap to run; use it to confirm you did the above.
+
+| `cd <cartridge>/ffi && zig build test`
+| The FFI unit tests. CI runs this for any cartridge whose `ffi/` changed.
+|===
+
+`tools/validate-cartridges` also offers `deno task audit` (per-manifest report,
+always exit 0) and `deno task audit-verbose` (expands every violation) for
+working through drift at scale.
+
+Schema changes land *upstream* in
+https://github.com/hyperpolymath/standards/tree/main/cartridges[hyperpolymath/standards]
+first, then mirror here via a `schemas/PINNED-SHA` bump — never edit the local
+mirror directly.
+
+== Checklist
+
+. `cartridge.json` validates strictly, name matches the role pattern.
+. `ffi/` implements the five symbols and builds: `zig build test` passes.
+. `ffi/cartridge_shim.zig` is byte-identical to the canonical shim.
+. `abi/` carries the Idris2 contract if the cartridge has invariants worth proving.
+. `just catalog` run and the result committed.
+. Commits GPG-signed.

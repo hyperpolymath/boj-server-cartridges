@@ -3,10 +3,16 @@
 #
 # AGENTIC.a2ml — AI agent constraints and capabilities
 # Defines what AI agents can and cannot do in this repository.
+#
+# Rewritten 2026-08-07. Two defects removed: an unqualified "never use
+# banned languages (TypeScript, ...)" line that contradicted this repo's
+# documented and hypatia-authorised adapter carve-out, and a [methodology]
+# section pointing at .machine_readable/bot_directives/, which does not
+# exist here and never has.
 
 [metadata]
-version = "0.1.0"
-last-updated = "2026-04-11"
+version = "0.2.0"
+last-updated = "2026-08-07"
 
 [agent-permissions]
 can-edit-source = true
@@ -16,12 +22,42 @@ can-edit-config = true
 can-create-files = true
 
 [agent-constraints]
-# What AI agents must NOT do:
-# - Never use banned language patterns (believe_me, unsafeCoerce, etc.)
-# - Never commit secrets or credentials
-# - Never use banned languages (TypeScript, Python, Go, etc.)
-# - Never place state files in repository root (must be in .machine_readable/)
-# - Never use AGPL license (use MPL-2.0)
+# What AI agents must NOT do in this repository:
+# - Never commit secrets or credentials.
+# - Never introduce V (vlang.io). V is banned estate-wide since 2026-04-10
+#   and Zig is its replacement. Zig is the CORRECT and REQUIRED language for
+#   the FFI and adapter layers — see [language-policy] below and the
+#   correction note in PLAYBOOK.a2ml.
+# - Never introduce unsound Idris2 constructs (believe_me, assert_total,
+#   assert_smaller, idris_crash, sorry) into a leaf cartridge ABI. The
+#   sanctioned axiom count in this repo is ZERO and
+#   scripts/check-trusted-base.sh enforces it.
+# - Never add a NEW TypeScript or ReScript file outside the approved
+#   carve-out paths in [language-policy].
+# - Never place state files in the repository root; they belong in
+#   .machine_readable/.
+# - Never edit schemas/cartridge-v1.json by hand. It is a pinned MIRROR of
+#   hyperpolymath/standards. Change it upstream, then re-mirror and update
+#   schemas/PINNED-SHA in the same commit.
+# - Never hand-edit a vendored cartridge_shim.zig. It is copied from
+#   cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig; change the
+#   template and resync.
+# - Never use AGPL. This repo is MPL-2.0 (docs are CC-BY-SA-4.0).
+
+[language-policy]
+# The estate rule is "no NEW TypeScript or ReScript". This repository holds
+# an APPROVED, BOUNDED exemption. Recording it here so an agent reading only
+# this file does not delete legitimate code believing it to be a violation.
+banned-outright = ["v"]
+new-code-default = ["zig", "idris2"]
+carve-outs = [
+  { path = "cartridges/**/adapter/**/*.ts", count = 8, class = "MCP/LSP protocol glue", rationale = "@modelcontextprotocol/sdk and the LSP libraries are TS-native; the js-to-affinescript doctrine keeps MCP/LSP glue out of 'portable now'.", unblock = "AffineScript MCP + LSP bindings (affinescript#446)" },
+  { path = "cartridges/**/panels/**/*.res", count = 3, class = "VSCode extension-host panels", rationale = "VscodeApi/LanguageClient/Extension target the VSCode extension-host API — the estate's recognised **/vscode/** carve-out class.", unblock = "AffineScript VSCode-extension API binding" },
+]
+not-carved-out = [
+  { path = "tools/*.ts", count = 6, note = "Portable-now Deno CLI. In the normal convert-now bucket." },
+]
+authority = "The canonical source of truth is the path_allow_prefixes field on the hypatia rules cicd_rules/typescript_detected and cicd_rules/rescript_detected in hyperpolymath/hypatia. .claude/CLAUDE.md mirrors it for humans; this section mirrors it for agents. Widening the list requires explicit owner approval AND a stated unblock condition."
 
 [maintenance-integrity]
 fail-closed = true
@@ -30,22 +66,49 @@ allow-silent-skip = false
 require-rerun-after-fix = true
 release-claim-requires-hard-pass = true
 
+[evidence-rules]
+# This repo has been bitten by claims made without counting. Enforce the cure.
+recount-before-asserting = true
+notes = """
+Never carry a number forward from another artefact. Recount it. Every count
+in .machine_readable/ carries the command that produced it and the commit it
+was counted on — preserve that discipline when you change one.
+
+Two specific traps live in this tree:
+  1. The manifest baseline said "139 total / 139 passing" long after the
+     count reached 142. Re-run `cd tools/validate-cartridges && deno task
+     audit` rather than trusting any written baseline.
+  2. A green CI check here does not always mean a gate ran. hypatia-scan is
+     advisory (--exit-zero), zig-test only fires on '^cartridges/.*/ffi/'
+     paths, and no job builds the adapter layer at all.
+"""
+
 # ============================================================================
-# METHODOLOGY (ADR-002)
+# METHODOLOGY
 # ============================================================================
-# Detailed methodology configuration lives in:
+# The rsr-template-repo methodology block cited
 #   .machine_readable/bot_directives/methodology.a2ml
 #   .machine_readable/bot_directives/coverage.a2ml
 #   .machine_readable/bot_directives/debt.a2ml
-#
-# AGENTIC.a2ml declares WHAT agents can do (permissions, gating).
-# bot_directives/ declares HOW agents should work (methodology).
+# No bot_directives/ directory exists in this repository and none has been
+# created in its place. The citation is removed rather than replaced with a
+# stub, so nothing here points at a path that does not resolve.
 
 [methodology]
-instructions-dir = ".machine_readable/bot_directives/"
+instructions-dir = "none — this repository has no bot_directives/ tree"
+human-facing-instructions = ".claude/CLAUDE.md"
 default-mode = "hybrid"
 
 [automation-hooks]
-# on-enter: Read 0-AI-MANIFEST.a2ml, then STATE.a2ml, then bot_directives/
-# on-exit: Update STATE.a2ml, coverage.a2ml, and debt.a2ml with session outcomes
-# on-commit: Run just validate-rsr
+# on-enter: read 0-AI-MANIFEST.a2ml (repo ROOT, not .machine_readable/),
+#           then .machine_readable/6a2/STATE.a2ml, then .claude/CLAUDE.md.
+# on-exit:  update .machine_readable/6a2/STATE.a2ml — at minimum the
+#           [inventory] counts and [in-flight] section if either moved.
+# on-commit: `cd tools/validate-cartridges && deno task strict` if any
+#           cartridge.json changed; `bash scripts/check-trusted-base.sh` if
+#           any .idr changed.
+# There is no `just validate-rsr` recipe in this repository; the previous
+# version of this file told agents to run one.
+
+[known-untruths-corrected]
+corrected-2026-08-07 = "This file previously listed TypeScript among languages agents must 'never use', with no mention of the carve-out — an instruction that, followed literally, would have deleted 8 working adapters and 3 panels. It also directed agents to a bot_directives/ directory that does not exist, and to a `just validate-rsr` recipe this repo does not define."

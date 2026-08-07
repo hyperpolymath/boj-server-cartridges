@@ -2,136 +2,240 @@
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # PLAYBOOK.a2ml — Operational playbook
-# Runbooks, incident response, deployment procedures.
+# Runbooks and standing procedures for boj-server-cartridges.
+#
+# ---------------------------------------------------------------------------
+# CORRECTION NOTICE — 2026-08-07
+#
+# A global find/replace of "v" -> "zig" corrupted the previous version of this
+# file. It read as though ZIG were the banned language, in a repository whose
+# FFI and adapter layers are entirely Zig. Corrupted strings included
+# "# === Banned: ziguage ===" (was "vlanguage"), "after zig removed",
+# "chore/remove-zig  Purge zig remnants", "check-no-vlang.sh  zig ban
+# validator" and "feedback_v_lang_banned  zig ban".
+#
+# THE FACTS, restored:
+#   * The banned language is V (vlang.io). Banned estate-wide 2026-04-10.
+#   * Zig is V's REPLACEMENT, not its casualty. Zig is required here.
+#   * The same corruption hit ~140 cartridge READMEs; fixed in the same
+#     branch as this file (docs/machine-readable-repair).
+# ---------------------------------------------------------------------------
 
 [metadata]
-version = "0.1.0"
-last-updated = "2026-04-11"
+version = "0.2.0"
+last-updated = "2026-08-07"
 
 [deployment]
-# method = "gitops"  # gitops | manual | ci-triggered
-# target = "container"  # container | binary | library | wasm
+method = "none — this repository is not deployed"
+notes = """
+boj-server-cartridges publishes nothing and runs nothing. It is a git tree
+that hosts read. There is no artefact, no image, no package.
+
+Two workflows do push bytes outward and are the closest thing to a release:
+  * .github/workflows/mirror.yml      mirrors the repo to other git forges
+  * .github/workflows/pages.yml and pages-deploy.yml  publish site/ to
+    GitHub Pages and Cloudflare Pages
+
+There is no Containerfile in this repo. The Justfile's container-* recipes
+are inherited RSR template scaffolding and are not exercised.
+"""
+
+# ===========================================================================
+# CORE OPERATIONS
+# ===========================================================================
+
+[op-mint-a-cartridge]
+purpose = "Scaffold a new cartridge from the canonical template."
+template = "cartridges/templates/gossamer-mcp/"
+steps = """
+ 1. Write a minter.toml (format: tools/cartridge-minter/README.md).
+ 2. deno run --allow-read --allow-write tools/cartridge-minter/mint.ts \\
+      path/to/minter.toml [--dest <override>]
+    With no --dest the destination is derived from minter.toml:
+      category = "domain"         -> cartridges/domains/<domain>/<name>/
+      category = "cross-cutting"  -> cartridges/cross-cutting/<sub>/<name>/
+      category = "template"       -> cartridges/templates/<name>/
+ 3. The name MUST end in a canonical role suffix (mcp, lsp, dap, bsp, debug,
+    format, lint, build, nesy, agentic, fleet) or the schema gate rejects it.
+ 4. Run the schema gate (see [op-schema-gate]) before committing.
+"""
+higher-assurance-path = "tools/foundry/foundry.sh runs the proven mint -> provision -> configure -> harness flow modelled in tools/foundry/proof/Foundry.idr. Use --strict in CI so a missing deno/idris2/jq is a FAILURE, not a skip."
+caveat = """
+INHERITED DEFECT — a freshly minted cartridge does NOT build its adapter.
+The template adapter calls ffi.gossamer_init, which does not exist, and the
+ffi `export fn` declarations are not `pub`, so the adapter cannot import
+them. All 99 adapter/build.zig trees share this fault and no CI job catches
+it (see [known-gaps]). Do not treat `mint` output as green.
+"""
+recipe-note = "There is no `just mint` recipe on main. One is proposed in open PR #109."
+
+[op-schema-gate]
+purpose = "Validate every cartridge.json against the pinned schema. This is the repo's primary hard gate."
+run = """
+  cd tools/validate-cartridges
+  deno task audit    # human-readable report, exit 0 regardless
+  deno task strict   # non-zero exit on any violation — this is what CI runs
+  deno task test     # validator unit tests
+"""
+workflow = ".github/workflows/cartridge-schema.yml"
+mode = "strict since 2026-06-01"
+baseline = "142 total / 142 passing / 0 failing (re-verified 2026-08-07)"
+mirror-check = """
+The workflow ALSO re-verifies the schema mirror before validating:
+  actual=$(sha256sum schemas/cartridge-v1.json | awk '{print $1}')
+  pinned=$(awk -F'\"' '/content_sha256/ {print $2}' schemas/PINNED-SHA)
+A mismatch fails the job. Never edit schemas/cartridge-v1.json without
+updating schemas/PINNED-SHA in the same commit — and never edit it here at
+all if the change belongs upstream in hyperpolymath/standards.
+"""
+
+[op-sync-the-shim]
+purpose = "Keep the 116 vendored cartridge_shim.zig copies identical to the template."
+canonical-source = "cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig"
+current-state = """
+NOT AUTOMATED ON MAIN. As of 2026-08-07 there is no sync tool and no CI
+check. Recount and compare by hand:
+
+  canon=$(sha256sum cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig \\
+          | awk '{print $1}')
+  find cartridges -name cartridge_shim.zig -exec sha256sum {} \\; \\
+    | grep -v "^$canon"
+
+Result on commit c2da9ed: 116 copies, 115 match, 1 diverges —
+cartridges/domains/gaming/npc-mcp/ffi/cartridge_shim.zig.
+"""
+pending = "Open PR #109 (feat/zig-016-ffi-sweep) adds tools/sync_cartridge_shim.sh (stamp + --check), Justfile recipes shim-sync / shim-check, and a shim-drift CI job. None of that is on main. Do not write runbook steps that assume it is."
+why-vendored = "A fetched cartridge must build standalone in a flat host cache with no sibling paths to reach for, so the shim is copied rather than shared. Drift is the accepted cost; detecting it is the mitigation, and that mitigation is not yet in place."
+
+[op-full-sweep]
+purpose = "Build every cartridge, not just the ones a PR touched."
+current-state = """
+NOT AVAILABLE ON MAIN. .github/workflows/zig-test.yml builds ONLY the
+cartridges whose changed paths match '^cartridges/.*/ffi/'. Nothing builds
+the whole tree, and nothing builds any adapter at all.
+
+Local approximation of an FFI-only sweep:
+
+  fail=0
+  for b in $(find cartridges -path '*/ffi/build.zig'); do
+    d=$(dirname "$b")
+    ( cd "$d" && zig build test --summary all ) || { echo "FAIL $d"; fail=1; }
+  done
+  exit $fail
+
+118 ffi/build.zig trees. Expect this to take a long time and to need the
+pinned zig (.tool-versions says 0.15.1; zig-test.yml installs 0.15.2 — the
+pins disagree on main).
+"""
+pending = "Open PR #109 adds a `full-sweep` job (weekly cron + workflow_dispatch) that builds every cartridge. Until it merges, 'the sweep' is a manual loop."
+
+[op-run-the-proof-gate]
+purpose = "Type-check every Idris2 cartridge ABI and enforce a zero-axiom trusted base."
+run = """
+  bash scripts/check-trusted-base.sh   # zero believe_me/assert_*/sorry
+  bash scripts/typecheck-proofs.sh     # idris2 --check every abi/**/*.idr
+"""
+workflow = ".github/workflows/proofs.yml"
+workflow-jobs = "changes, trusted-base, typecheck"
+toolchain = "idris2 0.8.0 per .tool-versions"
+notes = "typecheck-proofs.sh checks each .idr INDIVIDUALLY from its abi/ root rather than building an .ipkg, so a stale .ipkg cannot hide a rotted module. It carries a vacuous-pass guard: PASS=0 is a FAILURE. Respect that guard — it exists because 23 proofs in this repo had silently rotted while their boj-server twins stayed green (#36/#37)."
 
 [incident-response]
-# 1. Check .machine_readable/STATE.a2ml for current status
-# 2. Review recent commits and CI results
-# 3. Run `just validate` to check compliance
-# 4. Run `just security` to audit for vulnerabilities
+steps = """
+ 1. Read .machine_readable/6a2/STATE.a2ml — [blockers-and-issues] and
+    [in-flight] are kept current and honest.
+ 2. Check whether the failing gate is a HARD gate or an advisory one.
+    Hard:     cartridge-schema, proofs (trusted-base + typecheck), governance
+    Advisory: hypatia-scan (runs with --exit-zero; findings never fail it)
+    Partial:  zig-test (ffi/ paths only; adapters are invisible to CI)
+ 3. Reproduce locally with the exact command from the relevant [op-*]
+    section above. Do not infer the command from the workflow name.
+ 4. If a check is green but you doubt it, confirm the job actually RAN.
+    Several workflows here gate a heavy job behind a `changes` job that
+    reports SUCCESS to required checks when skipped.
+"""
 
 [release-process]
-# 1. Update version in STATE.a2ml, META.a2ml, Justfile
-# 2. Run `just release-preflight` (validate + quality + security + maint-hard-pass)
-# 3. Optional local permission hardening: `just perms-snapshot && just perms-lock`
-# 4. Tag and push
-# 5. Restore local permissions if needed: `just perms-restore`
-# 6. Run `just container-push` if applicable
+notes = """
+There is no versioned release. This repository is consumed at a git ref.
+The nearest equivalent to a release event is a merge to main, after which
+hosts fetching via boj-server's scripts/fetch-cartridges.sh pick the change
+up on their next fetch. Since hyperpolymath/boj-server#300 merged
+(2026-08-04) there is no bundled fallback tree anywhere, so a bad merge to
+main reaches every host directly.
+"""
+pre-merge-checklist = """
+ 1. cd tools/validate-cartridges && deno task strict
+ 2. bash scripts/check-trusted-base.sh
+ 3. bash scripts/typecheck-proofs.sh   (if any .idr changed)
+ 4. zig build test in each touched cartridge's ffi/
+ 5. Recount anything you asserted a number about, and update
+    .machine_readable/6a2/STATE.a2ml [inventory] if it moved.
+"""
 
 [maintenance-operations]
-# Baseline audit:
-#   just maint-audit
-# Hard release gate:
-#   just maint-hard-pass
-# Permission audit:
-#   just perms-audit
+notes = "The RSR maintenance recipes (just maint-audit, just maint-hard-pass, just perms-audit) referenced by the rsr-template-repo playbook are NOT defined in this repo's Justfile. They are listed here only so a reader who goes looking is not confused by their absence."
+
+# ===========================================================================
+# ESTATE LANGUAGE POLICY
+# ===========================================================================
+
+[banned-language-v]
+banned = "V (vlang.io)"
+banned-on = "2026-04-10"
+scope = "estate-wide"
+replacement = "Zig (+ Idris2 for the proof layer, + Rust clients where relevant)"
+rationale = """
+The Hexadeca-Connector / unified-adapter pattern descends from a retired
+V-lang reference implementation (developer-ecosystem/v-ecosystem/
+v_api_interfaces/v_api_interfaces.v). Across the estate it was replaced by
+the Zig-FFI + Idris2-ABI substrate. In this repository that substrate is
+what every cartridge's ffi/ and adapter/ directory implements.
+"""
+coq-caveat = "Coq theorem files use the same .v extension and are UNAFFECTED. Any V detector must look at content patterns, not the extension."
+enforcement-in-this-repo = "NONE. scripts/check-no-vlang.sh does not exist here, and no workflow checks for V. The practical protection is that zero .v files exist under cartridges/ — verified 2026-08-07: `find cartridges -name '*.v' -o -name '*.v.adoc'` returns nothing."
+sidelined-file-claim-retracted = """
+~140 cartridge READMEs used to document a `SIDELINED-*.v.adoc` file
+recording the V predecessor each adapter replaced. ZERO such files exist
+under cartridges/, and none appears anywhere in this repository's git
+history. The rows documented files that were never here, so they were
+removed rather than reworded. .claude/CLAUDE.md still repeats the claim
+("Cartridge adapter/ dirs keep a SIDELINED-*.v.adoc note"); that line is
+also false and is flagged but not edited by this branch.
+"""
+
+# ===========================================================================
+# RSR SKELETON CONFORMANCE
+# ===========================================================================
 
 [rsr-repo-skeleton]
-# Canonical organisation of any RSR-derived repository.
-# Used by tooling, human onboarding, and the scheduled downstream sweep agent.
-# The 5-PR cleanup pattern (below) brings a non-conforming repository into
-# compliance with this skeleton.
-#
-# This section is the single source of truth for "what does an RSR repo look
-# like?". Other docs (TOPOLOGY, AUDIT, etc.) describe the repo at hand;
-# this describes the canonical shape that all RSR repos share.
-
-skeleton-version = "1.0"
-last-updated = "2026-04-30"
-authority-allowlist = ".machine_readable/root-allow.txt"
-enforcement-workflow = ".github/workflows/estate-rules.yml"
-
-# === Required at root ===
-# README.adoc          High-level pitch (project entry point)
-# AUDIT.adoc           Local gate summary (release-readiness)
-# EXPLAINME.adoc       Developer deep-dive (architecture & invariants)
-# 0-AI-MANIFEST.a2ml   AI agent work-allocation policy
-# LICENSE              Repo license (root-bound by convention)
-# CHANGELOG.md         One of the recognised .md exceptions (see below)
-# Justfile             Task runner — thin, imports per-section files from build/just/
-# coordination.k9      Repo-local session binding
-
-# === Required directories ===
-# .github/             CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, workflows/
-# .machine_readable/   AI manifests (0-AI-MANIFEST.a2ml), 6a2/ checkpoints,
-#                      contractiles/, configs/, anchors/, policies/, scripts/, svc/
-# build/               contractile.just, flake.nix, guix.scm, Containerfile,
-#                      just/*.just (Justfile section imports)
-# docs/                onboarding/, status/, architecture/, governance/  (all .adoc)
-# session/             dispatch.sh, custom-checks.k9, local-hooks.sh
-# src/                 Project source (Idris2 ABI under abi/, Zig FFI under ffi/)
-# tests/, benches/, examples/, features/, scripts/, verification/, container/
-
-# === Documentation format rule ===
-# `.adoc` is the default for all general docs (TOPOLOGY, READINESS, ROADMAP,
-# TEST-NEEDS, PROOF-NEEDS, PROOF-STATUS, llm-warmup-*, etc.).
-#
-# `.md` is reserved ONLY for files GitHub's community-health rules
-# special-case by name:
-#   CONTRIBUTING.md  CODE_OF_CONDUCT.md  SECURITY.md  CHANGELOG.md
-#
-# Enforcement: `scripts/check-no-md-in-docs.sh` (fails if any *.md under docs/).
-
-# === Banned: ziguage ===
-# V (vlang.io) is banned estate-wide. Replaced by `zig-unified-api-adapter`
-# (16 endpoints + transaction-based firewall gating). Do not introduce
-# zig code, scaffolders, or references. Note that Coq theorem files use
-# the same `.v` extension and are unaffected — the rule looks at content
-# patterns, not the extension.
-#
-# Enforcement: `scripts/check-no-vlang.sh`.
-
-# === Justfile structure (post-split) ===
-# The root Justfile is thin — it holds `set` directives, project metadata
-# variables, and the `default`/`help`/`info` recipes. Each major section
-# lives in its own file under build/just/ and is brought in via `import?`.
-#
-# Imported sections (in the canonical split):
-#   build/just/init.just       INIT recipe (template bootstrap)
-#   build/just/assess.just     self-assess + verify (OpenSSF compliance)
-#   build/just/validate.just   validate-rsr/state/ai-install + aggregate
-#   build/just/proofs.just     proof-check-{all,idris2,lean4,agda,coq},
-#                              proof-scan-dangerous, proof-status
-#   build/just/groove.just     Groove protocol setup (after zig removed)
-#
-# Daily-use recipes (BUILD, TEST, LINT, RUN, DEPS, DOCS, CONTAINER, CI,
-# SECURITY, STATE, GUIX/NIX, MATRIX, VERSION CONTROL, UTILITIES, SESSION)
-# stay in the root Justfile where users expect to find them.
-
-# === 5-PR cleanup pattern ===
-# Apply these branches (in order) to bring a non-conforming downstream repo
-# into compliance with this skeleton:
-#
-# 1. chore/root-cleanup       Relocate root sprawl per root-allow.txt; add
-#                             scripts/check-root-shape.sh; remove stub
-#                             health files shadowed by .github/ versions.
-# 2. chore/remove-zig      Purge zig remnants (gen-v-connector recipe,
-#                             "V-TRIPLE" section header, "V-triple
-#                             connectors" comment in groove.a2ml).
-# 3. chore/md-to-adoc         Port general docs in docs/ from .md to .adoc;
-#                             update validate-template.sh to accept .adoc
-#                             fallbacks.
-# 4. chore/estate-rules-ci    Add scripts/check-no-md-in-docs.sh + check-no-
-#                             vlang.sh + .github/workflows/estate-rules.yml.
-# 5. chore/<repo>-hygiene     Repo-specific drift cleanup (case collisions,
-#                             template-derivation drift in titles, etc.).
-
-# === Reference scripts ===
-# scripts/check-root-shape.sh      Root allowlist validator
-# scripts/check-no-md-in-docs.sh   AsciiDoc-by-default validator
-# scripts/check-no-vlang.sh        zig ban validator
-# scripts/validate-template.sh     Aggregate RSR compliance (workflows, SPDX, etc.)
-
-# === Reference memory entries (for AI agents) ===
-# feedback_adoc_default_md_for_githealth   AsciiDoc-by-default rule
-# feedback_v_lang_banned                   zig ban
-# project_zig_unified_api                  Replacement for v-triple/zig
-# feedback_gh_workflow_scope               OAuth scope for workflow files
+# The canonical RSR shape is defined and maintained in rsr-template-repo /
+# hyperpolymath standards. The previous version of this file reproduced that
+# whole specification here as if it described boj-server-cartridges. It does
+# not. Rather than restate a spec this repo does not follow, this section
+# records only the DELTA, honestly.
+skeleton-source = "hyperpolymath/rsr-template-repo (authoritative) — not reproduced here"
+conformance = "partial"
+conforms = [
+  "0-AI-MANIFEST.a2ml at repo root",
+  "LICENSE, README.adoc, CHANGELOG.md at root",
+  ".machine_readable/ with 6a2/ and contractiles/ (incl. bust/ and dust/)",
+  "docs/decisions/ ADRs in .adoc",
+  ".github/ with CODEOWNERS, SECURITY.md, workflows/",
+  "flake.nix (Nix fallback tier)",
+]
+does-not-conform = [
+  "no AUDIT.adoc",
+  "no EXPLAINME.adoc",
+  "no coordination.k9",
+  "no build/ tree — the Justfile is monolithic, not split into build/just/*.just",
+  "no session/ tree",
+  "no src/ tree — sources live under cartridges/<...>/{abi,ffi,adapter,panels,tests}",
+  "no guix.scm (flake.nix is the only shell)",
+  "no .machine_readable/6a2/anchors/",
+  "no .machine_readable/self-validating/",
+  "docs/echo-types-integration-audit-2026-06-01.md is .md, not .adoc",
+  "none of scripts/check-root-shape.sh, check-no-md-in-docs.sh, check-no-vlang.sh, validate-template.sh exists",
+  "no .github/workflows/estate-rules.yml",
+]
+ruling = "These are recorded as facts, not as a work plan. Nothing in this repository currently enforces the RSR skeleton, so an agent should not 'fix' the deltas above without an explicit instruction — several of them (src/, build/) would be actively wrong for a cartridge registry."

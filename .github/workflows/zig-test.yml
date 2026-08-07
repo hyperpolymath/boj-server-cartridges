@@ -1,16 +1,11 @@
 # This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
-# Builds and tests the Zig FFI *and* adapter of any cartridge whose ffi/ or
-# adapter/ changed. Adapted from boj-server's zig-test.yml for this repo's
-# hybrid taxonomy: cartridges live under cartridges/domains/<domain>/<name>
-# and cartridges/cross-cutting/<category>/<name>, so the cartridge-root glob
-# is one level deeper than the old flat cartridges/<name> layout.
-#
-# For the adapter the load-bearing gate is `zig build` — it compiles the
-# executable, so it analyses main() and every listener path and cannot pass
-# vacuously. `zig build test` is run as well, but note that only a handful of
-# adapters currently declare inline tests, so on its own it would be a check
-# that cannot fail.
+# This workflow is managed by gh actions-lock.
+# Builds and tests the Zig FFI of any cartridge whose ffi/ changed. Adapted
+# from boj-server's zig-test.yml for this repo's hybrid taxonomy: cartridges
+# live under cartridges/domains/<domain>/<name> and cartridges/cross-cutting/
+# <category>/<name>, so the cartridge-root glob is one level deeper than the
+# old flat cartridges/<name> layout.
 name: Zig Cartridge Tests
 
 # Was workflow-level path-filtered: a required check that never ran on PRs

@@ -15,12 +15,24 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const adapter = b.addExecutable(.{
-        .name = "secrets_adapter",
+    const adapter_mod = b.createModule(.{
         .root_source_file = b.path("secrets_adapter.zig"),
         .target = target,
         .optimize = optimize,
     });
-    adapter.root_module.addImport("secrets_ffi", ffi_mod);
+    adapter_mod.addImport("secrets_ffi", ffi_mod);
+
+    const adapter = b.addExecutable(.{
+        .name = "secrets_adapter",
+        .root_module = adapter_mod,
+    });
     b.installArtifact(adapter);
+
+    const run_step = b.step("run", "Run the secrets-mcp adapter");
+    run_step.dependOn(&b.addRunArtifact(adapter).step);
+
+    const adapter_tests = b.addTest(.{ .root_module = adapter_mod });
+    const run_tests = b.addRunArtifact(adapter_tests);
+    const test_step = b.step("test", "Run secrets-mcp adapter tests");
+    test_step.dependOn(&run_tests.step);
 }

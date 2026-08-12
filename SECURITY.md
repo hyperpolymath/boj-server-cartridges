@@ -21,7 +21,7 @@ The mailbox is the canonical estate intake; do not file public issues for unpatc
 | Fetcher contract documented at [`boj-server#183`](https://github.com/hyperpolymath/boj-server/issues/183) | Misuse by a downstream host that fetches manifests from this registry on demand. |
 | Per-cartridge FFI / adapter source (Zig, Deno) | Standard memory- and IO-safety concerns. |
 
-Per-cartridge runtime backends are process-isolated on loopback per [README.md](README.md); a single-cartridge compromise does not by construction reach a sibling.
+Per-cartridge runtime backends are process-isolated on loopback per [README.adoc](README.adoc); a single-cartridge compromise does not by construction reach a sibling.
 
 ## Out of scope
 

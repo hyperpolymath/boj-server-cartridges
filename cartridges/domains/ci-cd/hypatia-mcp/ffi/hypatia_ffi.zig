@@ -6,46 +6,46 @@
 const std = @import("std");
 
 /// Scan a repository path. Returns scan ID or 0 on failure.
-export fn hypatia_scan_repo(path: [*c]const u8) u32 {
+pub export fn hypatia_scan_repo(path: [*c]const u8) u32 {
     if (path == null) return 0;
     return 1; // Stub
 }
 
 /// Begin model training. Returns 0 on success.
-export fn hypatia_train_model(model_name: [*c]const u8) i32 {
+pub export fn hypatia_train_model(model_name: [*c]const u8) i32 {
     if (model_name == null) return -1;
     return 0; // Stub
 }
 
 /// Get the score for a completed scan (0-100).
-export fn hypatia_get_score(scan_id: u32) u8 {
+pub export fn hypatia_get_score(scan_id: u32) u8 {
     if (scan_id == 0) return 0;
     return 85; // Stub
 }
 
 /// Get active rule count.
-export fn hypatia_get_rule_count() u32 {
+pub export fn hypatia_get_rule_count() u32 {
     return 17; // Stub — matches standard workflow set
 }
 
 // ── Standard ABI (ADR-0005 four symbols + ADR-0006 invoke) ──────────
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "hypatia-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
@@ -53,7 +53,7 @@ export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
 /// Note: `hypatia_get_rule_set` is the declared tool name; the bespoke
 /// FFI symbol is `hypatia_get_rule_count` — the invoke dispatch uses
 /// the cartridge.json-declared name as its canonical surface.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

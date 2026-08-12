@@ -39,7 +39,7 @@ const MAX_GATES: usize = 6;
 var passed_gates: [MAX_GATES]bool = .{ false, false, false, false, false, false };
 var gate_scores: [MAX_GATES]c_int = .{ 0, 0, 0, 0, 0, 0 };
 
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 /// Reset all gate results.
 pub export fn fleet_reset() void {
@@ -140,11 +140,11 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 // ADR-0006 dispatch (boj_cartridge_invoke, 5th standard symbol)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha — each arm
 /// returns a stub JSON body shaped to the tool's intended response.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

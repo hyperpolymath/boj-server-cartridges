@@ -7,12 +7,12 @@ const testing = std.testing;
 pub const CommandQueue = struct {
     allocator: std.mem.Allocator,
     items: std.ArrayList([]u8),
-    mutex: std.Thread.Mutex,
+    mutex: shim.Mutex,
 
     pub fn init(allocator: std.mem.Allocator) CommandQueue {
         return .{
             .allocator = allocator,
-            .items = std.ArrayList([]u8){},
+            .items = .empty,
             .mutex = .{},
         };
     }
@@ -74,3 +74,5 @@ test "command queue — drain is idempotent (second drain returns empty)" {
     defer testing.allocator.free(second);
     try testing.expectEqual(@as(usize, 0), second.len);
 }
+
+pub const shim = @import("../../cartridge_shim.zig");

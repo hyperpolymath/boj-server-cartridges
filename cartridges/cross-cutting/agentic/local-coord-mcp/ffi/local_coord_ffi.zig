@@ -180,7 +180,7 @@ const empty_peer = Peer{
 };
 
 var peers: [MAX_PEERS]Peer = [_]Peer{empty_peer} ** MAX_PEERS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Task Claim Registry
@@ -301,7 +301,7 @@ var track_head: usize = 0; // next write slot
 var track_count: usize = 0; // active entries (saturates at MAX_TRACK)
 
 /// Push a track-record entry into the ring. Caller-visible timestamp is
-/// always std.time.milliTimestamp() at insertion. Oldest record is
+/// always shim.milliTimestamp() at insertion. Oldest record is
 /// overwritten when the ring is full.
 fn recordTrack(
     client_kind: u8,
@@ -317,7 +317,7 @@ fn recordTrack(
     t.outcome = outcome;
     t.risk_tier = risk_tier;
     t.duration_ms = duration_ms;
-    t.timestamp_ms = @intCast(std.time.milliTimestamp());
+    t.timestamp_ms = @intCast(shim.milliTimestamp());
     const tl: usize = @min(tag.len, MAX_TAG);
     if (tl > 0) @memcpy(t.tag[0..tl], tag[0..tl]);
     t.tag_len = @intCast(tl);
@@ -359,13 +359,13 @@ fn recordTrackReplay(
 
 fn generateToken() [TOKEN_LEN]u8 {
     var buf: [TOKEN_LEN]u8 = undefined;
-    std.crypto.random.bytes(&buf);
+    shim.randomBytes(&buf);
     return buf;
 }
 
 fn generateSuffix() [4]u8 {
     var raw: [2]u8 = undefined;
-    std.crypto.random.bytes(&raw);
+    shim.randomBytes(&raw);
     const hex = "0123456789abcdef";
     return [4]u8{
         hex[raw[0] >> 4],
@@ -526,8 +526,8 @@ pub export fn coord_promote_to_master(
     // Env-var check — BOJ_MASTER_TOKEN first, BOJ_SUPERVISOR_TOKEN fallback
     // for one release (DD-32). Read at promotion time so a running server
     // can have its policy changed by restart.
-    const env_secret = std.posix.getenv("BOJ_MASTER_TOKEN") orelse
-        std.posix.getenv("BOJ_SUPERVISOR_TOKEN") orelse return -3;
+    const env_secret = shim.getenv("BOJ_MASTER_TOKEN") orelse
+        shim.getenv("BOJ_SUPERVISOR_TOKEN") orelse return -3;
     if (env_secret.len == 0) return -3;
 
     const slen: usize = @intCast(secret_len);
@@ -593,8 +593,8 @@ pub export fn coord_transfer_master(
 
     // Secret must match BOJ_MASTER_TOKEN (or BOJ_SUPERVISOR_TOKEN as
     // back-compat fallback). Fail closed if neither is set.
-    const env_secret = std.posix.getenv("BOJ_MASTER_TOKEN")
-        orelse std.posix.getenv("BOJ_SUPERVISOR_TOKEN")
+    const env_secret = shim.getenv("BOJ_MASTER_TOKEN")
+        orelse shim.getenv("BOJ_SUPERVISOR_TOKEN")
         orelse return -3;
     if (env_secret.len == 0) return -3;
 
@@ -957,7 +957,7 @@ pub export fn coord_count_rejects_recent(
     if (!validateToken(token_ptr, token_len)) return -1;
     if (kind < 0 or kind >= KIND_COUNT) return -2;
     const k: usize = @intCast(kind);
-    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    const now_ms: u64 = @intCast(shim.milliTimestamp());
     var n: c_int = 0;
     for (reject_ring[k]) |ts| {
         if (ts == 0) continue;
@@ -979,7 +979,7 @@ pub export fn coord_kind_in_cooldown(
     if (!validateToken(token_ptr, token_len)) return -1;
     if (kind < 0 or kind >= KIND_COUNT) return -2;
     const ck: ClientKind = @enumFromInt(kind);
-    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    const now_ms: u64 = @intCast(shim.milliTimestamp());
     return if (isInCooldown(ck, now_ms)) 1 else 0;
 }
 
@@ -996,7 +996,7 @@ pub export fn coord_count_rejects_recent_peer(
     if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -2;
     const pi: usize = @intCast(peer_idx);
     if (!peers[pi].active) return -2;
-    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    const now_ms: u64 = @intCast(shim.milliTimestamp());
     var n: c_int = 0;
     for (peer_reject_ring[pi]) |ts| {
         if (ts == 0) continue;
@@ -1019,7 +1019,7 @@ pub export fn coord_peer_in_cooldown(
     if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -2;
     const pi: usize = @intCast(peer_idx);
     if (!peers[pi].active) return -2;
-    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    const now_ms: u64 = @intCast(shim.milliTimestamp());
     return if (isPeerInCooldown(pi, now_ms)) 1 else 0;
 }
 
@@ -1286,7 +1286,7 @@ pub export fn coord_claim_task_ex(
     const idx = findPeerByToken(token_ptr, @intCast(token_len)) orelse return -1;
     const tlen: usize = @intCast(@min(task_len, 128));
 
-    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    const now_ms: u64 = @intCast(shim.milliTimestamp());
     const kind = peers[idx].kind;
     if (isInCooldown(kind, now_ms)) return -5;
     if (isPeerInCooldown(idx, now_ms)) return -5;
@@ -1474,7 +1474,7 @@ pub export fn coord_progress(
 
     const idx = findPeerByToken(token_ptr, @intCast(token_len)) orelse return -1;
     const tlen: usize = @intCast(@min(task_len, 128));
-    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    const now_ms: u64 = @intCast(shim.milliTimestamp());
 
     for (&claims, 0..) |*c, ci| {
         if (!c.active) continue;
@@ -1498,7 +1498,7 @@ pub export fn coord_sweep_watchdog(
     mutex.lock();
     defer mutex.unlock();
     if (findPeerByToken(token_ptr, @intCast(token_len)) == null) return -1;
-    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    const now_ms: u64 = @intCast(shim.milliTimestamp());
     return sweepExpiredClaims(now_ms);
 }
 
@@ -1888,7 +1888,7 @@ pub export fn coord_report_outcome(
     const conf_u: u8 = if (confidence_pct < 0) 255 else @intCast(confidence_pct);
 
     recordTrack(kind_u, outcome_u, tier_u, dur_u, tag, conf_u);
-    dur.logTrackUpdate(kind_u, outcome_u, tier_u, dur_u, @intCast(std.time.milliTimestamp()), tag, conf_u);
+    dur.logTrackUpdate(kind_u, outcome_u, tier_u, dur_u, @intCast(shim.milliTimestamp()), tag, conf_u);
     return 0;
 }
 
@@ -1914,7 +1914,7 @@ fn buildAggregates(out: []Aggregate) usize {
     var n: usize = 0;
     if (track_count == 0) return 0;
 
-    const now: u64 = @intCast(std.time.milliTimestamp());
+    const now: u64 = @intCast(shim.milliTimestamp());
     const cutoff: u64 = if (now > WINDOW_MS) now - WINDOW_MS else 0;
 
     // Iterate track ring in insertion order (oldest first).
@@ -2146,7 +2146,7 @@ fn affinityPct(attempts: u16, successes: u16) u32 {
 fn windowedAvgConfidence(tgt_kind: u8, tgt_tag: []const u8) u32 {
     if (track_count == 0) return 256;
 
-    const now: u64 = @intCast(std.time.milliTimestamp());
+    const now: u64 = @intCast(shim.milliTimestamp());
     const cutoff: u64 = if (now > WINDOW_MS) now - WINDOW_MS else 0;
 
     var seen: u16 = 0;
@@ -2373,7 +2373,7 @@ fn replayDispatch(event: dur.EventType, payload: []const u8) void {
             // Fresh TTL after replay: old logs predate claim_progress
             // events, so we restart the watchdog from now. A claim_progress
             // record later in the same log will override this.
-            c.claimed_at_ms = @intCast(std.time.milliTimestamp());
+            c.claimed_at_ms = @intCast(shim.milliTimestamp());
         },
         .claim_rel => {
             const idx = dur.decodeSlotIdx(payload) orelse return;
@@ -2470,7 +2470,7 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 // ADR-0006 dispatch (boj_cartridge_invoke, 5th standard symbol)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 // ── JSON dispatch helpers ─────────────────────────────────────────────
 //
@@ -2551,7 +2551,7 @@ fn ci_writeJsonString(w: anytype, s: []const u8) !void {
             '\n' => try w.writeAll("\\n"),
             '\r' => try w.writeAll("\\r"),
             '\t' => try w.writeAll("\\t"),
-            0x00...0x08, 0x0B, 0x0C, 0x0E...0x1F => try std.fmt.format(w, "\\u00{x:0>2}", .{c}),
+            0x00...0x08, 0x0B, 0x0C, 0x0E...0x1F => try w.print("\\u00{x:0>2}", .{c}),
             else => try w.writeByte(c),
         }
     }
@@ -2701,8 +2701,8 @@ fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.me
         const count = coord_list_peers(&token, 16, &raw, @intCast(raw.len));
         if (count < 0) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
 
-        var stream = std.io.fixedBufferStream(out);
-        const w = stream.writer();
+        var fixed_writer = std.Io.Writer.fixed(out);
+        const w = &fixed_writer;
         w.writeAll("{\"success\":true,\"peers\":[") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
         var pi: i32 = 0;
         var written_idx: usize = 0;
@@ -2725,7 +2725,7 @@ fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.me
             var pid_buf: [96]u8 = undefined;
             const peer_id = ci_renderPeerId(&pid_buf, ci_kindName(kv), suf, cs) catch return ci_fail(out, "peer_id render overflow", shim.RC_RUNTIME_ERROR);
             if (written_idx > 0) w.writeByte(',') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
-            std.fmt.format(w, "{{\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"state\":\"{s}\",\"context\":\"{s}\",\"variant\":\"{s}\",\"status\":", .{
+            w.print("{{\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"state\":\"{s}\",\"context\":\"{s}\",\"variant\":\"{s}\",\"status\":", .{
                 peer_id, ci_kindName(kv), ci_stateName(st), cs, vs,
             }) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
             ci_writeJsonString(w, ss) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
@@ -2733,7 +2733,7 @@ fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.me
             written_idx += 1;
         }
         w.writeAll("]}") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
-        return .{ .written = stream.pos, .rc = shim.RC_SUCCESS };
+        return .{ .written = w.end, .rc = shim.RC_SUCCESS };
     }
 
     if (std.mem.eql(u8, tool, "coord_send")) {
@@ -2774,12 +2774,12 @@ fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.me
             const b = std.fmt.bufPrint(out, "{{\"success\":true,\"message\":null}}", .{}) catch out[0..0];
             return .{ .written = b.len, .rc = shim.RC_SUCCESS };
         }
-        var stream = std.io.fixedBufferStream(out);
-        const w = stream.writer();
+        var fixed_writer = std.Io.Writer.fixed(out);
+        const w = &fixed_writer;
         w.writeAll("{\"success\":true,\"message\":") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
         ci_writeJsonString(w, msg_buf[0..@intCast(mlen)]) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
         w.writeByte('}') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
-        return .{ .written = stream.pos, .rc = shim.RC_SUCCESS };
+        return .{ .written = w.end, .rc = shim.RC_SUCCESS };
     }
 
     if (std.mem.eql(u8, tool, "coord_status")) {
@@ -2926,8 +2926,8 @@ fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.me
         var raw: [512]u8 = undefined;
         const count = coord_review(&token, 16, &raw, @intCast(raw.len));
         if (count < 0) return ci_fail(out, "master role required", shim.RC_AUTH_DENIED);
-        var stream = std.io.fixedBufferStream(out);
-        const w = stream.writer();
+        var fixed_writer = std.Io.Writer.fixed(out);
+        const w = &fixed_writer;
         w.writeAll("{\"success\":true,\"entries\":[") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
         var i: usize = 0;
         const cnt: usize = @intCast(count);
@@ -2942,14 +2942,14 @@ fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.me
             const preview = rec[9 .. 9 + preview_n];
             if (i > 0) w.writeByte(',') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
             const origin: []const u8 = if (sender_idx == 0xFE) "server-engine" else "peer";
-            std.fmt.format(w, "{{\"request_id\":{d},\"origin\":\"{s}\",\"sender_idx\":{d},\"target_idx\":{d},\"risk_tier\":{d},\"msg_len\":{d},\"preview\":", .{
+            w.print("{{\"request_id\":{d},\"origin\":\"{s}\",\"sender_idx\":{d},\"target_idx\":{d},\"risk_tier\":{d},\"msg_len\":{d},\"preview\":", .{
                 rid, origin, sender_idx, target_idx_sign, risk_tier, mlen,
             }) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
             ci_writeJsonString(w, preview) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
             w.writeByte('}') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
         }
         w.writeAll("]}") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
-        return .{ .written = stream.pos, .rc = shim.RC_SUCCESS };
+        return .{ .written = w.end, .rc = shim.RC_SUCCESS };
     }
 
     if (std.mem.eql(u8, tool, "coord_review_entry")) {
@@ -2965,12 +2965,12 @@ fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.me
         if (rc == -1) return ci_fail(out, "master role required", shim.RC_AUTH_DENIED);
         if (rc == -2) return ci_fail(out, "request_id not found", shim.RC_BAD_ARGS);
         if (rc < 0) return ci_fail(out, "review failed", shim.RC_RUNTIME_ERROR);
-        var stream = std.io.fixedBufferStream(out);
-        const w = stream.writer();
+        var fixed_writer = std.Io.Writer.fixed(out);
+        const w = &fixed_writer;
         w.writeAll("{\"success\":true,\"message\":") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
         ci_writeJsonString(w, msg_buf[0..@intCast(rc)]) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
         w.writeByte('}') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
-        return .{ .written = stream.pos, .rc = shim.RC_SUCCESS };
+        return .{ .written = w.end, .rc = shim.RC_SUCCESS };
     }
 
     if (std.mem.eql(u8, tool, "coord_approve")) {
@@ -3091,8 +3091,8 @@ fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.me
         const n = coord_get_affinities(&token, 16, &raw, @intCast(raw.len));
         if (n == -1) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
         if (n < 0) return ci_fail(out, "affinity query failed", shim.RC_RUNTIME_ERROR);
-        var stream = std.io.fixedBufferStream(out);
-        const w = stream.writer();
+        var fixed_writer = std.Io.Writer.fixed(out);
+        const w = &fixed_writer;
         w.writeAll("{\"success\":true,\"affinities\":[") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
         const REC_SIZE: usize = 64;
         const cnt: usize = @intCast(n);
@@ -3106,16 +3106,16 @@ fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.me
             const tag_len: u8 = rec[6];
             const tag = rec[7 .. 7 + @min(@as(usize, tag_len), 57)];
             if (i > 0) w.writeByte(',') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
-            std.fmt.format(w, "{{\"client_kind\":\"{s}\",\"tag\":", .{ci_kindName(@intCast(kind))}) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            w.print("{{\"client_kind\":\"{s}\",\"tag\":", .{ci_kindName(@intCast(kind))}) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
             ci_writeJsonString(w, tag) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
             if (pct == 255) {
-                std.fmt.format(w, ",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":null}}", .{ attempts, successes }) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+                w.print(",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":null}}", .{ attempts, successes }) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
             } else {
-                std.fmt.format(w, ",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":{d}.{d:0>2}}}", .{ attempts, successes, pct / 100, pct % 100 }) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+                w.print(",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":{d}.{d:0>2}}}", .{ attempts, successes, pct / 100, pct % 100 }) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
             }
         }
         w.writeAll("]}") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
-        return .{ .written = stream.pos, .rc = shim.RC_SUCCESS };
+        return .{ .written = w.end, .rc = shim.RC_SUCCESS };
     }
 
     if (std.mem.eql(u8, tool, "coord_set_variant")) {
@@ -3193,16 +3193,16 @@ fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.me
         var pid_buf: [96]u8 = undefined;
         const canon_id = ci_renderPeerId(&pid_buf, ci_kindName(kind_val), suf, ctx_slice) catch
             return ci_fail(out, "peer_id render overflow", shim.RC_RUNTIME_ERROR);
-        var stream = std.io.fixedBufferStream(out);
-        const w = stream.writer();
-        std.fmt.format(w, "{{\"success\":true,\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"variant\":\"{s}\",\"tier\":{d},\"class\":[", .{
+        var fixed_writer = std.Io.Writer.fixed(out);
+        const w = &fixed_writer;
+        w.print("{{\"success\":true,\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"variant\":\"{s}\",\"tier\":{d},\"class\":[", .{
             canon_id, ci_kindName(kind_val), var_slice, tier_val,
         }) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
         ci_writeCsvAsJsonStrings(w, class_slice) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
         w.writeAll("],\"prover_strengths\":[") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
         ci_writeCsvAsJsonStrings(w, pro_slice) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
         w.writeAll("]}") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
-        return .{ .written = stream.pos, .rc = shim.RC_SUCCESS };
+        return .{ .written = w.end, .rc = shim.RC_SUCCESS };
     }
 
     if (std.mem.eql(u8, tool, "coord_progress")) {
@@ -3242,8 +3242,8 @@ fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.me
         const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
         var token: [16]u8 = undefined;
         if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
-        var stream = std.io.fixedBufferStream(out);
-        const w = stream.writer();
+        var fixed_writer = std.Io.Writer.fixed(out);
+        const w = &fixed_writer;
         w.writeAll("{\"success\":true,\"active_claims\":[") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
         var first = true;
         var ci: c_int = 0;
@@ -3259,14 +3259,14 @@ fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.me
             w.writeAll("{\"task\":") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
             ci_writeJsonString(w, task_slice) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
             if (hs_rc == 4) {
-                std.fmt.format(w, ",\"holder\":\"{s}\"", .{holder_suffix}) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+                w.print(",\"holder\":\"{s}\"", .{holder_suffix}) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
             } else {
                 w.writeAll(",\"holder\":\"\"") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
             }
             w.writeByte('}') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
         }
         w.writeAll("]}") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
-        return .{ .written = stream.pos, .rc = shim.RC_SUCCESS };
+        return .{ .written = w.end, .rc = shim.RC_SUCCESS };
     }
 
     return ci_fail(out, "unknown tool", shim.RC_UNKNOWN_TOOL);
@@ -3275,7 +3275,7 @@ fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.me
 /// Dispatch the cartridge.json MCP tools — Grade B: all 20+ tools wired to
 /// real FFI calls (Task #2). Parses JSON args with page_allocator; error
 /// bodies are written to out_buf even when rc < 0.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,
@@ -4128,8 +4128,8 @@ test "invoke: zero-capacity buffer returns -3 with size hint" {
 
 fn tmpCoordDir(buf: []u8) ![]u8 {
     return std.fmt.bufPrint(buf, "/tmp/boj-coord-integ-{d}-{d}", .{
-        std.time.milliTimestamp(),
-        std.crypto.random.int(u32),
+        shim.milliTimestamp(),
+        shim.randomInt(u32),
     });
 }
 
@@ -4139,7 +4139,7 @@ test "restart replay restores peer, claim, inbox, quarantine" {
 
     var path_buf: [256]u8 = undefined;
     const dir = try tmpCoordDir(&path_buf);
-    defer std.fs.cwd().deleteTree(dir) catch {};
+    defer std.Io.Dir.cwd().deleteTree(shim.io(), dir) catch {};
 
     try std.testing.expect(dur.openWithDir(dir));
     dur.truncate();
@@ -4252,7 +4252,7 @@ test "approve then restart: quarantine gone, delivered message survives" {
 
     var path_buf: [256]u8 = undefined;
     const dir = try tmpCoordDir(&path_buf);
-    defer std.fs.cwd().deleteTree(dir) catch {};
+    defer std.Io.Dir.cwd().deleteTree(shim.io(), dir) catch {};
 
     try std.testing.expect(dur.openWithDir(dir));
     dur.truncate();
@@ -4302,7 +4302,7 @@ test "reject then restart: quarantine gone, message NOT delivered" {
 
     var path_buf: [256]u8 = undefined;
     const dir = try tmpCoordDir(&path_buf);
-    defer std.fs.cwd().deleteTree(dir) catch {};
+    defer std.Io.Dir.cwd().deleteTree(shim.io(), dir) catch {};
 
     try std.testing.expect(dur.openWithDir(dir));
     dur.truncate();
@@ -4716,7 +4716,7 @@ test "affinity replay after restart" {
 
     var path_buf: [256]u8 = undefined;
     const dir = try tmpCoordDir(&path_buf);
-    defer std.fs.cwd().deleteTree(dir) catch {};
+    defer std.Io.Dir.cwd().deleteTree(shim.io(), dir) catch {};
 
     try std.testing.expect(dur.openWithDir(dir));
     dur.truncate();

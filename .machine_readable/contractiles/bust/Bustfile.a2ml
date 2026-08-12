@@ -13,40 +13,87 @@
 #   contractile bust check  → list failure modes + recovery status
 #   contractile bust drill  → inject failures, verify recovery paths
 #
-# This repository: boj-server-cartridges is the canonical template for RSR compliance.
-# Failure modes here relate to template distribution and substitution.
+# Rewritten 2026-08-07. The previous version had this repository's name
+# substituted in but still described it as "the canonical template for RSR
+# compliance", with failure modes about template distribution. It is not a
+# template. It is the sole source of BoJ cartridges for every host.
+
+[metadata]
+project = "boj-server-cartridges"
+version = "0.2.0"
+last-updated = "2026-08-07"
 
 @abstract:
-Bustfile for boj-server-cartridges. Lists failure modes specific to the template
-repository itself, particularly around template distribution, substitution,
-and synchronization across the hyperpolymath estate.
+Failure modes for boj-server-cartridges, the canonical registry of BoJ
+capability cartridges.
+
+Since hyperpolymath/boj-server#300 merged (2026-08-04) no host carries a
+bundled fallback tree, so every failure mode below has a blast radius of
+"every BoJ host on its next fetch". None of these has been drilled; status
+is recorded honestly as `declared` rather than assumed working.
 @end
 
 ## Failure Modes
 
-### template-substitution-failure
-- class: template_processing
-- description: Template substitution fails when initializing a new repo from this template
-- injection_probe: "cp -r boj-server-cartridges test-repo && cd test-repo && sed -i 's/boj-server-cartridges/TEST/g' .machine_readable/contractiles/Intentfile.a2ml && grep -q 'TEST' .machine_readable/contractiles/Intentfile.a2ml"
-- recovery_probe: "git -C test-repo diff --quiet .machine_readable/contractiles/Intentfile.a2ml"
-- expected_recovery_time_seconds: 10
+### schema-mirror-drift
+- class: supply_chain
+- description: schemas/cartridge-v1.json silently diverges from the upstream it mirrors, so manifests validate against a schema nobody approved
+- injection_probe: "printf '\\n' >> schemas/cartridge-v1.json"
+- recovery_probe: "test \"$(sha256sum schemas/cartridge-v1.json | awk '{print $1}')\" != \"$(awk -F'\\\"' '/content_sha256/ {print $2}' schemas/PINNED-SHA)\" && git checkout schemas/cartridge-v1.json"
+- expected_recovery_time_seconds: 5
 - status: declared
-- notes: Verify that substitution scripts handle all placeholder replacements correctly
+- notes: The detection half of this is REAL and runs in CI (cartridge-schema re-verifies the content SHA-256 before validating). The recovery half is a manual git checkout. Drilling it means confirming the CI job actually goes red, not just that the local test does.
 
-### sync-drift-between-repos
-- class: synchronization
-- description: Drift occurs between boj-server-cartridges and other repos after template updates
-- injection_probe: "echo 'template_updated' > /tmp/test_drift_marker"
-- recovery_probe: "test -f /tmp/test_drift_marker && rm /tmp/test_drift_marker"
-- expected_recovery_time_seconds: 60
+### invalid-manifest-reaches-main
+- class: registry_integrity
+- description: A cartridge.json that does not validate lands on main and every host fetches it
+- injection_probe: "cd tools/validate-cartridges && deno task strict"
+- recovery_probe: "git revert --no-edit HEAD"
+- expected_recovery_time_seconds: 300
 - status: declared
-- notes: The estate-wide sync scripts (see scripts/) should prevent this; verify with scripts/verify-sync.sh
+- notes: Prevention is strong (strict gate since 2026-06-01, 142/142). Recovery is weak: there is no host-side pin, so a bad merge propagates on the next fetch and the only rollback is another merge. A host-side ref pin would change this failure mode's severity materially.
+
+### template-defect-propagates
+- class: amplification
+- description: A defect in cartridges/templates/gossamer-mcp/ is copied into every subsequently minted cartridge
+- injection_probe: "grep -rn 'gossamer_init' cartridges/templates/gossamer-mcp/adapter/"
+- recovery_probe: "cd cartridges/templates/gossamer-mcp/adapter && zig build"
+- expected_recovery_time_seconds: 3600
+- status: failing
+- notes: NOT HYPOTHETICAL — THIS HAS ALREADY HAPPENED. The template adapter calls ffi.gossamer_init, which does not exist, and the ffi `export fn` declarations are not `pub`. All 99 adapter/build.zig trees inherit the fault and none of them compiles. Recovery requires fixing the template and then re-propagating to 99 cartridges. Status is `failing`, not `declared`, because the recovery path is known-broken today.
+
+### silent-cartridge-rot
+- class: coverage
+- description: A cartridge stops building and nothing notices, because CI only builds what a PR touched
+- injection_probe: "grep -c 'cartridges/.*/ffi/' .github/workflows/zig-test.yml"
+- recovery_probe: "for b in $(find cartridges -path '*/ffi/build.zig'); do (cd $(dirname $b) && zig build test) || echo FAIL $b; done"
+- expected_recovery_time_seconds: 7200
+- status: failing
+- notes: The detection path does not exist on main. zig-test.yml filters on '^cartridges/.*/ffi/' and there is no scheduled full-tree sweep, so a cartridge nobody edits can rot indefinitely. Open PR #109 proposes a weekly full-sweep job. Until it merges the recovery probe above is the only sweep there is, and it is manual.
+
+### shim-divergence
+- class: vendored_copy
+- description: One of the 116 vendored cartridge_shim.zig copies drifts from the template and the affected cartridge builds differently from every other
+- injection_probe: "canon=$(sha256sum cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig | awk '{print $1}'); find cartridges -name cartridge_shim.zig -exec sha256sum {} \\; | grep -v \"^$canon\""
+- recovery_probe: "cp cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig <divergent-path>"
+- expected_recovery_time_seconds: 60
+- status: failing
+- notes: ALREADY OCCURRED. cartridges/domains/gaming/npc-mcp/ffi/cartridge_shim.zig differs from the canonical bytes and no record explains why. Do not run the recovery probe blind — establish first whether the divergence was intentional.
+
+### proof-rot
+- class: verification
+- description: Idris2 ABI proofs stop type-checking while the board stays green
+- injection_probe: "bash scripts/typecheck-proofs.sh"
+- recovery_probe: "bash scripts/check-trusted-base.sh && bash scripts/typecheck-proofs.sh"
+- expected_recovery_time_seconds: 1800
+- status: drilled
+- notes: This one HAS been exercised. 23 proofs here had rotted while their boj-server twins stayed green (#36/#37); the Proofs Gate was added in response and now type-checks every .idr individually with a vacuous-pass guard. Marked `drilled` rather than `verified` because the recovery was a one-off remediation, not a repeatable drill.
 
 ### contractile-parse-error
 - class: contractile_format
-- description: A contractile file fails to parse due to syntax errors
-- injection_probe: "echo 'invalid syntax' >> boj-server-cartridges/.machine_readable/contractiles/Intentfile.a2ml"
-- recovery_probe: "git checkout boj-server-cartridges/.machine_readable/contractiles/Intentfile.a2ml"
+- description: A contractile or 6a2 file fails to parse, so agents read no policy at all
+- injection_probe: "printf 'invalid syntax\\n' >> .machine_readable/contractiles/Intentfile.a2ml"
+- recovery_probe: "git checkout .machine_readable/contractiles/Intentfile.a2ml"
 - expected_recovery_time_seconds: 5
 - status: declared
-- notes: All .a2ml files should be valid A2ML; use a2ml-validate runner
+- notes: There is no a2ml validator in this repository and no CI job parses these files, so the failure is silent by construction. The nearest thing to a check is that 0-AI-MANIFEST.a2ml happens to parse as YAML.

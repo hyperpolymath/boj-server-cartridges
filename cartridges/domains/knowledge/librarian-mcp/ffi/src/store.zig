@@ -67,35 +67,36 @@ pub fn validateSlug(name: []const u8) bool {
     return true;
 }
 
-pub fn saveTo(allocator: std.mem.Allocator, root_dir: std.fs.Dir, name: []const u8, col: Collection) !void {
+pub fn saveTo(allocator: std.mem.Allocator, root_dir: std.Io.Dir, name: []const u8, col: Collection) !void {
     if (!validateSlug(name)) return Error.InvalidName;
+    const io = shim.io();
 
     // Stage into a sibling temporary directory, then swap it into place, so a
     // reader never sees a half-written collection.
     const tmp_name = try std.fmt.allocPrint(allocator, "{s}.staging", .{name});
     defer allocator.free(tmp_name);
-    root_dir.deleteTree(tmp_name) catch {};
-    try root_dir.makePath(tmp_name);
+    root_dir.deleteTree(io, tmp_name) catch {};
+    try root_dir.createDirPath(io, tmp_name);
     {
-        var dir = try root_dir.openDir(tmp_name, .{});
-        defer dir.close();
+        var dir = try root_dir.openDir(io, tmp_name, .{});
+        defer dir.close(io);
 
         // vectors.bin: magic, dim, count, then the raw f32 rows (host-endian).
         const count: u64 = if (col.dim == 0) 0 else col.vectors.len / col.dim;
         const dim64: u64 = col.dim;
-        var blob: std.ArrayList(u8) = .{};
+        var blob: std.ArrayList(u8) = .empty;
         defer blob.deinit(allocator);
         try blob.appendSlice(allocator, magic);
         try blob.appendSlice(allocator, std.mem.asBytes(&dim64));
         try blob.appendSlice(allocator, std.mem.asBytes(&count));
         try blob.appendSlice(allocator, std.mem.sliceAsBytes(col.vectors));
-        try dir.writeFile(.{ .sub_path = "vectors.bin", .data = blob.items });
+        try dir.writeFile(io, .{ .sub_path = "vectors.bin", .data = blob.items });
 
         // chunks.json
         var cw = std.Io.Writer.Allocating.init(allocator);
         defer cw.deinit();
         try std.json.Stringify.value(col.chunks, .{}, &cw.writer);
-        try dir.writeFile(.{ .sub_path = "chunks.json", .data = cw.written() });
+        try dir.writeFile(io, .{ .sub_path = "chunks.json", .data = cw.written() });
 
         // meta.json
         const meta = MetaJson{
@@ -109,23 +110,24 @@ pub fn saveTo(allocator: std.mem.Allocator, root_dir: std.fs.Dir, name: []const 
         var mw = std.Io.Writer.Allocating.init(allocator);
         defer mw.deinit();
         try std.json.Stringify.value(meta, .{}, &mw.writer);
-        try dir.writeFile(.{ .sub_path = "meta.json", .data = mw.written() });
+        try dir.writeFile(io, .{ .sub_path = "meta.json", .data = mw.written() });
     }
-    root_dir.deleteTree(name) catch {};
-    try root_dir.rename(tmp_name, name);
+    root_dir.deleteTree(io, name) catch {};
+    try root_dir.rename(tmp_name, root_dir, name, io);
 }
 
-pub fn loadFrom(allocator: std.mem.Allocator, root_dir: std.fs.Dir, name: []const u8) !Collection {
+pub fn loadFrom(allocator: std.mem.Allocator, root_dir: std.Io.Dir, name: []const u8) !Collection {
     if (!validateSlug(name)) return Error.InvalidName;
-    var dir = root_dir.openDir(name, .{}) catch return Error.CollectionNotFound;
-    defer dir.close();
+    const io = shim.io();
+    var dir = root_dir.openDir(io, name, .{}) catch return Error.CollectionNotFound;
+    defer dir.close(io);
 
-    const meta_bytes = dir.readFileAlloc(allocator, "meta.json", max_file_bytes) catch return Error.CollectionNotFound;
+    const meta_bytes = dir.readFileAlloc(io, "meta.json", allocator, .limited(max_file_bytes)) catch return Error.CollectionNotFound;
     defer allocator.free(meta_bytes);
     const meta_parsed = try std.json.parseFromSlice(MetaJson, allocator, meta_bytes, .{});
     defer meta_parsed.deinit();
 
-    const vec_bytes = dir.readFileAlloc(allocator, "vectors.bin", max_file_bytes) catch return Error.CollectionNotFound;
+    const vec_bytes = dir.readFileAlloc(io, "vectors.bin", allocator, .limited(max_file_bytes)) catch return Error.CollectionNotFound;
     defer allocator.free(vec_bytes);
     if (vec_bytes.len < magic.len + 16) return Error.BadFormat;
     if (!std.mem.eql(u8, vec_bytes[0..magic.len], magic)) return Error.BadFormat;
@@ -137,7 +139,7 @@ pub fn loadFrom(allocator: std.mem.Allocator, root_dir: std.fs.Dir, name: []cons
     errdefer allocator.free(vectors);
     @memcpy(std.mem.sliceAsBytes(vectors), payload);
 
-    const chunk_bytes = dir.readFileAlloc(allocator, "chunks.json", max_file_bytes) catch return Error.CollectionNotFound;
+    const chunk_bytes = dir.readFileAlloc(io, "chunks.json", allocator, .limited(max_file_bytes)) catch return Error.CollectionNotFound;
     defer allocator.free(chunk_bytes);
     const chunk_parsed = try std.json.parseFromSlice([]StoredChunk, allocator, chunk_bytes, .{});
     defer chunk_parsed.deinit();
@@ -167,39 +169,43 @@ pub fn loadFrom(allocator: std.mem.Allocator, root_dir: std.fs.Dir, name: []cons
     };
 }
 
-pub fn existsIn(root_dir: std.fs.Dir, name: []const u8) bool {
+pub fn existsIn(root_dir: std.Io.Dir, name: []const u8) bool {
     if (!validateSlug(name)) return false;
-    var dir = root_dir.openDir(name, .{}) catch return false;
-    defer dir.close();
-    dir.access("meta.json", .{}) catch return false;
+    const io = shim.io();
+    var dir = root_dir.openDir(io, name, .{}) catch return false;
+    defer dir.close(io);
+    dir.access(io, "meta.json", .{}) catch return false;
     return true;
 }
 
-pub fn deleteFrom(root_dir: std.fs.Dir, name: []const u8) !void {
+pub fn deleteFrom(root_dir: std.Io.Dir, name: []const u8) !void {
     if (!validateSlug(name)) return Error.InvalidName;
     if (!existsIn(root_dir, name)) return Error.CollectionNotFound;
-    try root_dir.deleteTree(name);
+    try root_dir.deleteTree(shim.io(), name);
 }
 
 /// List the names of collections present under the root. Caller owns the slice
 /// and each name within it.
-pub fn listIn(allocator: std.mem.Allocator, root_dir: std.fs.Dir) ![][]u8 {
-    var iter_dir = try root_dir.openDir(".", .{ .iterate = true });
-    defer iter_dir.close();
+pub fn listIn(allocator: std.mem.Allocator, root_dir: std.Io.Dir) ![][]u8 {
+    const io = shim.io();
+    var iter_dir = try root_dir.openDir(io, ".", .{ .iterate = true });
+    defer iter_dir.close(io);
 
-    var names: std.ArrayList([]u8) = .{};
+    var names: std.ArrayList([]u8) = .empty;
     errdefer {
         for (names.items) |n| allocator.free(n);
         names.deinit(allocator);
     }
     var it = iter_dir.iterate();
-    while (try it.next()) |entry| {
+    while (try it.next(io)) |entry| {
         if (entry.kind != .directory) continue;
         if (!existsIn(root_dir, entry.name)) continue;
         try names.append(allocator, try allocator.dupe(u8, entry.name));
     }
     return names.toOwnedSlice(allocator);
 }
+
+pub const shim = @import("cartridge_shim.zig");
 
 // ── Tests ──
 

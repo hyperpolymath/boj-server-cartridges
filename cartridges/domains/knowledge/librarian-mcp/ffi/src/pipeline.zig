@@ -116,7 +116,7 @@ pub const CommitParams = struct {
 };
 
 /// Persist a collection from chunk texts and their parallel vectors.
-pub fn commit(allocator: std.mem.Allocator, root_dir: std.fs.Dir, params: CommitParams) !usize {
+pub fn commit(allocator: std.mem.Allocator, root_dir: std.Io.Dir, params: CommitParams) !usize {
     const count = params.set.chunks.len;
     if (params.vectors.len != count * params.dim) return Error.CountMismatch;
 
@@ -151,7 +151,7 @@ pub fn commit(allocator: std.mem.Allocator, root_dir: std.fs.Dir, params: Commit
 /// an error, honouring "reads are never denied".
 pub fn query(
     allocator: std.mem.Allocator,
-    root_dir: std.fs.Dir,
+    root_dir: std.Io.Dir,
     name: []const u8,
     query_vec: []const f32,
     k: usize,

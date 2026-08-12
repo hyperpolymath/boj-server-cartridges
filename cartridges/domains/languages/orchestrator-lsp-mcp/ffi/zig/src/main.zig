@@ -23,7 +23,7 @@
 //   6=secret 7=git        8=ssg  9=proof 10=observability 11=browser
 
 const std = @import("std");
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ const Session = struct {
 
 var sessions: [MAX_SESSIONS]Session = [_]Session{.{}} ** MAX_SESSIONS;
 var session_counter: u32 = 0;
-var session_mutex: std.Thread.Mutex = .{};
+var session_mutex: shim.Mutex = .{};
 
 fn nextSessionId(out: *[SESSION_ID_LEN]u8) void {
     session_counter +%= 1;
@@ -105,7 +105,7 @@ fn domainInJson(json: []const u8, domain: []const u8) bool {
 // concurrent invoke calls cannot interleave their messages on the pipe.
 
 var port_child: ?std.process.Child = null;
-var port_mutex: std.Thread.Mutex = .{};
+var port_mutex: shim.Mutex = .{};
 
 /// Spawn the Elixir adapter if not already running.
 /// Uses std.heap.page_allocator so the argv slice outlives this call.
@@ -175,7 +175,7 @@ fn portRoundTrip(request_json: []const u8, buf: []u8) ![]u8 {
 
 // ─── Standard ABI symbols ────────────────────────────────────────────────────
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     session_mutex.lock();
     for (&sessions) |*s| s.* = Session{};
     session_counter = 0;
@@ -183,7 +183,7 @@ export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {
+pub export fn boj_cartridge_deinit() callconv(.c) void {
     port_mutex.lock();
     defer port_mutex.unlock();
 
@@ -202,11 +202,11 @@ export fn boj_cartridge_deinit() callconv(.c) void {
     port_child = null;
 }
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return "orchestrator-lsp-mcp";
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return "0.1.0";
 }
 
@@ -388,7 +388,7 @@ fn toolRequest(args: []const u8, out_buf: [*c]u8, in_out_len: [*c]usize) i32 {
 
 // ─── ADR-0006 dispatch ────────────────────────────────────────────────────────
 
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

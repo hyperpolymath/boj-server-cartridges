@@ -233,8 +233,8 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         if (count < 0) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
 
         // Build JSON: {"success":true,"peers":[{"peer_id":"kind-xxxx","kind":"...","state":"...","status":"..."},...]}
-        var stream = std.io.fixedBufferStream(resp);
-        const w = stream.writer();
+        var stream = std.Io.Writer.fixed(resp);
+        const w = &stream;
         w.writeAll("{\"success\":true,\"peers\":[") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
 
         // The 12-byte records in `raw` are packed in peer-index-ascending order
@@ -271,7 +271,7 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             // peer_id/kind/state/context/variant are all validated-safe; status is
             // arbitrary user text → must go through writeJsonString to prevent
             // JSON breakage (e.g. status = `working on "foo"` would split the string).
-            std.fmt.format(w, "{{\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"state\":\"{s}\",\"context\":\"{s}\",\"variant\":\"{s}\",\"status\":", .{
+            w.print("{{\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"state\":\"{s}\",\"context\":\"{s}\",\"variant\":\"{s}\",\"status\":", .{
                 peer_id, kindName(kind_val), stateName(state), ctx_slice, variant_slice,
             }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             writeJsonString(w, status_slice) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
@@ -280,7 +280,7 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         }
 
         w.writeAll("]}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-        return .{ .status = 200, .body = resp[0..stream.pos] };
+        return .{ .status = 200, .body = resp[0..stream.end] };
     }
 
     if (std.mem.eql(u8, tool, "coord_send")) {
@@ -325,12 +325,12 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             return .{ .status = 200, .body = std.fmt.bufPrint(resp, "{{\"success\":true,\"message\":null}}", .{}) catch resp[0..0] };
         }
         const msg_slice = msg_buf[0..@intCast(mlen)];
-        var recv_stream = std.io.fixedBufferStream(resp);
-        const rw = recv_stream.writer();
+        var recv_stream = std.Io.Writer.fixed(resp);
+        const rw = &recv_stream;
         rw.writeAll("{\"success\":true,\"message\":") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         writeJsonString(rw, msg_slice) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         rw.writeByte('}') catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-        return .{ .status = 200, .body = resp[0..recv_stream.pos] };
+        return .{ .status = 200, .body = resp[0..recv_stream.end] };
     }
 
     if (std.mem.eql(u8, tool, "coord_status")) {
@@ -492,8 +492,8 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         const count = ffi.coord_review(&token, 16, &raw, @intCast(raw.len));
         if (count < 0) return .{ .status = 403, .body = errJson(resp, "master role required") };
 
-        var stream = std.io.fixedBufferStream(resp);
-        const w = stream.writer();
+        var stream = std.Io.Writer.fixed(resp);
+        const w = &stream;
         w.writeAll("{\"success\":true,\"entries\":[") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
 
         var i: usize = 0;
@@ -513,14 +513,14 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             if (i > 0) w.writeAll(",") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             // sender_idx = 0xFE indicates a server-origin entry from coord_scan_suggestions.
             const origin: []const u8 = if (sender_idx == 0xFE) "server-engine" else "peer";
-            std.fmt.format(w, "{{\"request_id\":{d},\"origin\":\"{s}\",\"sender_idx\":{d},\"target_idx\":{d},\"risk_tier\":{d},\"msg_len\":{d},\"preview\":", .{
+            w.print("{{\"request_id\":{d},\"origin\":\"{s}\",\"sender_idx\":{d},\"target_idx\":{d},\"risk_tier\":{d},\"msg_len\":{d},\"preview\":", .{
                 rid, origin, sender_idx, target_idx_sign, risk_tier, mlen,
             }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             writeJsonString(w, preview) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             w.writeByte('}') catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         }
         w.writeAll("]}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-        return .{ .status = 200, .body = resp[0..stream.pos] };
+        return .{ .status = 200, .body = resp[0..stream.end] };
     }
 
     if (std.mem.eql(u8, tool, "coord_review_entry")) {
@@ -538,12 +538,12 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         if (rc < 0) return .{ .status = 500, .body = errJson(resp, "review failed") };
 
         const msg_slice = msg_buf[0..@intCast(rc)];
-        var entry_stream = std.io.fixedBufferStream(resp);
-        const ew = entry_stream.writer();
+        var entry_stream = std.Io.Writer.fixed(resp);
+        const ew = &entry_stream;
         ew.writeAll("{\"success\":true,\"message\":") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         writeJsonString(ew, msg_slice) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         ew.writeByte('}') catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-        return .{ .status = 200, .body = resp[0..entry_stream.pos] };
+        return .{ .status = 200, .body = resp[0..entry_stream.end] };
     }
 
     if (std.mem.eql(u8, tool, "coord_approve")) {
@@ -669,8 +669,8 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         if (n < -1000) return .{ .status = 500, .body = errJson(resp, "affinity buffer overflow — too many distinct (kind, tag) pairs") };
         if (n < 0) return .{ .status = 500, .body = errJson(resp, "affinity query failed") };
 
-        var stream = std.io.fixedBufferStream(resp);
-        const w = stream.writer();
+        var stream = std.Io.Writer.fixed(resp);
+        const w = &stream;
         w.writeAll("{\"success\":true,\"affinities\":[") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
 
         const REC_SIZE: usize = 64;
@@ -690,17 +690,17 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             // affinity as decimal; 255 sentinel means no data. Tag is user-supplied
             // (from coord_report_outcome) so must go through writeJsonString.
             if (pct == 255) {
-                std.fmt.format(w, "{{\"client_kind\":\"{s}\",\"tag\":", .{kindName(@intCast(kind))}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+                w.print("{{\"client_kind\":\"{s}\",\"tag\":", .{kindName(@intCast(kind))}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
                 writeJsonString(w, tag) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-                std.fmt.format(w, ",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":null}}", .{ attempts, successes }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+                w.print(",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":null}}", .{ attempts, successes }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             } else {
-                std.fmt.format(w, "{{\"client_kind\":\"{s}\",\"tag\":", .{kindName(@intCast(kind))}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+                w.print("{{\"client_kind\":\"{s}\",\"tag\":", .{kindName(@intCast(kind))}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
                 writeJsonString(w, tag) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-                std.fmt.format(w, ",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":{d}.{d:0>2}}}", .{ attempts, successes, pct / 100, pct % 100 }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+                w.print(",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":{d}.{d:0>2}}}", .{ attempts, successes, pct / 100, pct % 100 }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             }
         }
         w.writeAll("]}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-        return .{ .status = 200, .body = resp[0..stream.pos] };
+        return .{ .status = 200, .body = resp[0..stream.end] };
     }
 
     if (std.mem.eql(u8, tool, "coord_reject")) {
@@ -820,17 +820,16 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         var canon_id_buf: [96]u8 = undefined;
         const canon_id = renderPeerId(&canon_id_buf, kindName(kind_val), suffix, ctx_slice2) catch return .{ .status = 500, .body = errJson(resp, "peer_id render overflow") };
 
-        var stream = std.io.fixedBufferStream(resp);
-        const w = stream.writer();
-        std.fmt.format(w,
-            "{{\"success\":true,\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"variant\":\"{s}\",\"tier\":{d},\"class\":[",
+        var stream = std.Io.Writer.fixed(resp);
+        const w = &stream;
+        w.print("{{\"success\":true,\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"variant\":\"{s}\",\"tier\":{d},\"class\":[",
             .{ canon_id, kindName(kind_val), variant_slice, tier_val },
         ) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         writeCsvAsJsonStrings(w, class_slice) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         w.writeAll("],\"prover_strengths\":[") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         writeCsvAsJsonStrings(w, pro_slice) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         w.writeAll("]}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-        return .{ .status = 200, .body = resp[0..stream.pos] };
+        return .{ .status = 200, .body = resp[0..stream.end] };
     }
 
     if (std.mem.eql(u8, tool, "coord_progress")) {
@@ -873,8 +872,8 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         var token: [16]u8 = undefined;
         if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
 
-        var stream = std.io.fixedBufferStream(resp);
-        const w = stream.writer();
+        var stream = std.Io.Writer.fixed(resp);
+        const w = &stream;
         w.writeAll("{\"success\":true,\"active_claims\":[") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         var first = true;
         var ci: c_int = 0;
@@ -890,14 +889,14 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             w.writeAll("{\"task\":") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             writeJsonString(w, task_slice) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             if (hs_rc == 4) {
-                std.fmt.format(w, ",\"holder\":\"{s}\"", .{holder_suffix}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+                w.print(",\"holder\":\"{s}\"", .{holder_suffix}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             } else {
                 w.writeAll(",\"holder\":\"\"") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             }
             w.writeByte('}') catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         }
         w.writeAll("]}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-        return .{ .status = 200, .body = resp[0..stream.pos] };
+        return .{ .status = 200, .body = resp[0..stream.end] };
     }
 
     if (std.mem.eql(u8, tool, "coord_health")) {
@@ -944,10 +943,9 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         const clm = ffi.coord_count_claims(&token, 16);
         const trk = ffi.coord_count_track(&token, 16);
 
-        var stream = std.io.fixedBufferStream(resp);
-        const w = stream.writer();
-        std.fmt.format(w,
-            "{{\"success\":true,\"peers\":{{\"active\":{d},\"max\":16," ++
+        var stream = std.Io.Writer.fixed(resp);
+        const w = &stream;
+        w.print("{{\"success\":true,\"peers\":{{\"active\":{d},\"max\":16," ++
             "\"by_kind\":{{\"claude\":{d},\"gemini\":{d},\"copilot\":{d},\"custom\":{d},\"openai\":{d},\"mistral\":{d}}}," ++
             "\"by_role\":{{\"master\":{d},\"journeyman\":{d},\"apprentice\":{d}}}}}," ++
             "\"quarantine\":{{\"pending\":{d},\"max\":32}}," ++
@@ -997,12 +995,12 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             const pcd = ffi.coord_peer_in_cooldown(&token, 16, pi);
             if (wrote_bp) w.writeAll(",") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             wrote_bp = true;
-            std.fmt.format(w, "{{\"peer_id\":\"{s}\",\"count\":{d},\"in_cooldown\":{s}}}", .{
+            w.print("{{\"peer_id\":\"{s}\",\"count\":{d},\"in_cooldown\":{s}}}", .{
                 pid, prc, if (pcd == 1) "true" else "false",
             }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         }
         w.writeAll("]}}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-        return .{ .status = 200, .body = resp[0..stream.pos] };
+        return .{ .status = 200, .body = resp[0..stream.end] };
     }
 
     return .{ .status = 404, .body = errJson(resp, "not implemented") };
@@ -1023,7 +1021,7 @@ fn writeJsonString(w: anytype, s: []const u8) !void {
             '\r' => try w.writeAll("\\r"),
             '\t' => try w.writeAll("\\t"),
             // Remaining C0 controls: \u00XX (2 significant hex digits suffice).
-            0x00...0x08, 0x0B, 0x0C, 0x0E...0x1F => try std.fmt.format(w, "\\u00{x:0>2}", .{c}),
+            0x00...0x08, 0x0B, 0x0C, 0x0E...0x1F => try w.print("\\u00{x:0>2}", .{c}),
             else => try w.writeByte(c),
         }
     }
@@ -1045,12 +1043,13 @@ fn writeCsvAsJsonStrings(w: anytype, csv: []const u8) !void {
     }
 }
 
-fn handleConnection(stream: std.net.Stream, allocator: std.mem.Allocator) void {
-    defer stream.close();
+fn handleConnection(io: std.Io, stream: std.Io.net.Stream, allocator: std.mem.Allocator) void {
+    defer stream.close(io);
     var buf: [8192]u8 = undefined;
     var resp_buf: [8192]u8 = undefined;
-    const n = stream.read(&buf) catch return;
-    const req = buf[0..n];
+    var stream_reader = stream.reader(io, &buf);
+    stream_reader.interface.fillMore() catch return;
+    const req = stream_reader.interface.buffered();
 
     var lines = std.mem.splitScalar(u8, req, '\n');
     const first = lines.next() orelse return;
@@ -1069,25 +1068,32 @@ fn handleConnection(stream: std.net.Stream, allocator: std.mem.Allocator) void {
     }
 
     var http_resp: [512]u8 = undefined;
-    const http = std.fmt.bufPrint(&http_resp,
+    var stream_writer = stream.writer(io, &http_resp);
+    const w = &stream_writer.interface;
+    w.print(
         "HTTP/1.1 {d} OK\r\nContent-Length: {d}\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n",
-        .{ result.status, result.body.len }) catch return;
-    _ = stream.write(http) catch {};
-    _ = stream.write(result.body) catch {};
+        .{ result.status, result.body.len },
+    ) catch return;
+    w.writeAll(result.body) catch return;
+    w.flush() catch return;
 }
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    // Zig 0.16 renamed GeneralPurposeAllocator to DebugAllocator.
+    var gpa: std.heap.DebugAllocator(.{}) = .init;
+    defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
     _ = ffi.boj_cartridge_init();
 
-    const addr = std.net.Address.initIp4(BIND_ADDR, REST_PORT);
-    var server = try addr.listen(.{ .reuse_address = true });
-    defer server.deinit();
+    // One process-wide runtime, shared with the cartridge behind the ABI.
+    const io = ffi.shim.io();
+    const addr: std.Io.net.IpAddress = .{ .ip4 = .{ .bytes = BIND_ADDR, .port = REST_PORT } };
+    var server = try addr.listen(io, .{ .reuse_address = true });
+    defer server.deinit(io);
 
     while (true) {
-        const conn = try server.accept();
-        handleConnection(conn.stream, allocator);
+        const stream = try server.accept(io);
+        handleConnection(io, stream, allocator);
     }
 }

@@ -5,7 +5,7 @@
 //
 // Implements the browser state machine defined in the Idris2 ABI layer
 // for Firefox automation via the Marionette protocol (TCP localhost:2828).
-// Thread-safe via std.Thread.Mutex. No heap allocations for results.
+// Thread-safe via shim.Mutex. No heap allocations for results.
 
 const std = @import("std");
 
@@ -89,7 +89,7 @@ const BrowserSession = struct {
 };
 
 var sessions: [MAX_SESSIONS]BrowserSession = [_]BrowserSession{.{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -117,8 +117,8 @@ fn getActiveSlot(slot_idx: c_int) ?*BrowserSession {
 
 /// Check if a browser state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn browser_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(BrowserState, from) catch return 0;
-    const t = std.meta.intToEnum(BrowserState, to) catch return 0;
+    const f = std.enums.fromInt(BrowserState, from) orelse return 0;
+    const t = std.enums.fromInt(BrowserState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -406,27 +406,27 @@ pub export fn browser_mcp_error_recover(slot_idx: c_int) c_int {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "browser-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

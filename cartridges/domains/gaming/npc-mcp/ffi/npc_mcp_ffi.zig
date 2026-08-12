@@ -11,29 +11,29 @@
 // over the deterministic Zig perception core in src/npcmcp.zig.
 
 const std = @import("std");
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 const core = @import("src/npcmcp.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "npc-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return core.npc_init();
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {
+pub export fn boj_cartridge_deinit() callconv(.c) void {
     _ = core.npc_shutdown();
 }
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,
@@ -119,7 +119,7 @@ fn coreStringResult(core_ptr: [*:0]const u8, out_buf: [*c]u8, in_out_len: [*c]us
 /// Wrap `payload` (the tool's raw JSON args) in a protocol v1 command envelope
 /// and enqueue it for the mod to drain.
 fn enqueueCommand(cmd_type: []const u8, payload: []const u8, out_buf: [*c]u8, in_out_len: [*c]usize) i32 {
-    const ts = std.time.milliTimestamp();
+    const ts = shim.milliTimestamp();
     var id_buf: [40]u8 = undefined;
     const id = std.fmt.bufPrint(&id_buf, "cmd-{d}", .{ts}) catch return shim.RC_RUNTIME_ERROR;
 
@@ -189,5 +189,5 @@ test "cartridge lifecycle: ingest, query, persona gate" {
 }
 
 test {
-    std.testing.refAllDeclsRecursive(@This());
+    std.testing.refAllDecls(@This());
 }

@@ -25,6 +25,9 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("local_coord_ffi.zig"),
         .target = target,
         .optimize = optimize,
+        // shim.getenv is backed by std.c.getenv (Zig 0.16 removed
+        // std.posix.getenv), so every module embedding the shim links libc.
+        .link_libc = true,
     });
 
     coord_mod.addImport("cartridge_shim", shim_mod);
@@ -44,6 +47,7 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("local_coord_ffi.zig"),
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
     lib_mod.addImport("cartridge_shim", shim_mod);
 

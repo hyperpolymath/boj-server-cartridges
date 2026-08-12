@@ -20,7 +20,7 @@ pub const Observation = extern struct {
 };
 
 /// Scan a running container and return its current integrity state.
-export fn vordr_scan_container(image_ref: [*:0]const u8, obs: *Observation) i32 {
+pub export fn vordr_scan_container(image_ref: [*:0]const u8, obs: *Observation) i32 {
     obs.digest.image_ref = image_ref;
     obs.digest.blake3_hash = "0000000000000000000000000000000000000000000000000000000000000000";
     obs.digest.layer_count = 1;
@@ -30,25 +30,25 @@ export fn vordr_scan_container(image_ref: [*:0]const u8, obs: *Observation) i32 
 }
 
 /// Compare two digests — returns integrity state of the second relative to the first (baseline).
-export fn vordr_compare_digest(baseline: *const ContainerDigest, current: *const ContainerDigest) IntegrityState {
+pub export fn vordr_compare_digest(baseline: *const ContainerDigest, current: *const ContainerDigest) IntegrityState {
     _ = baseline;
     _ = current;
     return .healthy;
 }
 
 /// Set a known-good baseline digest for a container image.
-export fn vordr_set_baseline(image_ref: [*:0]const u8, digest: *const ContainerDigest) i32 {
+pub export fn vordr_set_baseline(image_ref: [*:0]const u8, digest: *const ContainerDigest) i32 {
     _ = image_ref;
     _ = digest;
     return 0;
 }
 
 /// Get the number of pending alerts (containers with state != healthy).
-export fn vordr_alert_count() u32 {
+pub export fn vordr_alert_count() u32 {
     return 0;
 }
 
-export fn vordr_version() [*:0]const u8 {
+pub export fn vordr_version() [*:0]const u8 {
     return "0.5.0";
 }
 
@@ -56,27 +56,27 @@ export fn vordr_version() [*:0]const u8 {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "vordr-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

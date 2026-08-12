@@ -49,7 +49,7 @@ const IdentityState = struct {
 };
 
 var state: IdentityState = .{};
-var state_mutex: std.Thread.Mutex = .{};
+var state_mutex: shim.Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════
 // Internal helpers
@@ -61,7 +61,7 @@ fn cStrToSlice(ptr: [*:0]const u8) []const u8 {
 
 fn ensureParentDir(path: []const u8) !void {
     if (fs.path.dirname(path)) |dir| {
-        fs.makeDirAbsolute(dir) catch |e| switch (e) {
+        std.Io.Dir.createDirAbsolute(shim.io(), dir, .default_dir) catch |e| switch (e) {
             error.PathAlreadyExists => {},
             else => return e,
         };
@@ -70,19 +70,21 @@ fn ensureParentDir(path: []const u8) !void {
 
 fn writeSeedFile(path: []const u8, seed: [SEED_BYTES]u8) !void {
     try ensureParentDir(path);
-    const file = try fs.createFileAbsolute(path, .{ .mode = 0o600, .truncate = true });
-    defer file.close();
-    try file.writeAll(&seed);
+    const io = shim.io();
+    const file = try std.Io.Dir.createFileAbsolute(io, path, .{ .permissions = .fromMode(0o600), .truncate = true });
+    defer file.close(io);
+    try file.writePositionalAll(io, &seed, 0);
 }
 
 fn readSeedFile(path: []const u8) !?[SEED_BYTES]u8 {
-    const file = fs.openFileAbsolute(path, .{}) catch |e| switch (e) {
+    const io = shim.io();
+    const file = std.Io.Dir.openFileAbsolute(io, path, .{}) catch |e| switch (e) {
         error.FileNotFound => return null,
         else => return e,
     };
-    defer file.close();
+    defer file.close(io);
     var buf: [SEED_BYTES]u8 = undefined;
-    const n = try file.readAll(&buf);
+    const n = try file.readPositionalAll(io, &buf, 0);
     if (n != SEED_BYTES) return error.InvalidKeyFile;
     return buf;
 }
@@ -107,7 +109,7 @@ pub export fn boj_coord_identity_init(key_path: [*:0]const u8) c_int {
     if (readSeedFile(path) catch return -1) |existing| {
         seed = existing;
     } else {
-        crypto.random.bytes(&seed);
+        shim.randomBytes(&seed);
         writeSeedFile(path, seed) catch return -2;
     }
 
@@ -146,17 +148,18 @@ pub export fn boj_coord_identity_load_known_peers(toml_path: [*:0]const u8) c_in
     defer state_mutex.unlock();
 
     const path = cStrToSlice(toml_path);
-    const file = fs.openFileAbsolute(path, .{}) catch |e| switch (e) {
+    const io = shim.io();
+    const file = std.Io.Dir.openFileAbsolute(io, path, .{}) catch |e| switch (e) {
         error.FileNotFound => {
             state.known_peer_count = 0;
             return 0;
         },
         else => return -1,
     };
-    defer file.close();
+    defer file.close(io);
 
     var buf: [16384]u8 = undefined;
-    const n = file.readAll(&buf) catch return -1;
+    const n = file.readPositionalAll(io, &buf, 0) catch return -1;
     const text = buf[0..n];
 
     state.known_peer_count = 0;
@@ -398,8 +401,8 @@ test "FFI: identity init generates and persists, second init no-ops" {
     testResetState();
     const tmp_path = "/tmp/boj-coord-test-identity.key";
     // Clean any previous state
-    fs.deleteFileAbsolute(tmp_path) catch {};
-    defer fs.deleteFileAbsolute(tmp_path) catch {};
+    std.Io.Dir.deleteFileAbsolute(shim.io(), tmp_path) catch {};
+    defer std.Io.Dir.deleteFileAbsolute(shim.io(), tmp_path) catch {};
 
     // Zig string literals already carry a `:0` sentinel, so `.ptr`
     // coerces directly to `[*:0]const u8`. No @ptrCast needed.
@@ -452,8 +455,8 @@ test "RFC 8032 §7.1 TEST 1 — seed derives the canonical pubkey" {
     try hexDecode(seed_hex, &seed);
 
     const tmp_path = "/tmp/boj-coord-test-rfc8032.key";
-    fs.deleteFileAbsolute(tmp_path) catch {};
-    defer fs.deleteFileAbsolute(tmp_path) catch {};
+    std.Io.Dir.deleteFileAbsolute(shim.io(), tmp_path) catch {};
+    defer std.Io.Dir.deleteFileAbsolute(shim.io(), tmp_path) catch {};
     try writeSeedFile(tmp_path, seed);
 
     const path_z: [:0]const u8 = tmp_path;
@@ -469,3 +472,5 @@ test "RFC 8032 §7.1 TEST 1 — seed derives the canonical pubkey" {
     try hexDecode(expect_hex, &expect_bytes);
     try std.testing.expectEqualSlices(u8, &expect_bytes, &pubkey);
 }
+
+pub const shim = @import("cartridge_shim.zig");

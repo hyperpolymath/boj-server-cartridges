@@ -17,7 +17,6 @@ FFI mutex in `../ffi/`.
 
 | `build.zig`                          | Zig build graph for the adapter binary.
 | `fleet_adapter.zig`                  | `dispatch` routes tool names to FFI calls. Tools: `fleet_record_gate`, `fleet_bot_status`, `fleet_gate_score`, `fleet_has_mandatory`, `fleet_fleet_status`.
-| `SIDELINED-fleet_adapter.v.adoc`     | Archived zig predecessor. Not built.
 |===
 
 == Invariants

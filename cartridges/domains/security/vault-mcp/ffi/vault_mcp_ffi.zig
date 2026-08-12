@@ -7,7 +7,7 @@
 // The vault (reasonably-good-token-vault) is accessed via the Ada CLI
 // (svalinn_cli) or Unix domain socket at /run/svalinn/api.sock.
 //
-// Thread-safe via std.Thread.Mutex. No heap allocations for result buffers.
+// Thread-safe via shim.Mutex. No heap allocations for result buffers.
 
 const std = @import("std");
 
@@ -121,7 +121,7 @@ const VaultProxy = struct {
 };
 
 var proxy: VaultProxy = .{};
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -140,31 +140,35 @@ fn runSvalinnCli(args: []const []const u8) !usize {
     }
     const argv_slice = argv_buf[0 .. 1 + args.len];
 
-    var child = std.process.Child.init(argv_slice, std.heap.page_allocator);
-    child.stdout_behavior = .Pipe;
-    child.stderr_behavior = .Pipe;
-
-    try child.spawn();
+    const io = shim.io();
+    var child = try std.process.spawn(io, .{
+        .argv = argv_slice,
+        .stdout = .pipe,
+        .stderr = .pipe,
+    });
 
     // Read stdout into proxy result buffer
     const stdout = child.stdout.?;
-    const bytes_read = stdout.readAll(&proxy.result_buf) catch |e| {
-        _ = child.wait() catch {};
+    var stdout_reader = stdout.readerStreaming(io, &.{});
+    const bytes_read = stdout_reader.interface.readSliceShort(&proxy.result_buf) catch |e| {
+        _ = child.wait(io) catch {};
         return e;
     };
 
     // Read stderr into last_error buffer
     const stderr = child.stderr.?;
-    const err_read = stderr.readAll(&proxy.last_error) catch 0;
+    var stderr_reader = stderr.readerStreaming(io, &.{});
+    const err_read = stderr_reader.interface.readSliceShort(&proxy.last_error) catch 0;
     proxy.last_error_len = err_read;
 
-    const term = try child.wait();
-    if (term.Exited != 0) {
-        return error.CliNonZeroExit;
+    const term = try child.wait(io);
+    switch (term) {
+        .exited => |code| if (code != 0) return error.CliNonZeroExit,
+        else => return error.CliNonZeroExit,
     }
 
     proxy.result_len = bytes_read;
-    proxy.last_access_epoch = std.time.timestamp();
+    proxy.last_access_epoch = shim.timestamp();
     return bytes_read;
 }
 
@@ -181,8 +185,8 @@ fn setError(msg: []const u8) void {
 
 /// Check if a vault state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn vault_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(VaultState, from) catch return 0;
-    const t = std.meta.intToEnum(VaultState, to) catch return 0;
+    const f = std.enums.fromInt(VaultState, from) orelse return 0;
+    const t = std.enums.fromInt(VaultState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -198,7 +202,7 @@ pub export fn vault_mcp_transition(to: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
 
-    const target = std.meta.intToEnum(VaultState, to) catch return -1;
+    const target = std.enums.fromInt(VaultState, to) orelse return -1;
     if (!isValidTransition(proxy.state, target)) return -2;
     proxy.state = target;
     return 0;
@@ -209,7 +213,7 @@ pub export fn vault_mcp_action_permitted(action: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
 
-    const a = std.meta.intToEnum(VaultAction, action) catch return 0;
+    const a = std.enums.fromInt(VaultAction, action) orelse return 0;
     return if (isActionPermitted(proxy.state, a)) 1 else 0;
 }
 
@@ -388,7 +392,7 @@ fn recordAudit(action: VaultAction, hint: []const u8, result_code: c_int, agent:
     const idx = proxy.audit_head;
     var entry = &proxy.audit[idx];
 
-    entry.timestamp = std.time.timestamp();
+    entry.timestamp = shim.timestamp();
     entry.action = action;
     entry.result_code = result_code;
 
@@ -526,27 +530,27 @@ pub export fn vault_mcp_reset() void {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "vault-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

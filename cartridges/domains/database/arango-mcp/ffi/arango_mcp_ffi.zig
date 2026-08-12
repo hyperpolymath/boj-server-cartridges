@@ -4,7 +4,7 @@
 // arango_mcp_ffi.zig — C-ABI FFI implementation for the arango-mcp cartridge.
 //
 // Implements the connection state machine defined in the Idris2 ABI layer
-// (ArangoMcp.SafeDatabase). Thread-safe via std.Thread.Mutex. No heap
+// (ArangoMcp.SafeDatabase). Thread-safe via shim.Mutex. No heap
 // allocations for results. State machine: Disconnected | Connected |
 // QueryRunning | Error. Designed for ArangoDB multi-model database
 // (document, graph, key-value, search) with configurable self-hosted base URL.
@@ -73,7 +73,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = .{SessionSlot{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // C-ABI exports
@@ -81,8 +81,8 @@ var mutex: std.Thread.Mutex = .{};
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn arango_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(ConnState, from) catch return 0;
-    const t = std.meta.intToEnum(ConnState, to) catch return 0;
+    const f = std.enums.fromInt(ConnState, from) orelse return 0;
+    const t = std.enums.fromInt(ConnState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -238,7 +238,7 @@ pub export fn arango_mcp_document_op_count(slot_idx: c_int) c_int {
 
 /// Check if an action requires an active connection. Returns 1 (yes) or 0 (no).
 pub export fn arango_mcp_action_requires_connection(action: c_int) c_int {
-    const a = std.meta.intToEnum(ArangoAction, action) catch return 0;
+    const a = std.enums.fromInt(ArangoAction, action) orelse return 0;
     return switch (a) {
         .aql_query, .explain_query, .get_document, .insert_document, .update_document, .remove_document, .traverse_graph => 1,
         else => 0,
@@ -257,27 +257,27 @@ pub export fn arango_mcp_reset() void {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "arango-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

@@ -6,7 +6,7 @@
 // Implements the state machine defined in AffinescriptMcp.SafeCompiler (Idris2 ABI).
 // State machine: Ready | Busy | Error (local compiler, no auth)
 // Actions: Check, Parse, Format, ExplainError, StdlibSearch, SyntaxRef, EvalSnippet
-// Thread-safe via std.Thread.Mutex. Fixed-size session pool, no heap allocations.
+// Thread-safe via shim.Mutex. Fixed-size session pool, no heap allocations.
 
 const std = @import("std");
 
@@ -69,7 +69,7 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = .{SessionSlot{}} ** MAX_SESSIONS;
-var mutex: std.Thread.Mutex = .{};
+var mutex: shim.Mutex = .{};
 
 // ---------------------------------------------------------------------------
 // C-ABI exports — state machine
@@ -77,8 +77,8 @@ var mutex: std.Thread.Mutex = .{};
 
 /// Check if a state transition is valid. Returns 1 (valid) or 0 (invalid).
 pub export fn afs_mcp_can_transition(from: c_int, to: c_int) c_int {
-    const f = std.meta.intToEnum(SessionState, from) catch return 0;
-    const t = std.meta.intToEnum(SessionState, to) catch return 0;
+    const f = std.enums.fromInt(SessionState, from) orelse return 0;
+    const t = std.enums.fromInt(SessionState, to) orelse return 0;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -197,7 +197,7 @@ pub export fn afs_mcp_recover(slot_idx: c_int) c_int {
 
 /// Record a compiler action. Returns 0 on success.
 pub export fn afs_mcp_record_action(slot_idx: c_int, action: c_int) c_int {
-    const act = std.meta.intToEnum(CompilerAction, action) catch return -3;
+    const act = std.enums.fromInt(CompilerAction, action) orelse return -3;
 
     mutex.lock();
     defer mutex.unlock();
@@ -286,27 +286,27 @@ pub export fn afs_mcp_reset() void {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim.zig");
+pub const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "affinescript-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,

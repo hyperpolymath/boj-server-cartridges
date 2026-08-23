@@ -155,7 +155,7 @@ Ask. Sensitive areas:
 ### Far Horizon
 
 #### adapters-in-affinescript
-- description: Retire the 8 TypeScript adapters and 3 ReScript panels once AffineScript MCP/LSP/VSCode bindings ship
+- description: Retire the 8 TypeScript adapters and 3 AffineScript panels once AffineScript MCP/LSP/VSCode bindings ship
 - horizon: far
 - status: declared
 - notes: Blocked on affinescript#446. The carve-out is approved and bounded until then.

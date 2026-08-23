@@ -118,7 +118,7 @@ the protection.
 | C-2 | MEDIUM | `pages.yml` (GitHub Pages via Ddraig SSG) and `pages-deploy.yml` (Cloudflare Pages) both fire on push to main, to different hosts, with no coordination. `pages.yml` copies `README.md` into its source dir — **that file does not exist** (converted to `.adoc`), so it publishes a one-line stub. | `grep -n 'README.md' .github/workflows/pages.yml` |
 | C-3 | MEDIUM | GitHub Pages 404s for this repo, and issue #97 records that the Cloudflare Pages deploy has never succeeded (missing secrets + DNS). Two deploy paths, neither demonstrably working. | `curl -s -o /dev/null -w '%{http_code}' https://hyperpolymath.github.io/boj-server-cartridges/` |
 | C-5 | HIGH | **`hypatia-scan.yml` cannot fail.** The scan runs `--exit-zero` *and* is suffixed `\|\| true` — double suppression. It is credited as a security gate and reports success unconditionally, whatever it finds. | `grep -n 'exit-zero' .github/workflows/hypatia-scan.yml` |
-| C-6 | LOW | `flake.nix` ships `just` alone in its dev shell while claiming to "mirror the build tooling actually present in this repo" — no `zig`, `deno` or `idris2`, so `nix develop` cannot build or test anything. | `grep -n 'packages = with pkgs' flake.nix` |
+| C-6 | LOW | `flake.guix` ships `just` alone in its dev shell while claiming to "mirror the build tooling actually present in this repo" — no `zig`, `deno` or `idris2`, so `guix develop` cannot build or test anything. | `grep -n 'packages = with pkgs' flake.guix` |
 
 ---
 

@@ -87,8 +87,8 @@ the CI workflows and in .machine_readable/6a2/PLAYBOOK.a2ml, not here.
 - severity: critical
 
 ### dev-shell
-- description: flake.nix must exist (Nix fallback tier; there is no guix.scm here)
-- run: test -f flake.nix
+- description: flake.guix must exist (Guix fallback tier; there is no guix.scm here)
+- run: test -f flake.guix
 - severity: critical
 
 ## Directory Structure

@@ -14,13 +14,13 @@ A2ML format). The root AI manifest is `0-AI-MANIFEST.a2ml`.
 The full policy is canonical in `hyperpolymath/standards`. Key points for this
 repo:
 
-- **No new TypeScript or ReScript** — convert existing `.ts`/`.res` to
+- **No new TypeScript or AffineScript** — convert existing `.ts`/`.res` to
   AffineScript (`.affine`) directly.
 - **Deno** for the runtime, not Node. `deno.json` for imports; no
   `node_modules` in production.
 - **AffineScript** for new application code.
 
-### General rule — proactive TS/ReScript → AffineScript conversion
+### General rule — proactive TS/AffineScript → AffineScript conversion
 
 **Convert any `.ts` / `.res` (or otherwise-banned front-end language) to
 AffineScript at the earliest opportunity** — treat it as standing background
@@ -40,9 +40,9 @@ work, not a one-off. Two guardrails keep this honest:
 Reference idiom: `standards/0-ai-gatekeeper-protocol/mcp-repo-guardian/src/*.affine`
 (an AffineScript MCP server importing `@modelcontextprotocol/sdk`).
 
-### TypeScript / ReScript Exemptions (adapters)
+### TypeScript / AffineScript Exemptions (adapters)
 
-The "no new TS/ReScript" rule has approved exemptions in this repo — **the
+The "no new TS/AffineScript" rule has approved exemptions in this repo — **the
 cartridge MCP/LSP adapters and the VSCode-host LSP panels**. These are the
 estate's recognised carved-out class (protocol glue against TS-native SDKs); the
 same carve-out `boj-server` already documents for its 6 adapters. They are not

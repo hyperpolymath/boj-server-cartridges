@@ -222,7 +222,7 @@ conforms = [
   ".machine_readable/ with 6a2/ and contractiles/ (incl. bust/ and dust/)",
   "docs/decisions/ ADRs in .adoc",
   ".github/ with CODEOWNERS, SECURITY.md, workflows/",
-  "flake.nix (Nix fallback tier)",
+  "flake.guix (Guix fallback tier)",
 ]
 does-not-conform = [
   "no AUDIT.adoc",
@@ -231,7 +231,7 @@ does-not-conform = [
   "no build/ tree — the Justfile is monolithic, not split into build/just/*.just",
   "no session/ tree",
   "no src/ tree — sources live under cartridges/<...>/{abi,ffi,adapter,panels,tests}",
-  "no guix.scm (flake.nix is the only shell)",
+  "no guix.scm (flake.guix is the only shell)",
   "no .machine_readable/6a2/anchors/",
   "no .machine_readable/self-validating/",
   "docs/echo-types-integration-audit-2026-06-01.md is .md, not .adoc",

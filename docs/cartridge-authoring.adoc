@@ -46,7 +46,7 @@ This is the layer that actually gets built and tested in CI.
 across the tree — see the known-issues note.*
 
 | `panels/`
-| ReScript
+| AffineScript
 | VSCode extension-host UI, where the cartridge has one. Template ships a
 `manifest.json` only.
 
@@ -58,7 +58,7 @@ across the tree — see the known-issues note.*
 `mod.js` at the cartridge root is the JS entry point, and `cartridge.json` is the
 manifest that everything else is checked against.
 
-TypeScript and ReScript are permitted in `adapter/` and `panels/` by an explicit
+TypeScript and AffineScript are permitted in `adapter/` and `panels/` by an explicit
 estate carve-out (MCP/LSP SDKs and the VSCode API are not yet available in
 AffineScript). That exemption does not extend to any other layer.
 

@@ -6,7 +6,7 @@
 [![Elixir](https://img.shields.io/badge/elixir-1.17+-purple.svg)](https://elixir-lang.org/)
 [![OTP](https://img.shields.io/badge/OTP-27+-red.svg)](https://www.erlang.org/)
 [![Tests](https://img.shields.io/badge/tests-47%2F47%20passing-brightgreen.svg)](#)
-[![Extension](https://img.shields.io/badge/VSCode-ReScript-blue.svg)](./vscode-extension)
+[![Extension](https://img.shields.io/badge/VSCode-AffineScript-blue.svg)](./vscode-extension)
 
 ## Overview
 
@@ -102,7 +102,7 @@ code --install-extension poly-orchestrator-lsp-0.1.0.vsix
 - ✅ Real-time diagnostics (validation, cycles, security)
 - ✅ Hover documentation with duration estimates
 - ✅ Commands: Execute Stack, Validate, Estimate Duration, Restart Server
-- ✅ Built with **ReScript** (type-safe, 195ms compile time)
+- ✅ Built with **AffineScript** (type-safe, 195ms compile time)
 - ✅ Icon: Custom orchestration visualization
 
 **Quick Start**: See [QUICKSTART.md](QUICKSTART.md) for 60-second setup guide.

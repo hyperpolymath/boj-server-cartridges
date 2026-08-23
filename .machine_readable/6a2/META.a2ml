@@ -10,7 +10,7 @@ last-updated = "2026-08-07"
 
 [project-info]
 type = "registry"          # library | binary | monorepo | service | website | registry
-languages = ["zig", "idris2", "typescript", "elixir", "javascript", "rescript", "bash"]
+languages = ["zig", "idris2", "typescript", "elixir", "javascript", "affinescript", "bash"]
 license = "MPL-2.0"
 author = "Jonathan D.A. Jewell (hyperpolymath)"
 
@@ -22,7 +22,7 @@ idris2 = "115 .idr + 69 .ipkg — the ABI layer. Dependently-typed contracts and
 typescript = "40 files — repo tooling under tools/ (validator, minter, batch fixes) run on Deno, plus 8 cartridge adapters. The adapter TS is an APPROVED carve-out (MCP/LSP protocol glue against TS-native SDKs), documented in .claude/CLAUDE.md and authorised by path_allow_prefixes on the hypatia rules cicd_rules/typescript_detected and cicd_rules/rescript_detected. tools/*.ts is NOT carved out — it is convert-now."
 elixir = "146 .ex + 18 .exs across 13 cartridges — the *-lsp adapters and stack-orchestrator-mcp. These have no Zig adapter and no ffi/build.zig; that is by design, not rot."
 javascript = "133 files — per-cartridge mod.js entry points and a few src/server.js implementations."
-rescript = "3 files — orchestrator-lsp-mcp/panels/ VSCode extension-host panels. Same approved carve-out class as the adapter TypeScript."
+affinescript = "3 files — orchestrator-lsp-mcp/panels/ VSCode extension-host panels. Same approved carve-out class as the adapter TypeScript."
 bash = "110 .sh — CI helper scripts (scripts/check-trusted-base.sh, scripts/typecheck-proofs.sh) and per-cartridge helpers."
 
 [architecture-decisions]
@@ -38,8 +38,8 @@ build-tool = "just"
 per-cartridge-build = "zig build (per cartridge, run inside the cartridge's ffi/ or adapter/ directory)"
 container-runtime = "podman"
 ci-platform = "github-actions"
-package-manager = "nix"  # guix | nix | cargo | mix
-package-manager-note = "flake.nix is the ONLY dev shell in this repo. There is no guix.scm. Estate policy is Guix-primary / Nix-fallback; this repo sits on the fallback tier and the flake says so in its header. The Justfile carries guix-shell / guix-build recipes inherited from the RSR template — they have no manifest to act on here."
+package-manager = "guix"  # guix | guix | cargo | mix
+package-manager-note = "flake.guix is the ONLY dev shell in this repo. There is no guix.scm. Estate policy is Guix-primary / Guix-fallback; this repo sits on the fallback tier and the flake says so in its header. The Justfile carries guix-shell / guix-build recipes inherited from the RSR template — they have no manifest to act on here."
 container-note = "There is no Containerfile in this repo. The Justfile's container-* recipes are inherited RSR template scaffolding and are not exercised."
 
 [toolchain-pins]

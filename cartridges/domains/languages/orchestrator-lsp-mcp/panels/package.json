@@ -50,11 +50,11 @@
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
-    "rescript": "^11.0.0"
+    "affinescript": "^11.0.0"
   },
   "scripts": {
-    "build": "rescript build",
-    "clean": "rescript clean",
-    "watch": "rescript build -w"
+    "build": "affinescript build",
+    "clean": "affinescript clean",
+    "watch": "affinescript build -w"
   }
 }

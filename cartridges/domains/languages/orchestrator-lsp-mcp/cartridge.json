@@ -29,7 +29,7 @@
     "Stack parser reads .machine_readable/integrations/*.a2ml to discover active poly-*-lsp endpoints",
     "Planner routes each LSP request to the correct domain server(s) — cross-domain queries fan-out",
     "VeriSimDB client tracks orchestration session history and capability advertisement",
-    "VSCode extension (ReScript, not TypeScript) exposes this as a single multi-domain language server"
+    "VSCode extension (AffineScript, not TypeScript) exposes this as a single multi-domain language server"
   ],
   "tools": [
     {

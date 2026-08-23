@@ -32,7 +32,7 @@ can-create-files = true
 #   assert_smaller, idris_crash, sorry) into a leaf cartridge ABI. The
 #   sanctioned axiom count in this repo is ZERO and
 #   scripts/check-trusted-base.sh enforces it.
-# - Never add a NEW TypeScript or ReScript file outside the approved
+# - Never add a NEW TypeScript or AffineScript file outside the approved
 #   carve-out paths in [language-policy].
 # - Never place state files in the repository root; they belong in
 #   .machine_readable/.
@@ -45,7 +45,7 @@ can-create-files = true
 # - Never use AGPL. This repo is MPL-2.0 (docs are CC-BY-SA-4.0).
 
 [language-policy]
-# The estate rule is "no NEW TypeScript or ReScript". This repository holds
+# The estate rule is "no NEW TypeScript or AffineScript". This repository holds
 # an APPROVED, BOUNDED exemption. Recording it here so an agent reading only
 # this file does not delete legitimate code believing it to be a violation.
 banned-outright = ["v"]

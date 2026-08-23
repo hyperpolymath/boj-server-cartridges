@@ -63,7 +63,7 @@ Requires explicit approval:
   inherits it.
 - Any batch edit spanning more than ~10 cartridges.
 - Any change to .github/workflows/ that removes or weakens a gate.
-- Any change to the TypeScript/ReScript carve-out list.
+- Any change to the TypeScript/AffineScript carve-out list.
 
 ## Integrity Invariants
 

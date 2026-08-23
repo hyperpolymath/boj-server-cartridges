@@ -4,7 +4,7 @@
 :description: Cross-domain LSP orchestrator for the BoJ cartridge matrix
 :status: Ready
 
-Status: *Ready* — Elixir GenLSP adapter, Zig FFI (ADR-0006), ReScript VSCode extension all implemented.
+Status: *Ready* — Elixir GenLSP adapter, Zig FFI (ADR-0006), AffineScript VSCode extension all implemented.
 
 == What it does
 
@@ -60,6 +60,6 @@ implementation is the design reference. Key modules to port:
 
 . Implement `lib/` Elixir modules (port from poly-orchestrator-lsp design)
 . Write Zig FFI stub (`ffi/zig/src/main.zig`) for `boj_cartridge_invoke`
-. Add ReScript VSCode extension (`panels/`)
+. Add AffineScript VSCode extension (`panels/`)
 . Connect to VeriSimDB session tracking
 . Set status → Ready in `Boj.CartridgeData`

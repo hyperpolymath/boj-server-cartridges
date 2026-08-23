@@ -9,7 +9,7 @@ Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 == Overview
 
-Odds-and-Sods Package Manager (OPSM) gateway. Routes package search, install, dependency resolution (PubGrub), and registry management across 103 registry adapters (npm, cargo, hex, pypi, affinescript, rattlescript, eclexia, guix, nix, and more). State machine enforces valid registry slot lifecycle via Zig FFI.
+Odds-and-Sods Package Manager (OPSM) gateway. Routes package search, install, dependency resolution (PubGrub), and registry management across 103 registry adapters (npm, cargo, hex, pypi, affinescript, rattlescript, eclexia, guix, guix, and more). State machine enforces valid registry slot lifecycle via Zig FFI.
 
 == Tools (7)
 

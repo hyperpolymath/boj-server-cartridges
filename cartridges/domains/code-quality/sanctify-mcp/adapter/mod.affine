@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module mod;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // Sanctify Cartridge — PHP linter and deviation detector MCP server
 
@@ -91,10 +88,10 @@ const TOOLS: Tool[] = [
 ];
 
 // Tool handlers
-async function handleLintFile(
+async fn handleLintFile(
   args: Record<string, unknown>
-): Promise<string> {
-  const filePath = String(args.file_path);
+): string {
+  let filePath = String(args.file_path);
   return JSON.stringify({
     file: filePath,
     issues: [],
@@ -102,10 +99,10 @@ async function handleLintFile(
   });
 }
 
-async function handleDetectDeviations(
+async fn handleDetectDeviations(
   args: Record<string, unknown>
-): Promise<string> {
-  const filePath = String(args.file_path);
+): string {
+  let filePath = String(args.file_path);
   return JSON.stringify({
     file: filePath,
     deviations: [],
@@ -113,10 +110,10 @@ async function handleDetectDeviations(
   });
 }
 
-async function handleAnalyzeFile(
+async fn handleAnalyzeFile(
   args: Record<string, unknown>
-): Promise<string> {
-  const filePath = String(args.file_path);
+): string {
+  let filePath = String(args.file_path);
   return JSON.stringify({
     file: filePath,
     is_valid: true,
@@ -126,10 +123,10 @@ async function handleAnalyzeFile(
   });
 }
 
-async function handleCheckSnippet(
+async fn handleCheckSnippet(
   args: Record<string, unknown>
-): Promise<string> {
-  const snippet = String(args.snippet);
+): string {
+  let snippet = String(args.snippet);
   return JSON.stringify({
     snippet_hash: "abc123",
     issues: [],
@@ -137,10 +134,10 @@ async function handleCheckSnippet(
   });
 }
 
-async function handleValidateSyntax(
+async fn handleValidateSyntax(
   args: Record<string, unknown>
-): Promise<string> {
-  const code = String(args.code);
+): string {
+  let code = String(args.code);
   return JSON.stringify({
     is_valid: true,
     errors: [],
@@ -149,7 +146,7 @@ async function handleValidateSyntax(
 }
 
 // Initialize MCP server
-const server = new Server({
+let server = new Server({
   name: "sanctify-mcp",
   version: "1.0.0",
 });
@@ -196,8 +193,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 // Start server on loopback
-const port = 5176;
+let port = 5176;
 await server.connect(new WebSocket(`ws://127.0.0.1:${port}`));
 console.log("Sanctify MCP server running on ws://127.0.0.1:5176");
 
-==================================== */

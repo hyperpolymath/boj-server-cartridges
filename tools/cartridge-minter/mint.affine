@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module mint;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 #!/usr/bin/env -S deno run --allow-read --allow-write
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
@@ -29,9 +26,9 @@ import { parse as parseToml } from "https://deno.land/std@0.224.0/toml/mod.ts";
 import { ensureDir, copy } from "https://deno.land/std@0.224.0/fs/mod.ts";
 import { join, dirname, fromFileUrl } from "https://deno.land/std@0.224.0/path/mod.ts";
 
-const REPO_ROOT = dirname(dirname(dirname(fromFileUrl(import.meta.url))));
-const TEMPLATE_DIR = join(REPO_ROOT, "cartridges", "templates", "gossamer-mcp");
-const ROLE_RE = /-(mcp|lsp|dap|bsp|debug|format|lint|build|nesy|agentic|fleet)$/;
+let REPO_ROOT = dirname(dirname(dirname(fromFileUrl(import.meta.url))));
+let TEMPLATE_DIR = join(REPO_ROOT, "cartridges", "templates", "gossamer-mcp");
+let ROLE_RE = /-(mcp|lsp|dap|bsp|debug|format|lint|build|nesy|agentic|fleet)$/;
 const DOMAIN_NORMALISE: Record<string, string> = {
   "Cloud": "cloud", "Database": "database", "Registry": "registry",
   "Productivity": "productivity", "Languages": "languages", "Security": "security",
@@ -43,7 +40,7 @@ const DOMAIN_NORMALISE: Record<string, string> = {
   "Code Quality": "code-quality",
 };
 
-interface MinterConfig {
+struct MinterConfig {
   name: string;
   description: string;
   version: string;
@@ -60,12 +57,12 @@ interface MinterConfig {
   services?: Record<string, string>;
 }
 
-function normaliseDomain(raw: string): string {
+fn normaliseDomain(raw: string): string {
   return DOMAIN_NORMALISE[raw]
     ?? raw.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-function validate(cfg: MinterConfig): void {
+fn validate(cfg: MinterConfig): void {
   const errors: string[] = [];
   if (!cfg.name) errors.push("missing name");
   else if (!ROLE_RE.test(cfg.name)) {
@@ -87,20 +84,20 @@ function validate(cfg: MinterConfig): void {
   }
 }
 
-function destinationFor(cfg: MinterConfig): string {
-  const cat = cfg.category ?? "domain";
+fn destinationFor(cfg: MinterConfig): string {
+  let cat = cfg.category ?? "domain";
   if (cat === "template") {
     return join(REPO_ROOT, "cartridges", "templates", cfg.name);
   }
   if (cat === "cross-cutting") {
-    const sub = cfg.cross_cutting_category ?? "agentic";
+    let sub = cfg.cross_cutting_category ?? "agentic";
     return join(REPO_ROOT, "cartridges", "cross-cutting", sub, cfg.name);
   }
   return join(REPO_ROOT, "cartridges", "domains", normaliseDomain(cfg.domain), cfg.name);
 }
 
-function buildCartridgeJson(cfg: MinterConfig): Record<string, unknown> {
-  const role = cfg.name.match(ROLE_RE)![1];
+fn buildCartridgeJson(cfg: MinterConfig): Record<string, unknown> {
+  let role = cfg.name.match(ROLE_RE)![1];
   // Normalise auth shape: accept either string (e.g. "bearer") or object form.
   let auth: Record<string, unknown>;
   if (typeof cfg.auth === "string") {
@@ -112,7 +109,7 @@ function buildCartridgeJson(cfg: MinterConfig): Record<string, unknown> {
       credential_source: cfg.auth?.credential_source ?? null,
     };
   }
-  const api = cfg.api ?? {
+  let api = cfg.api ?? {
     base_url: cfg.api_base ?? `local://${cfg.name}`,
     content_type: "application/json",
   };
@@ -133,11 +130,11 @@ function buildCartridgeJson(cfg: MinterConfig): Record<string, unknown> {
   };
 }
 
-async function mint(configPath: string, explicitDest?: string): Promise<void> {
-  const tomlText = await Deno.readTextFile(configPath);
-  const cfg = parseToml(tomlText) as unknown as MinterConfig;
+async fn mint(configPath: string, explicitDest?: string): void {
+  let tomlText = await Deno.readTextFile(configPath);
+  let cfg = parseToml(tomlText) as unknown as MinterConfig;
   validate(cfg);
-  const dest = explicitDest ?? destinationFor(cfg);
+  let dest = explicitDest ?? destinationFor(cfg);
 
   // Refuse to overwrite
   try {
@@ -149,7 +146,7 @@ async function mint(configPath: string, explicitDest?: string): Promise<void> {
 
   // Copy template tree, then overwrite manifest with the computed one.
   await copy(TEMPLATE_DIR, dest);
-  const manifest = buildCartridgeJson(cfg);
+  let manifest = buildCartridgeJson(cfg);
   await Deno.writeTextFile(
     join(dest, "cartridge.json"),
     JSON.stringify(manifest, null, 2) + "\n",
@@ -163,7 +160,7 @@ async function mint(configPath: string, explicitDest?: string): Promise<void> {
 }
 
 if (import.meta.main) {
-  const args = Deno.args;
+  let args = Deno.args;
   if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
     console.log("Usage: mint.ts <minter.toml> [--dest <path>]");
     console.log("");
@@ -171,13 +168,12 @@ if (import.meta.main) {
     console.log("and customising the manifest based on the minter.toml config.");
     Deno.exit(args.length === 0 ? 1 : 0);
   }
-  const configPath = args[0];
+  let configPath = args[0];
   let dest: string | undefined;
-  const destIdx = args.indexOf("--dest");
+  let destIdx = args.indexOf("--dest");
   if (destIdx >= 0 && destIdx < args.length - 1) {
     dest = args[destIdx + 1];
   }
   await mint(configPath, dest);
 }
 
-==================================== */

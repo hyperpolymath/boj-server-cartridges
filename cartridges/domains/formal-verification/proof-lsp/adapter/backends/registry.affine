@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module registry;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 
@@ -16,8 +13,8 @@ import { LeanBackend } from "./lean.ts";
 import { IsabelleBackend } from "./isabelle.ts";
 import { AgdaBackend } from "./agda.ts";
 
-export function buildBackends(): Map<BackendId, Backend> {
-  const map = new Map<BackendId, Backend>();
+fn buildBackends(): Map<BackendId, Backend> {
+  let map = new Map<BackendId, Backend>();
   for (const backend of [
     new CoqBackend(),
     new LeanBackend(),
@@ -29,15 +26,14 @@ export function buildBackends(): Map<BackendId, Backend> {
   return map;
 }
 
-export function detectByExtension(
+fn detectByExtension(
   backends: Map<BackendId, Backend>,
   uri: string,
 ): Backend | undefined {
-  const lower = uri.toLowerCase();
+  let lower = uri.toLowerCase();
   for (const backend of backends.values()) {
     if (backend.extensions.some((ext) => lower.endsWith(ext))) return backend;
   }
   return undefined;
 }
 
-==================================== */

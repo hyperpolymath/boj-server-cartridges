@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module rollback;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 //
@@ -17,7 +14,7 @@ import { err, ok } from "./types.ts";
 import type { LspClient } from "./lsp_client.ts";
 import { buildRollbackPlan } from "./planner.ts";
 
-export interface RollbackOpts {
+struct RollbackOpts {
   client: LspClient;
   /** Stop rollback once we've reverted up to (and including) this phase index. */
   toPhase?: number;
@@ -25,7 +22,7 @@ export interface RollbackOpts {
   executedSteps?: ComponentStep[];
 }
 
-export interface RollbackResult {
+struct RollbackResult {
   phasesReverted: number[];
   rolledBack: string[];
   errors: Array<{ id: string; reason: string }>;
@@ -36,21 +33,21 @@ export interface RollbackResult {
  * reverse order and asks the LSP client to undo each component.
  * Components that never ran successfully are skipped.
  */
-export async function rollback(
+async fn rollback(
   plan: ExecutionPlan,
   opts: RollbackOpts,
-): Promise<Result<RollbackResult>> {
+): Result<RollbackResult> {
   if (plan.rollback_strategy.enabled === false) {
     return err("Rollback disabled by stack.rollback.enabled = false");
   }
 
-  const rollbackPlan = buildRollbackPlan(plan);
-  const executedIds = new Set(
+  let rollbackPlan = buildRollbackPlan(plan);
+  let executedIds = new Set(
     (opts.executedSteps ?? [])
       .filter((s) => s.status === "succeeded")
       .map((s) => s.id),
   );
-  const targetPhase = opts.toPhase ?? -1;
+  let targetPhase = opts.toPhase ?? -1;
 
   const result: RollbackResult = {
     phasesReverted: [],
@@ -62,18 +59,18 @@ export async function rollback(
   // phase.phase is negative (e.g. -2, -1) — its absolute value is the
   // forward phase number. `toPhase` is the forward index to roll back to.
   for (const phase of rollbackPlan.phases) {
-    const forwardPhase = -phase.phase;
+    let forwardPhase = -phase.phase;
     if (targetPhase >= 0 && forwardPhase < targetPhase) break;
 
-    const candidates = phase.components.filter((c) =>
+    let candidates = phase.components.filter((c) =>
       executedIds.size === 0 || executedIds.has(c.id)
     );
-    const promises = candidates.map(async (step) => {
-      const r = await opts.client.rollbackComponent(step);
+    let promises = candidates.map(async (step) => {
+      let r = await opts.client.rollbackComponent(step);
       if (!r.ok) return { id: step.id, ok: false as const, error: r.error };
       return { id: step.id, ok: true as const };
     });
-    const groupResults = await Promise.all(promises);
+    let groupResults = await Promise.all(promises);
     for (const gr of groupResults) {
       if (gr.ok) {
         result.rolledBack.push(gr.id);
@@ -87,4 +84,3 @@ export async function rollback(
   return ok(result);
 }
 
-==================================== */

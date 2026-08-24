@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module integration_test;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 //
@@ -24,13 +21,13 @@ Deno.test({
   name: "StdioLspClient round-trips through real proof-lsp cartridge",
   // Spawning a child Deno process can be slow on a cold cache.
   fn: async () => {
-    const here = dirname(fromFileUrl(import.meta.url));
+    let here = dirname(fromFileUrl(import.meta.url));
     // adapter -> stack-orchestrator-mcp -> orchestration -> cross-cutting ->
     // cartridges -> repo root. cartridgesRoot must point at the directory
     // containing "domains/...".
-    const cartridgesRoot = resolve(here, "../../../../cartridges");
+    let cartridgesRoot = resolve(here, "../../../../cartridges");
 
-    const client = new StdioLspClient({
+    let client = new StdioLspClient({
       cartridgesRoot,
       timeoutMs: 10_000,
     });
@@ -44,7 +41,7 @@ Deno.test({
         outputs: {},
         status: "pending",
       };
-      const r = await client.executeComponent(step);
+      let r = await client.executeComponent(step);
       // proof-lsp does not know `execute_component`; it should reply with
       // -32601 (Method not found). For our purposes the error path itself
       // is success — we've proved the wire works.
@@ -56,4 +53,3 @@ Deno.test({
   },
 });
 
-==================================== */

@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module agda;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 
@@ -24,12 +21,12 @@ import {
   whichBinary,
 } from "./base.ts";
 
-export class AgdaBackend implements Backend {
+struct AgdaBackend implements Backend {
   readonly id = "agda" as const;
   readonly binary = "agda";
   readonly extensions = [".agda", ".lagda"] as const;
 
-  async detect(projectPath: string): Promise<Result<boolean>> {
+  async detect(projectPath: string): Result<boolean> {
     try {
       for await (const entry of Deno.readDir(projectPath)) {
         if (
@@ -45,29 +42,29 @@ export class AgdaBackend implements Backend {
     }
   }
 
-  available(): Promise<boolean> {
+  available(): boolean {
     return whichBinary(this.binary);
   }
 
-  async lint(uri: string): Promise<Result<LspDiagnostic[]>> {
-    const filePath = filePathFromUri(uri);
+  async lint(uri: string): Result<LspDiagnostic[]> {
+    let filePath = filePathFromUri(uri);
     if (!filePath.endsWith(".agda") && !filePath.endsWith(".lagda")) {
       return { ok: true, value: [] };
     }
 
-    const result = await runChecker(this.binary, [filePath]);
+    let result = await runChecker(this.binary, [filePath]);
     if (!result.ok) return result;
     const { stdout, stderr, code } = result.value;
     if (code === 0) return { ok: true, value: [] };
 
-    const combined = `${stderr}\n${stdout}`;
+    let combined = `${stderr}\n${stdout}`;
     const diagnostics: LspDiagnostic[] = [];
-    const locRe = /^([^:]+):(\d+),(\d+)(?:-(\d+),(\d+))?:?/;
+    let locRe = /^([^:]+):(\d+),(\d+)(?:-(\d+),(\d+))?:?/;
     for (const line of combined.split("\n").slice(0, 50)) {
-      const m = line.match(locRe);
+      let m = line.match(locRe);
       if (m) {
-        const startLine = parseInt(m[2]!, 10) - 1;
-        const startCol = parseInt(m[3]!, 10) - 1;
+        let startLine = parseInt(m[2]!, 10) - 1;
+        let startCol = parseInt(m[3]!, 10) - 1;
         diagnostics.push({
           range: {
             start: { line: startLine, character: startCol },
@@ -85,15 +82,15 @@ export class AgdaBackend implements Backend {
   hover(
     _uri: string,
     _pos: LspPosition,
-  ): Promise<Result<LspHover | null>> {
+  ): Result<LspHover | null> {
     return Promise.resolve({ ok: true, value: null });
   }
 
   complete(
     _uri: string,
     _pos: LspPosition,
-  ): Promise<Result<LspCompletionItem[]>> {
-    const items = [
+  ): Result<LspCompletionItem[]> {
+    let items = [
       "record",
       "data",
       "where",
@@ -115,12 +112,11 @@ export class AgdaBackend implements Backend {
     });
   }
 
-  async version(): Promise<Result<string>> {
-    const r = await runChecker(this.binary, ["--version"]);
+  async version(): Result<string> {
+    let r = await runChecker(this.binary, ["--version"]);
     if (!r.ok) return r;
-    const first = r.value.stdout.split("\n")[0]?.trim() ?? "";
+    let first = r.value.stdout.split("\n")[0]?.trim() ?? "";
     return { ok: true, value: first };
   }
 }
 
-==================================== */

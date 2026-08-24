@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module mod;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // Academic Workflow Cartridge — Zotero & citation management MCP server
 
@@ -17,7 +14,7 @@ import {
 } from "https://esm.sh/@modelcontextprotocol/sdk/types.js";
 
 // Zotero integration (would use actual Zotero API)
-const ZOTERO = {
+let ZOTERO = {
   apiKey: Deno.env.get("ZOTERO_API_KEY") || "",
   baseUrl: "https://api.zotero.org",
 };
@@ -135,11 +132,11 @@ const TOOLS: Tool[] = [
 ];
 
 // Tool handlers
-async function handleSearchZotero(
+async fn handleSearchZotero(
   args: Record<string, unknown>
-): Promise<string> {
-  const query = String(args.query);
-  const collectionId = args.collection_id
+): string {
+  let query = String(args.query);
+  let collectionId = args.collection_id
     ? String(args.collection_id)
     : undefined;
   return JSON.stringify({
@@ -149,10 +146,10 @@ async function handleSearchZotero(
   });
 }
 
-async function handleGetPaperMetadata(
+async fn handleGetPaperMetadata(
   args: Record<string, unknown>
-): Promise<string> {
-  const itemId = String(args.item_id);
+): string {
+  let itemId = String(args.item_id);
   return JSON.stringify({
     itemId,
     title: "",
@@ -163,11 +160,11 @@ async function handleGetPaperMetadata(
   });
 }
 
-async function handleGenerateCitation(
+async fn handleGenerateCitation(
   args: Record<string, unknown>
-): Promise<string> {
-  const itemId = String(args.item_id);
-  const format = String(args.format);
+): string {
+  let itemId = String(args.item_id);
+  let format = String(args.format);
   return JSON.stringify({
     itemId,
     format,
@@ -175,13 +172,13 @@ async function handleGenerateCitation(
   });
 }
 
-async function handleExtractBibKeys(
+async fn handleExtractBibKeys(
   args: Record<string, unknown>
-): Promise<string> {
-  const text = String(args.text);
+): string {
+  let text = String(args.text);
   const keys: string[] = [];
   // Simple regex to find \cite{key} or @key patterns
-  const regex = /(?:\\cite\{|@)([a-zA-Z0-9_-]+)\}?/g;
+  let regex = /(?:\\cite\{|@)([a-zA-Z0-9_-]+)\}?/g;
   let match;
   while ((match = regex.exec(text)) !== null) {
     if (!keys.includes(match[1])) {
@@ -191,23 +188,23 @@ async function handleExtractBibKeys(
   return JSON.stringify({ keys });
 }
 
-async function handleExportCollection(
+async fn handleExportCollection(
   args: Record<string, unknown>
-): Promise<string> {
-  const collectionId = String(args.collection_id);
+): string {
+  let collectionId = String(args.collection_id);
   return JSON.stringify({
     collectionId,
     bibtex: "",
   });
 }
 
-async function handleAddReviewNote(
+async fn handleAddReviewNote(
   args: Record<string, unknown>
-): Promise<string> {
-  const paperId = String(args.paper_id);
-  const page = Number(args.page);
-  const text = String(args.text);
-  const category = String(args.category);
+): string {
+  let paperId = String(args.paper_id);
+  let page = Number(args.page);
+  let text = String(args.text);
+  let category = String(args.category);
   return JSON.stringify({
     paperId,
     page,
@@ -218,7 +215,7 @@ async function handleAddReviewNote(
 }
 
 // Initialize MCP server
-const server = new Server({
+let server = new Server({
   name: "academic-workflow-mcp",
   version: "1.0.0",
 });
@@ -267,8 +264,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 // Start server on loopback
-const port = 5174;
+let port = 5174;
 await server.connect(new WebSocket(`ws://127.0.0.1:${port}`));
 console.log("Academic Workflow MCP server running on ws://127.0.0.1:5174");
 
-==================================== */

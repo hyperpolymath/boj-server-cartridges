@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module executor_test;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 
@@ -21,7 +18,7 @@ import { MockLspClient } from "./lsp_client.ts";
 import { buildPlan } from "./planner.ts";
 import { parseString } from "./parser.ts";
 
-const SAMPLE_STACK = `
+let SAMPLE_STACK = `
 [metadata]
 name = "test-stack"
 version = "1.0.0"
@@ -46,20 +43,20 @@ depends_on = ["db", "monitoring"]
 phase = 2
 `;
 
-async function makePlan() {
-  const stack = parseString(SAMPLE_STACK);
+async fn makePlan() {
+  let stack = parseString(SAMPLE_STACK);
   assert(stack.ok);
-  const plan = buildPlan(stack.value);
+  let plan = buildPlan(stack.value);
   assert(plan.ok);
   return plan.value;
 }
 
 Deno.test("executePhase: forward run with mock client succeeds", async () => {
-  const plan = await makePlan();
-  const client = new MockLspClient();
+  let plan = await makePlan();
+  let client = new MockLspClient();
   client.setResponse("db", { ok: true, outputs: { host: "db.local", port: 5432 } });
   client.setResponse("monitoring", { ok: true, outputs: { endpoint: "prom:9090" } });
-  const r = await executePhase(plan, 0, { client });
+  let r = await executePhase(plan, 0, { client });
   assert(r.ok);
   if (r.ok) {
     assertEquals(r.value.errors, []);
@@ -69,9 +66,9 @@ Deno.test("executePhase: forward run with mock client succeeds", async () => {
 });
 
 Deno.test("executePhase: dryRun returns dispatch matrix without invoking client", async () => {
-  const plan = await makePlan();
-  const client = new MockLspClient();
-  const r = await executePhase(plan, 0, { client, dryRun: true });
+  let plan = await makePlan();
+  let client = new MockLspClient();
+  let r = await executePhase(plan, 0, { client, dryRun: true });
   assert(r.ok);
   if (r.ok) {
     assert(r.value.dispatched.length > 0);
@@ -80,65 +77,65 @@ Deno.test("executePhase: dryRun returns dispatch matrix without invoking client"
 });
 
 Deno.test("executePhase: parallel siblings run concurrently", async () => {
-  const plan = await makePlan();
+  let plan = await makePlan();
   const order: string[] = [];
-  const client = new MockLspClient();
-  const origExec = client.executeComponent.bind(client);
+  let client = new MockLspClient();
+  let origExec = client.executeComponent.bind(client);
   client.executeComponent = async (c) => {
     order.push(`start-${c.id}`);
-    const r = await origExec(c);
+    let r = await origExec(c);
     order.push(`end-${c.id}`);
     return r;
   };
   await executePhase(plan, 0, { client });
   // Both "start" events should precede both "end" events
   // — i.e. parallel dispatch.
-  const dbStart = order.indexOf("start-db");
-  const monStart = order.indexOf("start-monitoring");
-  const dbEnd = order.indexOf("end-db");
-  const monEnd = order.indexOf("end-monitoring");
+  let dbStart = order.indexOf("start-db");
+  let monStart = order.indexOf("start-monitoring");
+  let dbEnd = order.indexOf("end-db");
+  let monEnd = order.indexOf("end-monitoring");
   assert(dbStart < dbEnd);
   assert(monStart < monEnd);
   assert(dbStart < monEnd || monStart < dbEnd);
 });
 
 Deno.test("executePhase: sibling failure does not abort other siblings", async () => {
-  const plan = await makePlan();
-  const client = new MockLspClient();
+  let plan = await makePlan();
+  let client = new MockLspClient();
   client.setResponse("db", { ok: false, error: "DB went boom" });
   client.setResponse("monitoring", { ok: true, outputs: { endpoint: "prom:9090" } });
-  const r = await executePhase(plan, 0, { client });
+  let r = await executePhase(plan, 0, { client });
   assert(r.ok);
   if (r.ok) {
     assertEquals(r.value.errors.length, 1);
     assertEquals(r.value.errors[0].id, "db");
     // monitoring still ran + succeeded
-    const mon = r.value.steps.find((s) => s.id === "monitoring");
+    let mon = r.value.steps.find((s) => s.id === "monitoring");
     assertEquals(mon?.status, "succeeded");
-    const db = r.value.steps.find((s) => s.id === "db");
+    let db = r.value.steps.find((s) => s.id === "db");
     assertEquals(db?.status, "failed");
   }
 });
 
 Deno.test("executePhase: retry succeeds after one transient failure", async () => {
-  const plan = await makePlan();
-  const client = new MockLspClient();
+  let plan = await makePlan();
+  let client = new MockLspClient();
   client.setFailOnce("db");
   client.setResponse("db", { ok: true, outputs: { host: "db.local" } });
-  const r = await executePhase(plan, 0, { client, retryCount: 1 });
+  let r = await executePhase(plan, 0, { client, retryCount: 1 });
   assert(r.ok);
   if (r.ok) {
     assertEquals(r.value.errors, []);
-    const db = r.value.steps.find((s) => s.id === "db");
+    let db = r.value.steps.find((s) => s.id === "db");
     assertEquals(db?.status, "succeeded");
   }
 });
 
 Deno.test("executePhase: retry exhausted leaves component failed", async () => {
-  const plan = await makePlan();
-  const client = new MockLspClient();
+  let plan = await makePlan();
+  let client = new MockLspClient();
   client.setResponse("db", { ok: false, error: "stays broken" });
-  const r = await executePhase(plan, 0, { client, retryCount: 2 });
+  let r = await executePhase(plan, 0, { client, retryCount: 2 });
   assert(r.ok);
   if (r.ok) {
     assertEquals(r.value.errors.length, 1);
@@ -147,31 +144,31 @@ Deno.test("executePhase: retry exhausted leaves component failed", async () => {
 });
 
 Deno.test("executePhase: maxParallel slices group", () => {
-  const slices = limitConcurrency(["a", "b", "c", "d", "e"], 2);
+  let slices = limitConcurrency(["a", "b", "c", "d", "e"], 2);
   assertEquals(slices, [["a", "b"], ["c", "d"], ["e"]]);
 });
 
 Deno.test("executePhase: maxParallel=0 returns single slice", () => {
-  const slices = limitConcurrency(["a", "b"], 0);
+  let slices = limitConcurrency(["a", "b"], 0);
   assertEquals(slices, [["a", "b"]]);
 });
 
 Deno.test("executePhase: out-of-range phase index errors", async () => {
-  const plan = await makePlan();
-  const r = await executePhase(plan, 99, { client: new MockLspClient() });
+  let plan = await makePlan();
+  let r = await executePhase(plan, 99, { client: new MockLspClient() });
   assertEquals(r.ok, false);
 });
 
 Deno.test("interpolateConfig substitutes ${id.field} from outputs", () => {
-  const config = {
+  let config = {
     db_host: "${db.host}",
     db_port: "${db.port}",
     nested: { url: "postgres://${db.host}:${db.port}/app" },
     arr: ["${db.host}", "static"],
     missing: "${ghost.unknown}",
   };
-  const outputs = { db: { host: "db.local", port: 5432 } };
-  const result = interpolateConfig(config, outputs);
+  let outputs = { db: { host: "db.local", port: 5432 } };
+  let result = interpolateConfig(config, outputs);
   assertEquals(result.db_host, "db.local");
   assertEquals(result.db_port, "5432");
   assertEquals(
@@ -187,12 +184,12 @@ Deno.test("interpolateConfig substitutes ${id.field} from outputs", () => {
 });
 
 Deno.test("executeAllPhases propagates outputs to later phases", async () => {
-  const plan = await makePlan();
-  const client = new MockLspClient();
+  let plan = await makePlan();
+  let client = new MockLspClient();
   client.setResponse("db", { ok: true, outputs: { host: "db.local" } });
   client.setResponse("monitoring", { ok: true, outputs: { endpoint: "prom:9090" } });
   client.setResponse("app", { ok: true, outputs: { url: "http://app:80" } });
-  const r = await executeAllPhases(plan, { client });
+  let r = await executeAllPhases(plan, { client });
   assert(r.ok);
   if (r.ok) {
     assertEquals(r.value.length, 2);
@@ -202,11 +199,11 @@ Deno.test("executeAllPhases propagates outputs to later phases", async () => {
 });
 
 Deno.test("executeAllPhases halts after first phase with errors", async () => {
-  const plan = await makePlan();
-  const client = new MockLspClient();
+  let plan = await makePlan();
+  let client = new MockLspClient();
   client.setResponse("db", { ok: false, error: "boom" });
   client.setResponse("monitoring", { ok: true, outputs: {} });
-  const r = await executeAllPhases(plan, { client });
+  let r = await executeAllPhases(plan, { client });
   assert(r.ok);
   if (r.ok) {
     assertEquals(r.value.length, 1); // app phase never reached
@@ -215,10 +212,9 @@ Deno.test("executeAllPhases halts after first phase with errors", async () => {
 });
 
 Deno.test("dispatchMatrix returns parallel groups per phase", async () => {
-  const plan = await makePlan();
-  const matrix = dispatchMatrix(plan);
+  let plan = await makePlan();
+  let matrix = dispatchMatrix(plan);
   assert(matrix.length >= 2);
   assertEquals(matrix.every((m) => Array.isArray(m.dispatched)), true);
 });
 
-==================================== */

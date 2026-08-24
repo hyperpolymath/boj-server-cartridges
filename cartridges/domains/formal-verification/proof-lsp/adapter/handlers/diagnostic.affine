@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module diagnostic;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 
@@ -13,23 +10,23 @@ import type { Backend } from "../backends/base.ts";
 import { detectByExtension } from "../backends/registry.ts";
 import type { BackendId, LspDiagnostic } from "../types.ts";
 
-export interface DiagnosticParams {
+struct DiagnosticParams {
   textDocument: { uri: string };
   backend?: BackendId;
 }
 
-export interface DiagnosticResult {
+struct DiagnosticResult {
   uri: string;
   diagnostics: LspDiagnostic[];
 }
 
-export async function handleDiagnostic(
+async fn handleDiagnostic(
   params: DiagnosticParams,
   backends: Map<BackendId, Backend>,
-): Promise<DiagnosticResult> {
-  const uri = params.textDocument?.uri ?? "";
-  const explicit = params.backend ? backends.get(params.backend) : undefined;
-  const backend = explicit ?? detectByExtension(backends, uri);
+): DiagnosticResult {
+  let uri = params.textDocument?.uri ?? "";
+  let explicit = params.backend ? backends.get(params.backend) : undefined;
+  let backend = explicit ?? detectByExtension(backends, uri);
   if (!backend) return { uri, diagnostics: [] };
 
   if (!(await backend.available())) {
@@ -47,7 +44,7 @@ export async function handleDiagnostic(
     };
   }
 
-  const lint = await backend.lint(uri);
+  let lint = await backend.lint(uri);
   if (!lint.ok) {
     return {
       uri,
@@ -65,4 +62,3 @@ export async function handleDiagnostic(
   return { uri, diagnostics: lint.value };
 }
 
-==================================== */

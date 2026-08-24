@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module hover;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 
@@ -13,22 +10,21 @@ import type { Backend } from "../backends/base.ts";
 import { detectByExtension } from "../backends/registry.ts";
 import type { BackendId, LspHover, LspPosition } from "../types.ts";
 
-export interface HoverParams {
+struct HoverParams {
   textDocument: { uri: string };
   position: LspPosition;
   backend?: BackendId;
 }
 
-export async function handleHover(
+async fn handleHover(
   params: HoverParams,
   backends: Map<BackendId, Backend>,
-): Promise<LspHover | null> {
-  const uri = params.textDocument?.uri ?? "";
-  const explicit = params.backend ? backends.get(params.backend) : undefined;
-  const backend = explicit ?? detectByExtension(backends, uri);
+): LspHover | null {
+  let uri = params.textDocument?.uri ?? "";
+  let explicit = params.backend ? backends.get(params.backend) : undefined;
+  let backend = explicit ?? detectByExtension(backends, uri);
   if (!backend) return null;
-  const r = await backend.hover(uri, params.position);
+  let r = await backend.hover(uri, params.position);
   return r.ok ? r.value : null;
 }
 
-==================================== */

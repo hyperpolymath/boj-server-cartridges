@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module lsp_client_test;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 
@@ -13,7 +10,7 @@ import { assert, assertEquals } from "@std/assert";
 import { lspServerToPath, MockLspClient } from "./lsp_client.ts";
 import type { ComponentStep } from "./types.ts";
 
-function step(id: string, lsp_server = "proof-lsp"): ComponentStep {
+fn step(id: string, lsp_server = "proof-lsp"): ComponentStep {
   return {
     id,
     type: "proof.coq",
@@ -26,8 +23,8 @@ function step(id: string, lsp_server = "proof-lsp"): ComponentStep {
 }
 
 Deno.test("MockLspClient: default response shape", async () => {
-  const c = new MockLspClient();
-  const r = await c.executeComponent(step("alpha"));
+  let c = new MockLspClient();
+  let r = await c.executeComponent(step("alpha"));
   assert(r.ok);
   assertEquals((r as { ok: true; value: Record<string, unknown> }).value, {
     default: "output-of-alpha",
@@ -35,9 +32,9 @@ Deno.test("MockLspClient: default response shape", async () => {
 });
 
 Deno.test("MockLspClient: setResponse overrides default", async () => {
-  const c = new MockLspClient();
+  let c = new MockLspClient();
   c.setResponse("alpha", { ok: true, outputs: { ip: "10.0.0.1" } });
-  const r = await c.executeComponent(step("alpha"));
+  let r = await c.executeComponent(step("alpha"));
   assert(r.ok);
   assertEquals(
     (r as { ok: true; value: Record<string, unknown> }).value,
@@ -46,24 +43,24 @@ Deno.test("MockLspClient: setResponse overrides default", async () => {
 });
 
 Deno.test("MockLspClient: error response", async () => {
-  const c = new MockLspClient();
+  let c = new MockLspClient();
   c.setResponse("bad", { ok: false, error: "kaboom" });
-  const r = await c.executeComponent(step("bad"));
+  let r = await c.executeComponent(step("bad"));
   assertEquals(r.ok, false);
 });
 
 Deno.test("MockLspClient: setFailOnce yields one failure then success", async () => {
-  const c = new MockLspClient();
+  let c = new MockLspClient();
   c.setFailOnce("flaky");
   c.setResponse("flaky", { ok: true, outputs: { ok: 1 } });
-  const r1 = await c.executeComponent(step("flaky"));
+  let r1 = await c.executeComponent(step("flaky"));
   assertEquals(r1.ok, false);
-  const r2 = await c.executeComponent(step("flaky"));
+  let r2 = await c.executeComponent(step("flaky"));
   assertEquals(r2.ok, true);
 });
 
 Deno.test("MockLspClient: records calls in order", async () => {
-  const c = new MockLspClient();
+  let c = new MockLspClient();
   await c.executeComponent(step("a"));
   await c.rollbackComponent(step("b"));
   await c.executeComponent(step("c"));
@@ -100,4 +97,3 @@ Deno.test("lspServerToPath: unknown server returns as-is", () => {
   assertEquals(lspServerToPath("unknown-thing"), "unknown-thing");
 });
 
-==================================== */

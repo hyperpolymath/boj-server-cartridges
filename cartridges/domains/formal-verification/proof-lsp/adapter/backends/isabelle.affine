@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module isabelle;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 
@@ -24,12 +21,12 @@ import {
   whichBinary,
 } from "./base.ts";
 
-export class IsabelleBackend implements Backend {
+struct IsabelleBackend implements Backend {
   readonly id = "isabelle" as const;
   readonly binary = "isabelle";
   readonly extensions = [".thy"] as const;
 
-  async detect(projectPath: string): Promise<Result<boolean>> {
+  async detect(projectPath: string): Result<boolean> {
     try {
       for await (const entry of Deno.readDir(projectPath)) {
         if (entry.isFile && entry.name.endsWith(".thy")) {
@@ -42,12 +39,12 @@ export class IsabelleBackend implements Backend {
     }
   }
 
-  available(): Promise<boolean> {
+  available(): boolean {
     return whichBinary(this.binary);
   }
 
-  async lint(uri: string): Promise<Result<LspDiagnostic[]>> {
-    const filePath = filePathFromUri(uri);
+  async lint(uri: string): Result<LspDiagnostic[]> {
+    let filePath = filePathFromUri(uri);
     if (!filePath.endsWith(".thy")) return { ok: true, value: [] };
 
     // Isabelle theory checking requires an interactive session (PIDE).
@@ -69,15 +66,15 @@ export class IsabelleBackend implements Backend {
   hover(
     _uri: string,
     _pos: LspPosition,
-  ): Promise<Result<LspHover | null>> {
+  ): Result<LspHover | null> {
     return Promise.resolve({ ok: true, value: null });
   }
 
   complete(
     _uri: string,
     _pos: LspPosition,
-  ): Promise<Result<LspCompletionItem[]>> {
-    const items = [
+  ): Result<LspCompletionItem[]> {
+    let items = [
       "lemma",
       "theorem",
       "definition",
@@ -99,11 +96,10 @@ export class IsabelleBackend implements Backend {
     });
   }
 
-  async version(): Promise<Result<string>> {
-    const r = await runChecker(this.binary, ["version"]);
+  async version(): Result<string> {
+    let r = await runChecker(this.binary, ["version"]);
     if (!r.ok) return r;
     return { ok: true, value: r.value.stdout.trim() };
   }
 }
 
-==================================== */

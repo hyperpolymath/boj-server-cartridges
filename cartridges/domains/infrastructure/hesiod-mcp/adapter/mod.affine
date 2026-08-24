@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module mod;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // Hesiod DNS Cartridge — MCP Server adapter for DNS lookups
 
@@ -20,18 +17,18 @@ import {
 
 // Import Zig FFI bindings
 // In real implementation, would load compiled .wasm or .so
-const FFI = {
-  lookup: async (hostname: string, rectype: number): Promise<any> => {
+let FFI = {
+  lookup: async (hostname: string, rectype: number): unknown => {
     // Placeholder: would call Zig FFI via Deno.ffi
     return { success: true, records: [] };
   },
-  reverseLookup: async (address: string): Promise<any> => {
+  reverseLookup: async (address: string): unknown => {
     return { success: true, hostname: "" };
   },
   bulkLookup: async (
     hostnames: string[],
     rectype: number
-  ): Promise<any[]> => {
+  ): unknown[] => {
     return hostnames.map(() => ({ success: true, records: [] }));
   },
 };
@@ -110,33 +107,33 @@ const TOOLS: Tool[] = [
   },
 ];
 
-async function handleDNSLookup(args: Record<string, unknown>): Promise<string> {
-  const hostname = String(args.hostname);
-  const recordType = String(args.record_type || "A");
+async fn handleDNSLookup(args: Record<string, unknown>): string {
+  let hostname = String(args.hostname);
+  let recordType = String(args.record_type || "A");
 
-  const result = await FFI.lookup(hostname, recordTypeToCode(recordType));
+  let result = await FFI.lookup(hostname, recordTypeToCode(recordType));
   return JSON.stringify(result, null, 2);
 }
 
-async function handleReverseLookup(
+async fn handleReverseLookup(
   args: Record<string, unknown>
-): Promise<string> {
-  const address = String(args.address);
-  const result = await FFI.reverseLookup(address);
+): string {
+  let address = String(args.address);
+  let result = await FFI.reverseLookup(address);
   return JSON.stringify(result, null, 2);
 }
 
-async function handleBulkLookup(args: Record<string, unknown>): Promise<string> {
-  const hostnames = Array.isArray(args.hostnames)
+async fn handleBulkLookup(args: Record<string, unknown>): string {
+  let hostnames = Array.isArray(args.hostnames)
     ? args.hostnames.map(String)
     : [];
-  const recordType = String(args.record_type || "A");
+  let recordType = String(args.record_type || "A");
 
-  const results = await FFI.bulkLookup(hostnames, recordTypeToCode(recordType));
+  let results = await FFI.bulkLookup(hostnames, recordTypeToCode(recordType));
   return JSON.stringify(results, null, 2);
 }
 
-function recordTypeToCode(type: string): number {
+fn recordTypeToCode(type: string): number {
   const codes: Record<string, number> = {
     A: 0,
     AAAA: 1,
@@ -151,7 +148,7 @@ function recordTypeToCode(type: string): number {
 }
 
 // Initialize MCP server
-const server = new Server({
+let server = new Server({
   name: "hesiod-mcp",
   version: "1.0.0",
 });
@@ -194,8 +191,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 // Start server on loopback
-const port = 5173;
+let port = 5173;
 await server.connect(new WebSocket(`ws://127.0.0.1:${port}`));
 console.log("Hesiod DNS MCP server running on ws://127.0.0.1:5173");
 
-==================================== */

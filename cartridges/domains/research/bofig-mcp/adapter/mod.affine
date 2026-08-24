@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module mod;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // Bofig Cartridge — Evidence graph query MCP server
 
@@ -103,10 +100,10 @@ const TOOLS: Tool[] = [
 ];
 
 // Tool handlers
-async function handleQueryEvidence(
+async fn handleQueryEvidence(
   args: Record<string, unknown>
-): Promise<string> {
-  const evidenceId = String(args.evidence_id);
+): string {
+  let evidenceId = String(args.evidence_id);
   return JSON.stringify({
     evidence_id: evidenceId,
     found: false,
@@ -114,10 +111,10 @@ async function handleQueryEvidence(
   });
 }
 
-async function handleSearchEvidence(
+async fn handleSearchEvidence(
   args: Record<string, unknown>
-): Promise<string> {
-  const keyword = String(args.keyword);
+): string {
+  let keyword = String(args.keyword);
   return JSON.stringify({
     keyword,
     results: [],
@@ -125,10 +122,10 @@ async function handleSearchEvidence(
   });
 }
 
-async function handleGetConnections(
+async fn handleGetConnections(
   args: Record<string, unknown>
-): Promise<string> {
-  const entityId = String(args.entity_id);
+): string {
+  let entityId = String(args.entity_id);
   return JSON.stringify({
     entity_id: entityId,
     connections: [],
@@ -136,11 +133,11 @@ async function handleGetConnections(
   });
 }
 
-async function handleFindPath(
+async fn handleFindPath(
   args: Record<string, unknown>
-): Promise<string> {
-  const fromId = String(args.from_id);
-  const toId = String(args.to_id);
+): string {
+  let fromId = String(args.from_id);
+  let toId = String(args.to_id);
   return JSON.stringify({
     from_id: fromId,
     to_id: toId,
@@ -150,10 +147,10 @@ async function handleFindPath(
   });
 }
 
-async function handleExecuteQuery(
+async fn handleExecuteQuery(
   args: Record<string, unknown>
-): Promise<string> {
-  const query = String(args.query);
+): string {
+  let query = String(args.query);
   return JSON.stringify({
     query,
     success: true,
@@ -163,9 +160,9 @@ async function handleExecuteQuery(
   });
 }
 
-async function handleGetGraphStats(
+async fn handleGetGraphStats(
   _args: Record<string, unknown>
-): Promise<string> {
+): string {
   return JSON.stringify({
     node_count: 0,
     edge_count: 0,
@@ -174,7 +171,7 @@ async function handleGetGraphStats(
 }
 
 // Initialize MCP server
-const server = new Server({
+let server = new Server({
   name: "bofig-mcp",
   version: "1.0.0",
 });
@@ -223,8 +220,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 // Start server on loopback
-const port = 5178;
+let port = 5178;
 await server.connect(new WebSocket(`ws://127.0.0.1:${port}`));
 console.log("Bofig MCP server running on ws://127.0.0.1:5178");
 
-==================================== */

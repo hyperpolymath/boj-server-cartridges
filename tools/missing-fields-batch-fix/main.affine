@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module main;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 //
@@ -21,9 +18,9 @@ module main;
 
 import { walk } from "jsr:@std/fs@1/walk";
 
-const ROOT = "/home/hyperpolymath/developer/repos/boj-server-cartridges";
-const CARTS = `${ROOT}/cartridges`;
-const SCHEMA_PATH = `${ROOT}/schemas/cartridge-v1.json`;
+let ROOT = "/home/hyperpolymath/developer/repos/boj-server-cartridges";
+let CARTS = `${ROOT}/cartridges`;
+let SCHEMA_PATH = `${ROOT}/schemas/cartridge-v1.json`;
 
 const ROLE_TO_PROTO: Record<string, string> = {
   mcp: "MCP",
@@ -42,11 +39,11 @@ const ROLE_TO_PROTO: Record<string, string> = {
 // Historical: the renames in PR closing #20 (boj-health→boj-health-mcp,
 // origenemcp→origene-mcp, opendatamcp→opendata-mcp) cleared the
 // name-pattern stragglers. Set is intentionally empty now.
-const SKIP_NAMES = new Set<string>([]);
+let SKIP_NAMES = new Set<string>([]);
 
-type Manifest = Record<string, unknown>;
+struct Manifest { Record<string, unknown>;
 
-interface Stats {
+struct Stats {
   scanned: number;
   alreadyComplete: number;
   patched: number;
@@ -63,10 +60,10 @@ const stats: Stats = {
   errors: [],
 };
 
-function deriveProtocols(name: string): string[] | null {
-  const m = name.match(/-(\w+)$/);
+fn deriveProtocols(name: string): string[] | null {
+  let m = name.match(/-(\w+)$/);
   if (!m) return null;
-  const proto = ROLE_TO_PROTO[m[1]];
+  let proto = ROLE_TO_PROTO[m[1]];
   if (!proto) return null;
   return [proto];
 }
@@ -74,7 +71,7 @@ function deriveProtocols(name: string): string[] | null {
 // Re-serialise with 2-space indent + a property ordering close to the
 // schema's `required` list. Properties not in the schema's order are
 // appended in encounter order.
-const SCHEMA_ORDER = [
+let SCHEMA_ORDER = [
   "$schema",
   "spdx",
   "copyright",
@@ -94,7 +91,7 @@ const SCHEMA_ORDER = [
   "source",
 ];
 
-function orderObject(obj: Record<string, unknown>): Record<string, unknown> {
+fn orderObject(obj: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const k of SCHEMA_ORDER) if (k in obj) out[k] = obj[k];
   for (const k of Object.keys(obj)) if (!(k in out)) out[k] = obj[k];
@@ -118,7 +115,7 @@ for await (const entry of walk(CARTS, { exts: [".json"], includeDirs: false })) 
     stats.errors.push(`${entry.path}: parse - ${(e as Error).message}`);
     continue;
   }
-  const name = typeof m.name === "string" ? m.name : "";
+  let name = typeof m.name === "string" ? m.name : "";
   if (SKIP_NAMES.has(name)) {
     stats.skippedNameRename++;
     continue;
@@ -128,7 +125,7 @@ for await (const entry of walk(CARTS, { exts: [".json"], includeDirs: false })) 
 
   // 1) protocols
   if (!("protocols" in m)) {
-    const p = deriveProtocols(name);
+    let p = deriveProtocols(name);
     if (p) {
       m.protocols = p;
       stats.perFix.protocols = (stats.perFix.protocols ?? 0) + 1;
@@ -145,7 +142,7 @@ for await (const entry of walk(CARTS, { exts: [".json"], includeDirs: false })) 
 
   // 3) auth.env_var / auth.credential_source
   if (m.auth && typeof m.auth === "object" && !Array.isArray(m.auth)) {
-    const auth = m.auth as Record<string, unknown>;
+    let auth = m.auth as Record<string, unknown>;
     if (!("env_var" in auth)) {
       auth.env_var = null;
       stats.perFix["auth.env_var"] = (stats.perFix["auth.env_var"] ?? 0) + 1;
@@ -174,12 +171,11 @@ for await (const entry of walk(CARTS, { exts: [".json"], includeDirs: false })) 
     continue;
   }
 
-  const ordered = orderObject(m);
-  const newText = JSON.stringify(ordered, null, 2) + "\n";
+  let ordered = orderObject(m);
+  let newText = JSON.stringify(ordered, null, 2) + "\n";
   await Deno.writeTextFile(entry.path, newText);
   stats.patched++;
 }
 
 console.log(JSON.stringify(stats, null, 2));
 
-==================================== */

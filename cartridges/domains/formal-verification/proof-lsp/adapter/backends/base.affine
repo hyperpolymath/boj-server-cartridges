@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module base;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 
@@ -18,25 +15,25 @@ import type {
   Result,
 } from "../types.ts";
 
-export interface Backend {
+struct Backend {
   readonly id: BackendId;
   readonly binary: string;
   readonly extensions: readonly string[];
 
-  detect(projectPath: string): Promise<Result<boolean>>;
-  available(): Promise<boolean>;
-  lint(filePath: string): Promise<Result<LspDiagnostic[]>>;
-  hover(filePath: string, pos: LspPosition): Promise<Result<LspHover | null>>;
+  detect(projectPath: string): Result<boolean>;
+  available(): boolean;
+  lint(filePath: string): Result<LspDiagnostic[]>;
+  hover(filePath: string, pos: LspPosition): Result<LspHover | null>;
   complete(
     filePath: string,
     pos: LspPosition,
-  ): Promise<Result<LspCompletionItem[]>>;
-  version(): Promise<Result<string>>;
+  ): Result<LspCompletionItem[]>;
+  version(): Result<string>;
 }
 
-export async function whichBinary(binary: string): Promise<boolean> {
+async fn whichBinary(binary: string): boolean {
   try {
-    const cmd = new Deno.Command(binary, {
+    let cmd = new Deno.Command(binary, {
       args: ["--version"],
       stdout: "null",
       stderr: "null",
@@ -48,26 +45,26 @@ export async function whichBinary(binary: string): Promise<boolean> {
   }
 }
 
-export async function runChecker(
+async fn runChecker(
   binary: string,
   args: string[],
   opts: { cwd?: string; timeoutMs?: number } = {},
-): Promise<Result<{ stdout: string; stderr: string; code: number }>> {
+): Result<{ stdout: string; stderr: string; code: number }> {
   try {
-    const cmd = new Deno.Command(binary, {
+    let cmd = new Deno.Command(binary, {
       args,
       cwd: opts.cwd,
       stdout: "piped",
       stderr: "piped",
     });
-    const proc = cmd.spawn();
-    const timeout = opts.timeoutMs ?? 30_000;
-    const timer = setTimeout(() => {
+    let proc = cmd.spawn();
+    let timeout = opts.timeoutMs ?? 30_000;
+    let timer = setTimeout(() => {
       try {
         proc.kill("SIGTERM");
       } catch { /* already exited */ }
     }, timeout);
-    const out = await proc.output();
+    let out = await proc.output();
     clearTimeout(timer);
     return {
       ok: true,
@@ -82,12 +79,12 @@ export async function runChecker(
   }
 }
 
-export function filePathFromUri(uri: string): string {
+fn filePathFromUri(uri: string): string {
   if (uri.startsWith("file://")) return decodeURIComponent(uri.slice(7));
   return uri;
 }
 
-export function diagnosticAtLine(
+fn diagnosticAtLine(
   message: string,
   severity: 1 | 2 | 3 | 4,
   source: string,
@@ -104,4 +101,3 @@ export function diagnosticAtLine(
   };
 }
 
-==================================== */

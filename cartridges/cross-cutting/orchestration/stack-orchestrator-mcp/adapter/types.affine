@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module types;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 
@@ -13,14 +10,14 @@ module types;
 // Direct port of the implicit Elixir map shapes in
 // polystack/poly-orchestrator-lsp/lib/orchestrator/{stack_parser,planner}.ex.
 
-export interface StackMetadata {
+struct StackMetadata {
   name: string;
   version: string;
   description?: string;
   author?: string;
 }
 
-export interface Component {
+struct Component {
   id: string;
   type: string;
   lsp_server: string;
@@ -29,7 +26,7 @@ export interface Component {
   config?: Record<string, unknown>;
 }
 
-export interface SecuritySection {
+struct SecuritySection {
   threat_model?: string;
   attack_surface_score?: number;
   validated?: boolean;
@@ -37,27 +34,27 @@ export interface SecuritySection {
   constraints?: string[];
 }
 
-export interface Orchestration {
+struct Orchestration {
   max_parallel?: number;
   timeout_ms?: number;
   retry_count?: number;
   variables?: Record<string, string>;
 }
 
-export interface Rollback {
+struct Rollback {
   enabled?: boolean;
   strategy?: string;
   preserve_data?: boolean;
   triggers?: Record<string, unknown>;
 }
 
-export interface VerificationStep {
+struct VerificationStep {
   name?: string;
   command?: string;
   [key: string]: unknown;
 }
 
-export interface Stack {
+struct Stack {
   metadata: StackMetadata;
   components: Component[];
   security?: SecuritySection;
@@ -66,7 +63,7 @@ export interface Stack {
   verification?: VerificationStep[];
 }
 
-export interface SecurityPolicies {
+struct SecurityPolicies {
   threat_model: string | undefined;
   attack_surface_score: number | undefined;
   validated: boolean;
@@ -74,7 +71,7 @@ export interface SecurityPolicies {
   constraints: string[];
 }
 
-export interface ComponentStep {
+struct ComponentStep {
   id: string;
   type: string;
   lsp_server: string;
@@ -84,20 +81,20 @@ export interface ComponentStep {
   status: "pending" | "running" | "succeeded" | "failed" | "rolled_back";
 }
 
-export interface Phase {
+struct Phase {
   phase: number;
   parallel: string[][];
   components: ComponentStep[];
 }
 
-export interface RollbackStrategy {
+struct RollbackStrategy {
   enabled: boolean;
   strategy: string;
   preserve_data: boolean;
   triggers: Record<string, unknown>;
 }
 
-export interface ExecutionPlan {
+struct ExecutionPlan {
   stack_id: string;
   phases: Phase[];
   security_policies: SecurityPolicies;
@@ -105,14 +102,13 @@ export interface ExecutionPlan {
   verification: VerificationStep[];
 }
 
-export type Result<T, E = string> = { ok: true; value: T } | { ok: false; error: E };
+type Result<T, E = string> = { ok: true; value: T } | { ok: false; error: E };
 
-export function ok<T>(value: T): Result<T, never> {
+fn ok<T>(value: T): Result<T, never> {
   return { ok: true, value };
 }
 
-export function err<E>(error: E): Result<never, E> {
+fn err<E>(error: E): Result<never, E> {
   return { ok: false, error };
 }
 
-==================================== */

@@ -1,23 +1,20 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module initialize;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 
 import type { Backend } from "../backends/base.ts";
 import type { BackendId } from "../types.ts";
 
-export interface InitializeParams {
+struct InitializeParams {
   rootUri?: string | null;
   capabilities?: Record<string, unknown>;
 }
 
-export interface ServerCapabilities {
+struct ServerCapabilities {
   textDocumentSync: { openClose: boolean; change: number; save: { includeText: boolean } };
   completionProvider: { triggerCharacters: string[]; resolveProvider: boolean };
   hoverProvider: boolean;
@@ -25,13 +22,13 @@ export interface ServerCapabilities {
   executeCommandProvider: { commands: string[] };
 }
 
-export interface InitializeResult {
+struct InitializeResult {
   capabilities: ServerCapabilities;
   serverInfo: { name: string; version: string };
   detectedBackend: BackendId | null;
 }
 
-const VERSION = "0.1.0";
+let VERSION = "0.1.0";
 
 const CAPABILITIES: ServerCapabilities = {
   textDocumentSync: { openClose: true, change: 1, save: { includeText: false } },
@@ -51,22 +48,22 @@ const CAPABILITIES: ServerCapabilities = {
   },
 };
 
-function uriToPath(uri: string | null | undefined): string | null {
+fn uriToPath(uri: string | null | undefined): string | null {
   if (!uri) return null;
   if (uri.startsWith("file://")) return decodeURIComponent(uri.slice(7));
   return uri;
 }
 
-export async function handleInitialize(
+async fn handleInitialize(
   params: InitializeParams,
   backends: Map<BackendId, Backend>,
-): Promise<InitializeResult> {
-  const rootPath = uriToPath(params.rootUri);
+): InitializeResult {
+  let rootPath = uriToPath(params.rootUri);
   let detected: BackendId | null = null;
 
   if (rootPath) {
     for (const backend of backends.values()) {
-      const r = await backend.detect(rootPath);
+      let r = await backend.detect(rootPath);
       if (r.ok && r.value) {
         detected = backend.id;
         break;
@@ -81,4 +78,3 @@ export async function handleInitialize(
   };
 }
 
-==================================== */

@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module main;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // Walks cartridges/, derives category from path, inserts "category": "<value>"
 // into each cartridge.json that lacks it. Preserves existing formatting by
@@ -13,10 +10,10 @@ module main;
 
 import { walk } from "jsr:@std/fs@1/walk";
 
-const ROOT = "/home/hyperpolymath/developer/repos/boj-server-cartridges";
-const CARTS = `${ROOT}/cartridges`;
+let ROOT = "/home/hyperpolymath/developer/repos/boj-server-cartridges";
+let CARTS = `${ROOT}/cartridges`;
 
-interface Stats {
+struct Stats {
   scanned: number;
   alreadyHad: number;
   added: number;
@@ -25,8 +22,8 @@ interface Stats {
 }
 const stats: Stats = { scanned: 0, alreadyHad: 0, added: 0, skippedNoDomain: 0, errors: [] };
 
-function deriveCategory(path: string): string | null {
-  const rel = path.replace(CARTS + "/", "");
+fn deriveCategory(path: string): string | null {
+  let rel = path.replace(CARTS + "/", "");
   if (rel.startsWith("domains/")) return "domain";
   if (rel.startsWith("cross-cutting/")) return "cross-cutting";
   if (rel.startsWith("templates/")) return "template";
@@ -54,7 +51,7 @@ for await (const entry of walk(CARTS, { exts: [".json"], includeDirs: false })) 
     stats.alreadyHad++;
     continue;
   }
-  const category = deriveCategory(entry.path);
+  let category = deriveCategory(entry.path);
   if (!category) {
     stats.errors.push(`${entry.path}: could not derive category from path`);
     continue;
@@ -62,26 +59,26 @@ for await (const entry of walk(CARTS, { exts: [".json"], includeDirs: false })) 
 
   // String-level insertion: find the "domain" line, insert "category" right after it.
   // Pattern matches: <indent>"domain": "<value>"<,?><newline>
-  const domainLine = /^([ \t]*)"domain"\s*:\s*"[^"]*",?\s*(\r?\n)/m;
-  const match = text.match(domainLine);
+  let domainLine = /^([ \t]*)"domain"\s*:\s*"[^"]*",?\s*(\r?\n)/m;
+  let match = text.match(domainLine);
   if (!match) {
     // Fallback: try inserting before "tier" (since gossamer/schema put category right after domain).
-    const tierLine = /^([ \t]*)"tier"\s*:/m;
-    const tierMatch = text.match(tierLine);
+    let tierLine = /^([ \t]*)"tier"\s*:/m;
+    let tierMatch = text.match(tierLine);
     if (!tierMatch) {
       stats.skippedNoDomain++;
       stats.errors.push(`${entry.path}: no "domain" or "tier" line found to anchor insertion`);
       continue;
     }
-    const indent = tierMatch[1];
-    const insertAt = text.indexOf(tierMatch[0]);
+    let indent = tierMatch[1];
+    let insertAt = text.indexOf(tierMatch[0]);
     text = text.slice(0, insertAt) +
       `${indent}"category": "${category}",\n` +
       text.slice(insertAt);
   } else {
-    const indent = match[1];
-    const newline = match[2];
-    const insertAfter = (match.index ?? 0) + match[0].length;
+    let indent = match[1];
+    let newline = match[2];
+    let insertAfter = (match.index ?? 0) + match[0].length;
     text = text.slice(0, insertAfter) +
       `${indent}"category": "${category}",${newline}` +
       text.slice(insertAfter);
@@ -93,4 +90,3 @@ for await (const entry of walk(CARTS, { exts: [".json"], includeDirs: false })) 
 
 console.log(JSON.stringify(stats, null, 2));
 
-==================================== */

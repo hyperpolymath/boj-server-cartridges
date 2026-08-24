@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module main_test;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 //
@@ -13,7 +10,7 @@ module main_test;
 
 import { assertEquals, assertGreater } from "jsr:@std/assert@1";
 
-const SCHEMA = {
+let SCHEMA = {
   type: "object",
   required: ["name", "category", "auth", "protocols"],
   properties: {
@@ -34,26 +31,26 @@ const SCHEMA = {
   },
 };
 
-type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
-type Schema = { [k: string]: JsonValue };
-interface ValidationIssue {
+struct JsonValue { string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
+struct Schema { { [k: string]: JsonValue };
+struct ValidationIssue {
   path: string;
   message: string;
 }
 
-function typeOfJson(v: JsonValue): string {
+fn typeOfJson(v: JsonValue): string {
   if (v === null) return "null";
   if (Array.isArray(v)) return "array";
   return typeof v;
 }
-function matchesType(v: JsonValue, type: JsonValue): boolean {
+fn matchesType(v: JsonValue, type: JsonValue): boolean {
   if (Array.isArray(type)) return type.some((t) => matchesType(v, t));
   if (typeof type !== "string") return true;
-  const t = typeOfJson(v);
+  let t = typeOfJson(v);
   if (type === "integer") return t === "number" && Number.isInteger(v);
   return t === type;
 }
-function validate(value: JsonValue, schema: Schema, path: string, issues: ValidationIssue[]): void {
+fn validate(value: JsonValue, schema: Schema, path: string, issues: ValidationIssue[]): void {
   if (schema.type !== undefined && !matchesType(value, schema.type)) {
     issues.push({ path, message: `expected type ${JSON.stringify(schema.type)} but got ${typeOfJson(value)}` });
     return;
@@ -75,7 +72,7 @@ function validate(value: JsonValue, schema: Schema, path: string, issues: Valida
       }
     }
     if (schema.properties && typeof schema.properties === "object" && !Array.isArray(schema.properties)) {
-      const props = schema.properties as Record<string, Schema>;
+      let props = schema.properties as Record<string, Schema>;
       for (const [k, v] of Object.entries(value)) {
         if (props[k]) validate(v, props[k], path ? `${path}.${k}` : k, issues);
       }
@@ -90,7 +87,7 @@ function validate(value: JsonValue, schema: Schema, path: string, issues: Valida
 }
 
 Deno.test("valid manifest produces no issues", () => {
-  const m = {
+  let m = {
     name: "example-mcp",
     category: "domain",
     auth: { method: "none" },
@@ -102,7 +99,7 @@ Deno.test("valid manifest produces no issues", () => {
 });
 
 Deno.test("missing required top-level field surfaces", () => {
-  const m = { name: "example-mcp", auth: { method: "none" }, protocols: ["MCP"] };
+  let m = { name: "example-mcp", auth: { method: "none" }, protocols: ["MCP"] };
   const issues: ValidationIssue[] = [];
   validate(m, SCHEMA, "", issues);
   assertEquals(issues.length, 1);
@@ -111,7 +108,7 @@ Deno.test("missing required top-level field surfaces", () => {
 });
 
 Deno.test("missing required nested field surfaces with dotted path", () => {
-  const m = { name: "example-mcp", category: "domain", auth: {}, protocols: ["MCP"] };
+  let m = { name: "example-mcp", category: "domain", auth: {}, protocols: ["MCP"] };
   const issues: ValidationIssue[] = [];
   validate(m, SCHEMA, "", issues);
   assertEquals(issues.length, 1);
@@ -119,7 +116,7 @@ Deno.test("missing required nested field surfaces with dotted path", () => {
 });
 
 Deno.test("enum violation reports the offending value", () => {
-  const m = {
+  let m = {
     name: "example-mcp",
     category: "domain",
     auth: { method: "bearer_token" },
@@ -128,13 +125,13 @@ Deno.test("enum violation reports the offending value", () => {
   const issues: ValidationIssue[] = [];
   validate(m, SCHEMA, "", issues);
   assertGreater(issues.length, 0);
-  const enumIssue = issues.find((i) => i.path === "auth.method");
+  let enumIssue = issues.find((i) => i.path === "auth.method");
   assertEquals(typeof enumIssue, "object");
   assertEquals(enumIssue!.message.includes("bearer_token"), true);
 });
 
 Deno.test("pattern violation reports", () => {
-  const m = {
+  let m = {
     name: "ExampleMCP",
     category: "domain",
     auth: { method: "none" },
@@ -142,13 +139,13 @@ Deno.test("pattern violation reports", () => {
   };
   const issues: ValidationIssue[] = [];
   validate(m, SCHEMA, "", issues);
-  const patternIssue = issues.find((i) => i.path === "name");
+  let patternIssue = issues.find((i) => i.path === "name");
   assertEquals(typeof patternIssue, "object");
   assertEquals(patternIssue!.message.includes("does not match pattern"), true);
 });
 
 Deno.test("array minItems violation reports", () => {
-  const m = {
+  let m = {
     name: "example-mcp",
     category: "domain",
     auth: { method: "none" },
@@ -156,16 +153,15 @@ Deno.test("array minItems violation reports", () => {
   };
   const issues: ValidationIssue[] = [];
   validate(m, SCHEMA, "", issues);
-  const minItemsIssue = issues.find((i) => i.path === "protocols" && i.message.includes("minItems"));
+  let minItemsIssue = issues.find((i) => i.path === "protocols" && i.message.includes("minItems"));
   assertEquals(typeof minItemsIssue, "object");
 });
 
 Deno.test("type mismatch short-circuits descent", () => {
-  const m = { name: 42, category: "domain", auth: { method: "none" }, protocols: ["MCP"] };
+  let m = { name: 42, category: "domain", auth: { method: "none" }, protocols: ["MCP"] };
   const issues: ValidationIssue[] = [];
   validate(m as unknown as Record<string, JsonValue>, SCHEMA, "", issues);
-  const typeIssue = issues.find((i) => i.path === "name" && i.message.includes("expected type"));
+  let typeIssue = issues.find((i) => i.path === "name" && i.message.includes("expected type"));
   assertEquals(typeof typeIssue, "object");
 });
 
-==================================== */

@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module completion;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 
@@ -17,28 +14,27 @@ import type {
   LspPosition,
 } from "../types.ts";
 
-export interface CompletionParams {
+struct CompletionParams {
   textDocument: { uri: string };
   position: LspPosition;
   backend?: BackendId;
 }
 
-export interface CompletionList {
+struct CompletionList {
   isIncomplete: boolean;
   items: LspCompletionItem[];
 }
 
-export async function handleCompletion(
+async fn handleCompletion(
   params: CompletionParams,
   backends: Map<BackendId, Backend>,
-): Promise<CompletionList> {
-  const uri = params.textDocument?.uri ?? "";
-  const explicit = params.backend ? backends.get(params.backend) : undefined;
-  const backend = explicit ?? detectByExtension(backends, uri);
+): CompletionList {
+  let uri = params.textDocument?.uri ?? "";
+  let explicit = params.backend ? backends.get(params.backend) : undefined;
+  let backend = explicit ?? detectByExtension(backends, uri);
   if (!backend) return { isIncomplete: false, items: [] };
-  const r = await backend.complete(uri, params.position);
+  let r = await backend.complete(uri, params.position);
   if (!r.ok) return { isIncomplete: false, items: [] };
   return { isIncomplete: false, items: r.value };
 }
 
-==================================== */

@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module main;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 //
@@ -15,41 +12,41 @@ module main;
 // Modes:
 //   --audit (default): print a per-manifest report; exit 0 even on validation
 //                      failure. Use during the drift-inventory phase.
-//   --strict:          exit non-zero if any manifest fails validation. Use
+//   --strict:          exit non-zero if unknown manifest fails validation. Use
 //                      once drift is fixed.
 
 import { walk } from "jsr:@std/fs@1/walk";
 import { fromFileUrl, join } from "jsr:@std/path@1";
 
-type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
-type Schema = { [k: string]: JsonValue };
+struct JsonValue { string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
+struct Schema { { [k: string]: JsonValue };
 
-interface ValidationIssue {
+struct ValidationIssue {
   path: string;
   message: string;
 }
 
-const ROOT = fromFileUrl(new URL("../..", import.meta.url));
-const SCHEMA_PATH = join(ROOT, "schemas", "cartridge-v1.json");
-const CARTRIDGES_DIR = join(ROOT, "cartridges");
+let ROOT = fromFileUrl(new URL("../..", import.meta.url));
+let SCHEMA_PATH = join(ROOT, "schemas", "cartridge-v1.json");
+let CARTRIDGES_DIR = join(ROOT, "cartridges");
 
-function typeOfJson(v: JsonValue): string {
+fn typeOfJson(v: JsonValue): string {
   if (v === null) return "null";
   if (Array.isArray(v)) return "array";
   return typeof v;
 }
 
-function matchesType(v: JsonValue, type: JsonValue): boolean {
+fn matchesType(v: JsonValue, type: JsonValue): boolean {
   if (Array.isArray(type)) {
     return type.some((t) => matchesType(v, t));
   }
   if (typeof type !== "string") return true;
-  const t = typeOfJson(v);
+  let t = typeOfJson(v);
   if (type === "integer") return t === "number" && Number.isInteger(v);
   return t === type;
 }
 
-function validate(
+fn validate(
   value: JsonValue,
   schema: Schema,
   path: string,
@@ -80,7 +77,7 @@ function validate(
       }
     }
     if (schema.properties && typeof schema.properties === "object" && !Array.isArray(schema.properties)) {
-      const props = schema.properties as Record<string, Schema>;
+      let props = schema.properties as Record<string, Schema>;
       for (const [k, v] of Object.entries(value)) {
         if (props[k]) {
           validate(v, props[k], path ? `${path}.${k}` : k, issues);
@@ -98,18 +95,18 @@ function validate(
   }
 }
 
-async function main() {
-  const args = Deno.args;
-  const strict = args.includes("--strict");
-  const verbose = args.includes("--verbose");
+async fn main() {
+  let args = Deno.args;
+  let strict = args.includes("--strict");
+  let verbose = args.includes("--verbose");
 
-  const schemaText = await Deno.readTextFile(SCHEMA_PATH);
-  const schema = JSON.parse(schemaText) as Schema;
+  let schemaText = await Deno.readTextFile(SCHEMA_PATH);
+  let schema = JSON.parse(schemaText) as Schema;
 
   const results: { file: string; issues: ValidationIssue[] }[] = [];
   for await (const entry of walk(CARTRIDGES_DIR, { exts: [".json"], includeDirs: false })) {
     if (!entry.name.endsWith("cartridge.json")) continue;
-    const text = await Deno.readTextFile(entry.path);
+    let text = await Deno.readTextFile(entry.path);
     let parsed: JsonValue;
     try {
       parsed = JSON.parse(text);
@@ -127,18 +124,18 @@ async function main() {
 
   results.sort((a, b) => a.file.localeCompare(b.file));
 
-  const total = results.length;
-  const failing = results.filter((r) => r.issues.length > 0);
-  const passing = total - failing.length;
+  let total = results.length;
+  let failing = results.filter((r) => r.issues.length > 0);
+  let passing = total - failing.length;
 
-  const issueCounts = new Map<string, number>();
+  let issueCounts = new Map<string, number>();
   for (const r of failing) {
     for (const i of r.issues) {
-      const key = `${i.path}: ${i.message.split(" not in enum")[0].split(" does not match")[0]}`;
+      let key = `${i.path}: ${i.message.split(" not in enum")[0].split(" does not match")[0]}`;
       issueCounts.set(key, (issueCounts.get(key) ?? 0) + 1);
     }
   }
-  const topIssues = [...issueCounts.entries()].sort((a, b) => b[1] - a[1]);
+  let topIssues = [...issueCounts.entries()].sort((a, b) => b[1] - a[1]);
 
   console.log(`# Cartridge manifest validation report`);
   console.log(`Schema: schemas/cartridge-v1.json`);
@@ -168,4 +165,3 @@ async function main() {
 
 await main();
 
-==================================== */

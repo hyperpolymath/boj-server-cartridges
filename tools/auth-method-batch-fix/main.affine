@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module main;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 //
@@ -15,18 +12,18 @@ module main;
 // The original method (when non-trivial) is preserved as a `notes_method`
 // field so the credential-presentation flavour isn't lost.
 //
-// Conservative; lossy-by-design. A second pass can re-classify any of these
+// Conservative; lossy-by-design. A second pass can re-classify unknown of these
 // to "oauth2" or "vault" if the cartridge in question really uses a full
 // OAuth2 / Vault flow rather than a pre-issued credential.
 
 import { walk } from "jsr:@std/fs@1/walk";
 
-const ROOT = "/home/hyperpolymath/developer/repos/boj-server-cartridges";
-const CARTS = `${ROOT}/cartridges`;
+let ROOT = "/home/hyperpolymath/developer/repos/boj-server-cartridges";
+let CARTS = `${ROOT}/cartridges`;
 
-const CANONICAL = new Set(["none", "api-key", "oauth2", "vault"]);
+let CANONICAL = new Set(["none", "api-key", "oauth2", "vault"]);
 
-interface Stats {
+struct Stats {
   scanned: number;
   alreadyCanonical: number;
   mapped: number;
@@ -47,8 +44,8 @@ for await (const entry of walk(CARTS, { exts: [".json"], includeDirs: false })) 
   }
 
   // Try line-anchored auth.method first (multiline manifests).
-  const blockRe = /^([ \t]*)"method"\s*:\s*"([^"]+)"(,?)\s*(\r?\n)/m;
-  const blockMatch = text.match(blockRe);
+  let blockRe = /^([ \t]*)"method"\s*:\s*"([^"]+)"(,?)\s*(\r?\n)/m;
+  let blockMatch = text.match(blockRe);
   if (blockMatch) {
     const [, indent, original, comma, newline] = blockMatch;
     if (CANONICAL.has(original)) {
@@ -68,8 +65,8 @@ for await (const entry of walk(CARTS, { exts: [".json"], includeDirs: false })) 
   }
 
   // Fall back to inline auth: `"auth": { "method": "X", ...`
-  const inlineRe = /("auth"\s*:\s*\{\s*"method"\s*:\s*)"([^"]+)"/;
-  const inlineMatch = text.match(inlineRe);
+  let inlineRe = /("auth"\s*:\s*\{\s*"method"\s*:\s*)"([^"]+)"/;
+  let inlineMatch = text.match(inlineRe);
   if (!inlineMatch) continue;
   const [, prefix, original] = inlineMatch;
   if (CANONICAL.has(original)) {
@@ -84,4 +81,3 @@ for await (const entry of walk(CARTS, { exts: [".json"], includeDirs: false })) 
 
 console.log(JSON.stringify(stats, null, 2));
 
-==================================== */

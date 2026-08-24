@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module server;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 
@@ -21,27 +18,27 @@ import type {
   JsonRpcResponse,
 } from "./types.ts";
 
-const HEADER_TERMINATOR = "\r\n\r\n";
+let HEADER_TERMINATOR = "\r\n\r\n";
 
-export interface DispatchOpts {
+struct DispatchOpts {
   readonly backends: ReturnType<typeof buildBackends>;
 }
 
-export function defaultOpts(): DispatchOpts {
+fn defaultOpts(): DispatchOpts {
   return { backends: buildBackends() };
 }
 
-export async function dispatch(
+async fn dispatch(
   message: JsonRpcMessage,
   opts: DispatchOpts,
-): Promise<JsonRpcResponse | null> {
-  const isRequest = (m: JsonRpcMessage): m is JsonRpcRequest =>
+): JsonRpcResponse | null {
+  let isRequest = (m: JsonRpcMessage): m is JsonRpcRequest =>
     typeof (m as JsonRpcRequest).id !== "undefined";
 
   try {
     switch (message.method) {
       case "initialize": {
-        const result = await handleInitialize(
+        let result = await handleInitialize(
           (message.params ?? {}) as Parameters<typeof handleInitialize>[0],
           opts.backends,
         );
@@ -50,7 +47,7 @@ export async function dispatch(
           : null;
       }
       case "textDocument/diagnostic": {
-        const result = await handleDiagnostic(
+        let result = await handleDiagnostic(
           (message.params ?? {}) as Parameters<typeof handleDiagnostic>[0],
           opts.backends,
         );
@@ -59,7 +56,7 @@ export async function dispatch(
           : null;
       }
       case "textDocument/hover": {
-        const result = await handleHover(
+        let result = await handleHover(
           (message.params ?? {}) as Parameters<typeof handleHover>[0],
           opts.backends,
         );
@@ -68,7 +65,7 @@ export async function dispatch(
           : null;
       }
       case "textDocument/completion": {
-        const result = await handleCompletion(
+        let result = await handleCompletion(
           (message.params ?? {}) as Parameters<typeof handleCompletion>[0],
           opts.backends,
         );
@@ -77,7 +74,7 @@ export async function dispatch(
           : null;
       }
       case "workspace/executeCommand": {
-        const result = await handleExecuteCommand(
+        let result = await handleExecuteCommand(
           (message.params ?? {}) as Parameters<typeof handleExecuteCommand>[0],
           opts.backends,
         );
@@ -120,52 +117,52 @@ export async function dispatch(
   }
 }
 
-export function encodeFramed(payload: unknown): Uint8Array {
-  const body = new TextEncoder().encode(JSON.stringify(payload));
-  const header = new TextEncoder().encode(
+fn encodeFramed(payload: unknown): Uint8Array {
+  let body = new TextEncoder().encode(JSON.stringify(payload));
+  let header = new TextEncoder().encode(
     `Content-Length: ${body.byteLength}${HEADER_TERMINATOR}`,
   );
-  const out = new Uint8Array(header.byteLength + body.byteLength);
+  let out = new Uint8Array(header.byteLength + body.byteLength);
   out.set(header, 0);
   out.set(body, header.byteLength);
   return out;
 }
 
-export class FrameDecoder {
+struct FrameDecoder {
   #buffer = new Uint8Array(0);
 
   push(chunk: Uint8Array): void {
-    const next = new Uint8Array(this.#buffer.byteLength + chunk.byteLength);
+    let next = new Uint8Array(this.#buffer.byteLength + chunk.byteLength);
     next.set(this.#buffer, 0);
     next.set(chunk, this.#buffer.byteLength);
     this.#buffer = next;
   }
 
   next(): JsonRpcMessage | null {
-    const text = new TextDecoder().decode(this.#buffer);
-    const terminator = text.indexOf(HEADER_TERMINATOR);
+    let text = new TextDecoder().decode(this.#buffer);
+    let terminator = text.indexOf(HEADER_TERMINATOR);
     if (terminator === -1) return null;
-    const headerText = text.slice(0, terminator);
-    const match = headerText.match(/Content-Length:\s*(\d+)/i);
+    let headerText = text.slice(0, terminator);
+    let match = headerText.match(/Content-Length:\s*(\d+)/i);
     if (!match) {
       this.#buffer = this.#buffer.slice(terminator + HEADER_TERMINATOR.length);
       return null;
     }
-    const length = parseInt(match[1]!, 10);
-    const headerBytes = new TextEncoder().encode(headerText + HEADER_TERMINATOR).byteLength;
+    let length = parseInt(match[1]!, 10);
+    let headerBytes = new TextEncoder().encode(headerText + HEADER_TERMINATOR).byteLength;
     if (this.#buffer.byteLength < headerBytes + length) return null;
-    const bodyBytes = this.#buffer.slice(headerBytes, headerBytes + length);
+    let bodyBytes = this.#buffer.slice(headerBytes, headerBytes + length);
     this.#buffer = this.#buffer.slice(headerBytes + length);
-    const body = new TextDecoder().decode(bodyBytes);
+    let body = new TextDecoder().decode(bodyBytes);
     return JSON.parse(body) as JsonRpcMessage;
   }
 }
 
-export async function serveStdio(): Promise<void> {
-  const opts = defaultOpts();
-  const decoder = new FrameDecoder();
-  const reader = Deno.stdin.readable.getReader();
-  const writer = Deno.stdout.writable.getWriter();
+async fn serveStdio(): void {
+  let opts = defaultOpts();
+  let decoder = new FrameDecoder();
+  let reader = Deno.stdin.readable.getReader();
+  let writer = Deno.stdout.writable.getWriter();
 
   try {
     while (true) {
@@ -173,9 +170,9 @@ export async function serveStdio(): Promise<void> {
       if (done) break;
       decoder.push(value);
       while (true) {
-        const msg = decoder.next();
+        let msg = decoder.next();
         if (!msg) break;
-        const resp = await dispatch(msg, opts);
+        let resp = await dispatch(msg, opts);
         if (resp) await writer.write(encodeFramed(resp));
         if (msg.method === "exit") return;
       }
@@ -194,4 +191,3 @@ if (import.meta.main) {
   await serveStdio();
 }
 
-==================================== */

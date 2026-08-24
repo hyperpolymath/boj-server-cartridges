@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module mod;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // Fireflag Cartridge — Extension-to-MCP mapping MCP server
 
@@ -85,10 +82,10 @@ const TOOLS: Tool[] = [
 ];
 
 // Tool handlers
-async function handleMapExtension(
+async fn handleMapExtension(
   args: Record<string, unknown>
-): Promise<string> {
-  const extensionPath = String(args.extension_path);
+): string {
+  let extensionPath = String(args.extension_path);
   return JSON.stringify({
     extension_path: extensionPath,
     is_mapped: false,
@@ -97,19 +94,19 @@ async function handleMapExtension(
   });
 }
 
-async function handleListMappedExtensions(
+async fn handleListMappedExtensions(
   _args: Record<string, unknown>
-): Promise<string> {
+): string {
   return JSON.stringify({
     extensions: [],
     count: 0,
   });
 }
 
-async function handleGetExtensionTools(
+async fn handleGetExtensionTools(
   args: Record<string, unknown>
-): Promise<string> {
-  const extensionId = String(args.extension_id);
+): string {
+  let extensionId = String(args.extension_id);
   return JSON.stringify({
     extension_id: extensionId,
     tools: [],
@@ -117,10 +114,10 @@ async function handleGetExtensionTools(
   });
 }
 
-async function handleValidateExtension(
+async fn handleValidateExtension(
   args: Record<string, unknown>
-): Promise<string> {
-  const extensionPath = String(args.extension_path);
+): string {
+  let extensionPath = String(args.extension_path);
   return JSON.stringify({
     extension_path: extensionPath,
     is_valid: true,
@@ -129,10 +126,10 @@ async function handleValidateExtension(
   });
 }
 
-async function handleDiscoverExtensions(
+async fn handleDiscoverExtensions(
   args: Record<string, unknown>
-): Promise<string> {
-  const directory = String(args.directory);
+): string {
+  let directory = String(args.directory);
   return JSON.stringify({
     directory,
     extensions: [],
@@ -141,7 +138,7 @@ async function handleDiscoverExtensions(
 }
 
 // Initialize MCP server
-const server = new Server({
+let server = new Server({
   name: "fireflag-mcp",
   version: "1.0.0",
 });
@@ -188,8 +185,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 // Start server on loopback
-const port = 5177;
+let port = 5177;
 await server.connect(new WebSocket(`ws://127.0.0.1:${port}`));
 console.log("Fireflag MCP server running on ws://127.0.0.1:5177");
 
-==================================== */

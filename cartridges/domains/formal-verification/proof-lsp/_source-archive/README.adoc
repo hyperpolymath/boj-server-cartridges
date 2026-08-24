@@ -1,0 +1,178 @@
+== poly-proof-lsp
+
+____
+Production-ready Language Server Protocol implementation for proof
+assistants
+____
+
+https://github.com/hyperpolymath/poly-proof-lsp[image:https://img.shields.io/badge/status-production--ready-brightgreen.svg[Production
+Ready]]
+https://github.com/hyperpolymath/poly-proof-lsp/releases[image:https://img.shields.io/badge/version-1.0.0-blue.svg[Version:
+1.0.0]]
+https://www.mozilla.org/en-US/MPL/2.0/[image:https://img.shields.io/badge/License-MPL--2.0-brightgreen.svg[License:
+MPL-2.0]]
+https://elixir-lang.org/[image:https://img.shields.io/badge/elixir-1.17+-purple.svg[Elixir
+1.17+]]
+
+=== Overview
+
+*poly-proof-lsp* provides IDE integration for formal verification tools
+including Coq, Lean, Isabelle, and Agda. Built with Elixir’s BEAM VM,
+each proof assistant adapter runs as an isolated process with automatic
+fault recovery.
+
+=== Features
+
+* 🔍 *Auto-detection*: Detects proof assistant from project files
+* ✅ *Proof checking*: Real-time validation with coqc, lean, isabelle,
+agda
+* 🎯 *Goal display*: Show current proof goals and hypotheses
+* ✨ *Tactic completion*: Auto-complete tactics and proof commands
+* 📚 *Theorem search*: Search standard libraries for relevant theorems
+* 📖 *Hover docs*: Display proof state and type information
+* ⚡ *Commands*: Check proofs, show goals, apply tactics directly from
+editor
+* 🛡️ *Fault isolation*: Crash in one adapter doesn’t affect others
+
+=== Supported Proof Assistants
+
+[width="99%",cols="29%,28%,30%,13%",options="header",]
+|===
+|Proof Assistant |File Extensions |Interactive Mode |Status
+|*Coq* |`+.v+` |coqtop |✅ Production
+
+|*Lean* |`+.lean+` |lean –server |✅ Production
+
+|*Isabelle* |`+.thy+` |PIDE |✅ Production
+
+|*Agda* |`+.agda+`, `+.lagda+`, `+.lagda.md+` |agda –interaction |✅
+Production
+|===
+
+=== Installation
+
+[source,bash]
+----
+git clone https://github.com/hyperpolymath/poly-proof-lsp
+cd poly-proof-lsp
+mix deps.get
+mix compile
+----
+
+=== Usage
+
+==== Standalone
+
+[source,bash]
+----
+mix run --no-halt
+----
+
+==== With VSCode
+
+[arabic]
+. Install the extension:
++
+[source,bash]
+----
+cd vscode-extension
+npm install
+npm run package
+code --install-extension *.vsix
+----
+. Configure in `+settings.json+`:
++
+[source,json]
+----
+{
+  "polyProof.enable": true,
+  "polyProof.serverPath": "/path/to/poly-proof-lsp"
+}
+----
+
+See USAGE.md for detailed configuration options.
+
+==== With Neovim
+
+[source,lua]
+----
+require('lspconfig').poly_proof_lsp.setup{
+  cmd = {'/path/to/poly-proof-lsp/bin/poly-proof-lsp'},
+  filetypes = {'coq', 'lean', 'isabelle', 'agda'},
+}
+----
+
+=== Development
+
+[source,bash]
+----
+# Setup
+just setup
+
+# Run tests
+just test
+
+# Check code quality
+just quality
+
+# Format code
+just format
+
+# Generate docs
+just docs
+----
+
+=== Architecture
+
+Each proof assistant runs as an isolated GenServer under a supervision
+tree:
+
+....
+PolyProof.LSP.Supervisor
+├── PolyProof.Adapters.Supervisor
+│   ├── PolyProof.Adapters.Coq (GenServer)
+│   ├── PolyProof.Adapters.Lean (GenServer)
+│   ├── PolyProof.Adapters.Isabelle (GenServer)
+│   └── PolyProof.Adapters.Agda (GenServer)
+└── PolyProof.LSP.Server
+....
+
+Crashes in one adapter automatically restart without affecting others.
+Multiple proofs can be checked concurrently.
+
+=== Troubleshooting
+
+==== Server Not Starting
+
+* Check Elixir/OTP versions: `+elixir --version+`
+* Verify dependencies: `+mix deps.get+`
+* Check logs: `+tail -f log/poly_proof.log+`
+
+==== LSP Not Connecting
+
+* Verify server is running: `+ps aux | grep poly_proof+`
+* Check LSP client logs in your editor
+* Ensure correct file types are configured
+
+==== Performance Issues
+
+* Monitor with Observer: `+iex -S mix+`, then `+:observer.start()+`
+* Check adapter health via `+health_check+` command
+* Review adapter-specific logs
+
+See USAGE.md for more detailed troubleshooting steps.
+
+=== Related Projects
+
+* https://github.com/hyperpolymath/poly-ssg-lsp[poly-ssg-lsp] - LSP for
+static site generators
+* https://github.com/hyperpolymath/poly-observability-lsp[poly-observability-lsp]
+- LSP for observability tools
+
+=== License
+
+MPL-2.0
+
+=== Author
+
+Jonathan D.A. Jewell j.d.a.jewell@open.ac.uk

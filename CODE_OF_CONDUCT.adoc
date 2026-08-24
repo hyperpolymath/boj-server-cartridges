@@ -1,0 +1,28 @@
+== Code of Conduct
+
+`+boj-server-cartridges+` adopts the
+https://www.contributor-covenant.org/version/2/1/code_of_conduct/[Contributor
+Covenant 2.1] verbatim as its code of conduct.
+
+=== Scope
+
+Applies to all project spaces: this repository, the
+https://github.com/hyperpolymath/boj-server-cartridges/wiki[wiki], issue
+trackers, pull-request discussions, and any cross-repo coordination
+touching `+boj-server-cartridges+` (notably the downstream consumer
+relationship with
+https://github.com/hyperpolymath/boj-server[hyperpolymath/boj-server]).
+
+=== Reporting
+
+Report violations to `+j.d.a.jewell@open.ac.uk+`. Reports are
+confidential by default. Use the same address as SECURITY.md;
+subject-line tag `+[conduct]+` (not `+[security]+`) so the intake routes
+correctly.
+
+=== Enforcement
+
+Per the Contributor Covenant 2.1 enforcement guidelines, four-level
+ladder (Correction → Warning → Temporary Ban → Permanent Ban). The
+Contributor Covenant text is canonical; this file does not paraphrase or
+override it.

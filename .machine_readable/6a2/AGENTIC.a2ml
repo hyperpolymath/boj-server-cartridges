@@ -42,7 +42,12 @@ can-create-files = true
 # - Never hand-edit a vendored cartridge_shim.zig. It is copied from
 #   cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig; change the
 #   template and resync.
-# - Never use AGPL. This repo is MPL-2.0 (docs are CC-BY-SA-4.0).
+# - Never relicense an existing file, and never run an automated licence
+#   sweep (LICENCE-POLICY.adoc A2). New files get correct SPDX from birth.
+# - Never assume a licence. Read standards/LICENCE-POLICY.adoc: Rule 1
+#   defaults to MPL-2.0 (code) / CC-BY-SA-4.0 (prose), but Rule 3
+#   (co-developed), Rule 4 (network-deployed services) and Rule 5
+#   (games) are AGPL-3.0-or-later, and Rule 2 names the PMPL register.
 
 [language-policy]
 # The estate rule is "no NEW TypeScript or AffineScript". This repository holds

@@ -3,12 +3,6 @@
 # Docs: https://gh.io/actions-lockfile
 version: 'v0.0.2'
 workflows:
-    '.github/workflows/governance.yml': []
-    '.github/workflows/label-triage.yml': []
-    '.github/workflows/labels.yml': []
-    '.github/workflows/mirror.yml': []
-    '.github/workflows/scorecard.yml': []
-    '.github/workflows/secret-scanner.yml': []
     '.github/workflows/build.yml':
         - 'actions/checkout@v7.0.1'
         - 'sonarsource/sonarqube-scan-action@v8.2.1'
@@ -20,12 +14,16 @@ workflows:
         - 'github/codeql-action@v4.37.8'
     '.github/workflows/foundry.yml':
         - 'actions/checkout@v7.0.1'
+    '.github/workflows/governance.yml': []
     '.github/workflows/hypatia-scan.yml':
         - 'actions/checkout@v7.0.1'
         - 'actions/github-script@v9.0.0'
         - 'actions/upload-artifact@v7.0.1'
         - 'erlef/setup-beam@v1.24.1'
         - 'github/codeql-action@v4.37.8'
+    '.github/workflows/label-triage.yml': []
+    '.github/workflows/labels.yml': []
+    '.github/workflows/mirror.yml': []
     '.github/workflows/pages-deploy.yml':
         - 'actions/checkout@v7.0.1'
     '.github/workflows/pages.yml':
@@ -36,7 +34,9 @@ workflows:
         - 'actions/cache@v6.1.0'
         - 'actions/checkout@v7.0.1'
     '.github/workflows/push-email-notify.yml':
-        - 'dawidd6/action-send-mail@v3.12.0'
+        - 'hyperpolymath/smtp-notify-action@v0.1.0'
+    '.github/workflows/scorecard.yml': []
+    '.github/workflows/secret-scanner.yml': []
     '.github/workflows/zig-test.yml':
         - 'actions/checkout@v7.0.1'
         - 'mlugg/setup-zig@v2.2.1'
@@ -78,11 +78,6 @@ dependencies:
         repo_id: 496012378
         uses:
             - 'actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f'
-    'dawidd6/action-send-mail@v3.12.0':
-        ref: 'v3.12.0'
-        commit: 'sha1-94de994a9f6fffee200243214e17002e2920bb59'
-        owner_id: 9713907
-        repo_id: 222439721
     'denoland/setup-deno@v2.0.5':
         ref: 'v2.0.5'
         commit: 'sha1-22d081ff2d3a40755e97629de92e3bcbfa7cf2ed'
@@ -98,6 +93,11 @@ dependencies:
         commit: 'sha1-db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28'
         owner_id: 9919
         repo_id: 259445878
+    'hyperpolymath/smtp-notify-action@v0.1.0':
+        ref: 'v0.1.0'
+        commit: 'sha1-1b3b752d39a4fe4c0f28f10905e4608789d3e050'
+        owner_id: 6759885
+        repo_id: 1352485172
     'mlugg/setup-zig@v2.2.1':
         ref: 'v2.2.1'
         commit: 'sha1-d1434d08867e3ee9daa34448df10607b98908d29'

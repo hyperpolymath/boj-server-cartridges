@@ -34,7 +34,7 @@ workflows:
         - 'actions/cache@v6.1.0'
         - 'actions/checkout@v7.0.1'
     '.github/workflows/push-email-notify.yml':
-        - 'hyperpolymath/smtp-notify-action@v0.1.0'
+        - 'hyperpolymath/smtp-notify-action@v0.2.0'
     '.github/workflows/scorecard.yml': []
     '.github/workflows/secret-scanner.yml': []
     '.github/workflows/zig-test.yml':
@@ -93,9 +93,9 @@ dependencies:
         commit: 'sha1-db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28'
         owner_id: 9919
         repo_id: 259445878
-    'hyperpolymath/smtp-notify-action@v0.1.0':
-        ref: 'v0.1.0'
-        commit: 'sha1-1b3b752d39a4fe4c0f28f10905e4608789d3e050'
+    'hyperpolymath/smtp-notify-action@v0.2.0':
+        ref: 'v0.2.0'
+        commit: 'sha1-ede1191ef6ff3ac02c4f4d9efdf837ee517e11d7'
         owner_id: 6759885
         repo_id: 1352485172
     'mlugg/setup-zig@v2.2.1':

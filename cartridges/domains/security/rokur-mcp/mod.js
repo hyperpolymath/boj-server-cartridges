@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7740 (override with ROKUR_BACKEND_URL).
 
-const BASE_URL = Deno.env.get("ROKUR_BACKEND_URL") ?? "http://127.0.0.1:7740";
+const BASE_URL = process.env["ROKUR_BACKEND_URL"] ?? "http://127.0.0.1:7740";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

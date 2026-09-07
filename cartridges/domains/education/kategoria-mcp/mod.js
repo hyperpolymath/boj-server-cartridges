@@ -3,7 +3,7 @@
 //
 // kategoria-mcp/mod.js -- kategoria gateway
 
-const BASE_URL = Deno.env.get("KATEGORIA_BACKEND_URL") ?? "http://127.0.0.1:7709";
+const BASE_URL = process.env["KATEGORIA_BACKEND_URL"] ?? "http://127.0.0.1:7709";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

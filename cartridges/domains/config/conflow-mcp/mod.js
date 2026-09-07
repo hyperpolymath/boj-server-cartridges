@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7718 (override with CONFLOW_BACKEND_URL).
 
-const BASE_URL = Deno.env.get("CONFLOW_BACKEND_URL") ?? "http://127.0.0.1:7718";
+const BASE_URL = process.env["CONFLOW_BACKEND_URL"] ?? "http://127.0.0.1:7718";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

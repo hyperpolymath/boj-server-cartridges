@@ -6,7 +6,7 @@
 // Delegates to backend at http://127.0.0.1:7750 (override with LOCAL_MEMORY_URL).
 // No auth required. All data stays local — no cloud, no API keys.
 
-const BASE_URL = Deno.env.get("LOCAL_MEMORY_URL") ?? "http://127.0.0.1:7750";
+const BASE_URL = process.env["LOCAL_MEMORY_URL"] ?? "http://127.0.0.1:7750";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

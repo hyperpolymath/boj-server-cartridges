@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7720 (override with DNS_SHIELD_URL).
 
-const BASE_URL = Deno.env.get("DNS_SHIELD_URL") ?? "http://127.0.0.1:7720";
+const BASE_URL = process.env["DNS_SHIELD_URL"] ?? "http://127.0.0.1:7720";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

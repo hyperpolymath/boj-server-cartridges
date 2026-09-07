@@ -38,24 +38,8 @@ export const cartridge = {
  * Tool invocation handler
  * Routes MCP tool calls to the appropriate handler via the Deno adapter
  */
-async function invokeTool(toolId, args) {
-  try {
-    // In BoJ context, this would call the actual Zig FFI
-    // For now, returns a stub response
-    return {
-      success: true,
-      tool: toolId,
-      arguments: args,
-      results: {
-        message: `DNS lookup tool ${toolId} called`,
-      },
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message,
-    };
-  }
+async function invokeTool() {
+  return {success: false, error: "JavaScript DNS adapter not implemented"};
 }
 
 /**
@@ -63,7 +47,7 @@ async function invokeTool(toolId, args) {
  */
 export async function health() {
   return {
-    status: "healthy",
+    status: "unavailable",
     cartridge: "hesiod-mcp",
     loopback: "127.0.0.1:5173",
     tools: cartridge.tools.length,
@@ -76,7 +60,7 @@ export async function health() {
 export async function init() {
   console.log(`[hesiod-mcp] Initializing DNS lookup cartridge`);
   // Would load Zig FFI, validate loopback proof, etc.
-  return { initialized: true };
+  return { initialized: false, error: "JavaScript adapter not implemented" };
 }
 
 /**
@@ -85,4 +69,9 @@ export async function init() {
 export async function cleanup() {
   console.log(`[hesiod-mcp] Shutting down`);
   return { cleaned: true };
+}
+
+// Explicit refusal: this legacy JS surface has no implemented tool transport.
+export async function handleTool() {
+  return {status: 501, data: {success: false, error: "JavaScript adapter not implemented"}};
 }

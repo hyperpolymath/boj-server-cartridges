@@ -32,8 +32,8 @@ const API_BASE = "https://hackage.haskell.org";
 // ---------------------------------------------------------------------------
 
 function getCredentials() {
-  const creds = typeof Deno !== "undefined"
-    ? Deno.env.get("HACKAGE_CREDENTIALS")
+  const creds = typeof process !== "undefined"
+    ? process.env["HACKAGE_CREDENTIALS"]
     : process.env.HACKAGE_CREDENTIALS;
   return creds || null;
 }

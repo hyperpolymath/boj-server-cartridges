@@ -32,3 +32,7 @@
 
 # Deno per-adapter lockfiles (regenerated on demand)
 **/deno.lock
+
+# ReScript panel compiler outputs
+cartridges/**/panels/lib/
+cartridges/**/panels/.merlin

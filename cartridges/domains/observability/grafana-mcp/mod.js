@@ -22,8 +22,8 @@
 // ---------------------------------------------------------------------------
 
 function getBaseUrl() {
-  const url = typeof Deno !== "undefined"
-    ? Deno.env.get("GRAFANA_BASE_URL")
+  const url = typeof process !== "undefined"
+    ? process.env["GRAFANA_BASE_URL"]
     : process.env.GRAFANA_BASE_URL;
   return url || "http://localhost:3000/api";
 }
@@ -34,8 +34,8 @@ function getBaseUrl() {
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("GRAFANA_API_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["GRAFANA_API_TOKEN"]
     : process.env.GRAFANA_API_TOKEN;
   return token || null;
 }

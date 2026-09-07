@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7727 (override with GITLAB_API_URL).
 
-const BASE_URL = Deno.env.get("GITLAB_API_URL") ?? "http://127.0.0.1:7727";
+const BASE_URL = process.env["GITLAB_API_URL"] ?? "http://127.0.0.1:7727";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

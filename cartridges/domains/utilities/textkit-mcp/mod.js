@@ -3,7 +3,7 @@
 //
 // gossamer-mcp/mod.js -- gossamer gateway
 
-const BASE_URL = Deno.env.get("GOSSAMER_BACKEND_URL") ?? "http://127.0.0.1:7703";
+const BASE_URL = process.env["GOSSAMER_BACKEND_URL"] ?? "http://127.0.0.1:7703";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

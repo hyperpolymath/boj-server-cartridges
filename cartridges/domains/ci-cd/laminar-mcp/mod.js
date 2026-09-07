@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7731 (override with LAMINAR_BACKEND_URL).
 
-const BASE_URL = Deno.env.get("LAMINAR_BACKEND_URL") ?? "http://127.0.0.1:7731";
+const BASE_URL = process.env["LAMINAR_BACKEND_URL"] ?? "http://127.0.0.1:7731";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

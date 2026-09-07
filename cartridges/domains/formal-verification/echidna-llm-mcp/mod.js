@@ -78,7 +78,7 @@ function resolveModel(hint) {
  * @returns {{ status: number, data: object }}
  */
 async function anthropicPost(path, body) {
-  const apiKey = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+  const apiKey = process.env["ANTHROPIC_API_KEY"] ?? "";
   if (!apiKey) {
     return { status: 401, data: { error: "ANTHROPIC_API_KEY not set — configure via vault-mcp or env" } };
   }

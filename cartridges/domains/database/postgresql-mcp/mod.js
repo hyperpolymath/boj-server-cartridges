@@ -3,7 +3,7 @@
 //
 // postgresql-mcp/mod.js -- postgresql gateway.
 
-const BASE_URL = Deno.env.get("POSTGRESQL_MCP_BACKEND_URL") ?? "http://127.0.0.1:7719";
+const BASE_URL = process.env["POSTGRESQL_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7719";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

@@ -35,8 +35,8 @@ const MAX_PAGE = 250;
 // ---------------------------------------------------------------------------
 
 function getKey() {
-  const key = typeof Deno !== "undefined"
-    ? Deno.env.get("LINEAR_API_KEY")
+  const key = typeof process !== "undefined"
+    ? process.env["LINEAR_API_KEY"]
     : globalThis.process?.env?.LINEAR_API_KEY;
   return key || null;
 }

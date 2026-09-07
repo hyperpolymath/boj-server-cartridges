@@ -29,8 +29,8 @@ const SYNC_API_BASE = "https://api.todoist.com/sync/v9";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("TODOIST_API_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["TODOIST_API_TOKEN"]
     : process.env.TODOIST_API_TOKEN;
   return token || null;
 }

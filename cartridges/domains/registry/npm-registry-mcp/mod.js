@@ -30,8 +30,8 @@ const DOWNLOADS_BASE = "https://api.npmjs.org/downloads";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("NPM_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["NPM_TOKEN"]
     : process.env.NPM_TOKEN;
   return token || null;
 }

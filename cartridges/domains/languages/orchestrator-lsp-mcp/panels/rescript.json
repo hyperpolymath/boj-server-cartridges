@@ -1,0 +1,12 @@
+{
+  "name": "boj-orchestrator-panel",
+  "sources": [
+    "src"
+  ],
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": false
+  },
+  "suffix": ".js",
+  "uncurried": false
+}

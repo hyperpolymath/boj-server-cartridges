@@ -1,6 +1,6 @@
 {
   "schema": "boj-site-catalog/v1",
-  "generated": "2026-08-07",
+  "generated": "2026-09-07",
   "registry": "https://github.com/hyperpolymath/boj-server-cartridges",
   "cartridges": [
     {
@@ -1067,7 +1067,7 @@
       ],
       "auth": "none",
       "toolCount": 3,
-      "available": true,
+      "available": false,
       "group": "domains",
       "bucket": "infrastructure",
       "path": "cartridges/domains/infrastructure/hesiod-mcp"
@@ -1289,7 +1289,7 @@
     {
       "name": "lang-mcp",
       "version": "0.1.0",
-      "description": "Multi-language session manager for the nextgen-languages family: Eclexia, AffineScript, BetLang, Ephapax, MyLang, WokeLang, Anvomidav, Phronesis, Error-lang, Julia-the-Viper, Me-dialect, Oblibeny. Tracks per-language sessions, delegates type-checking and evaluation to each language's CLI tool, and provides a unified interface across all dialects.",
+      "description": "Language session state machine and declared language catalogue. Native sessions are process-local; compiler/LSP operations and installation probing are not wired through the standard native invoke ABI. Requires an owned persistent backend before server qualification.",
       "tier": "Ayo",
       "domain": "Languages",
       "category": "domain",
@@ -1299,7 +1299,7 @@
       ],
       "auth": "none",
       "toolCount": 9,
-      "available": true,
+      "available": false,
       "group": "domains",
       "bucket": "languages",
       "path": "cartridges/domains/languages/lang-mcp"
@@ -1453,7 +1453,7 @@
     {
       "name": "model-router-mcp",
       "version": "0.1.0",
-      "description": "Intelligent model router for Claude Code. Classifies tasks and recommends opus/sonnet/haiku, plans delegation from a higher tier to a cheaper executor, reviews delegated output, and estimates relative token cost savings.",
+      "description": "Deterministic keyword heuristic for task classification and model-tier suggestions, with experimental delegation and cost helpers. No claim of optimal routing, measured model performance or current provider pricing.",
       "tier": "Ayo",
       "domain": "AI",
       "category": "cross-cutting",

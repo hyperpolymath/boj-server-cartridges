@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7728 (override with GIT_BACKEND_URL).
 
-const BASE_URL = Deno.env.get("GIT_BACKEND_URL") ?? "http://127.0.0.1:7728";
+const BASE_URL = process.env["GIT_BACKEND_URL"] ?? "http://127.0.0.1:7728";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

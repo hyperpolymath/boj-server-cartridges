@@ -33,8 +33,8 @@ const API_BASE = "https://127.0.0.1:27124";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("OBSIDIAN_REST_API_KEY")
+  const token = typeof process !== "undefined"
+    ? process.env["OBSIDIAN_REST_API_KEY"]
     : process.env.OBSIDIAN_REST_API_KEY;
   return token || null;
 }

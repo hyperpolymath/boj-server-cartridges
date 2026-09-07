@@ -3,7 +3,7 @@
 //
 // turso-mcp/mod.js -- turso gateway.
 
-const BASE_URL = Deno.env.get("TURSO_MCP_BACKEND_URL") ?? "http://127.0.0.1:7726";
+const BASE_URL = process.env["TURSO_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7726";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

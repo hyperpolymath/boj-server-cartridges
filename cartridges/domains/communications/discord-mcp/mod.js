@@ -3,7 +3,7 @@
 //
 // discord-mcp/mod.js -- discord gateway.
 
-const BASE_URL = Deno.env.get("DISCORD_MCP_BACKEND_URL") ?? "http://127.0.0.1:7729";
+const BASE_URL = process.env["DISCORD_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7729";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

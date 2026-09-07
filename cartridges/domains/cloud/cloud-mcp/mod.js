@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7715 (override with CLOUD_BACKEND_URL).
 
-const BASE_URL = Deno.env.get("CLOUD_BACKEND_URL") ?? "http://127.0.0.1:7715";
+const BASE_URL = process.env["CLOUD_BACKEND_URL"] ?? "http://127.0.0.1:7715";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

@@ -36,9 +36,11 @@ defmodule OrchestratorLspMcp.LSP.Handlers.Hover do
         # Support both MarkupContent (%{"contents" => %{"value" => ...}})
         # and plain string contents (%{"contents" => "..."}).
         body =
-          get_in(r, ["contents", "value"]) ||
-            get_in(r, ["contents"]) ||
-            ""
+          case Map.get(r, "contents") do
+            %{"value" => value} when is_binary(value) -> value
+            value when is_binary(value) -> value
+            _ -> ""
+          end
 
         "### #{domain}\n\n#{body}"
       end)

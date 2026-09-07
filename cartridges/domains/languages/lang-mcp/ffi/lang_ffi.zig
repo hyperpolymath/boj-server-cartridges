@@ -174,7 +174,7 @@ pub export fn lang_session_state(sess_idx: c_int) c_int {
 
     if (sess_idx < 0 or sess_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(sess_idx);
-    if (!sessions[idx].active) return @intFromEnum(LangState.idle);
+    if (!sessions[idx].active) return -1;
     return @intFromEnum(sessions[idx].state);
 }
 
@@ -324,9 +324,9 @@ pub export fn lang_reset() void {
 /// Run curl as a child process for an HTTP POST with JSON body.
 fn runCurlPost(endpoint: [:0]const u8, body: [:0]const u8) ![]u8 {
     const argv = [_][]const u8{
-        "curl", "-sf", "--max-time", "10",
-        "-X", "POST", "-H", "Content-Type: application/json",
-        "-d", body, endpoint,
+        "curl", "-sf",  "--max-time", "10",
+        "-X",   "POST", "-H",         "Content-Type: application/json",
+        "-d",   body,   endpoint,
     };
     const alloc = std.heap.page_allocator;
     const result = try std.process.run(alloc, shim.io(), .{
@@ -384,31 +384,57 @@ pub export fn boj_cartridge_invoke(
     out_buf: [*c]u8,
     in_out_len: [*c]usize,
 ) callconv(.c) i32 {
-    _ = json_args;
-    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
+    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len) or json_args == null) return shim.RC_BAD_ARGS;
+    const allocator = std.heap.page_allocator;
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, std.mem.span(json_args), .{}) catch
+        return langResult(.{ .success = false, .@"error" = "invalid JSON arguments" }, out_buf, in_out_len);
+    defer parsed.deinit();
+    if (parsed.value != .object) return langResult(.{ .success = false, .@"error" = "arguments must be an object" }, out_buf, in_out_len);
+    const args = parsed.value.object;
+    if (shim.toolIs(tool_name, "lang_list")) {
+        return shim.writeResult(out_buf, in_out_len, "{\"languages\":[\"eclexia\",\"affinescript\",\"betlang\",\"ephapax\",\"mylang\",\"wokelang\",\"anvomidav\",\"phronesis\",\"error_lang\",\"julia_the_viper\",\"me_dialect\",\"oblibeny\"],\"count\":12,\"installation_checked\":false}");
+    }
+    if (shim.toolIs(tool_name, "lang_session_create")) {
+        const language = langString(args, "language") orelse return langResult(.{ .success = false, .@"error" = "language field required" }, out_buf, in_out_len);
+        const lang = std.meta.stringToEnum(Language, language) orelse return langResult(.{ .success = false, .@"error" = "unknown language" }, out_buf, in_out_len);
+        const dialect_name = langString(args, "dialect_mode") orelse "pure";
+        const dialect = std.meta.stringToEnum(DialectMode, dialect_name) orelse return langResult(.{ .success = false, .@"error" = "unknown dialect_mode" }, out_buf, in_out_len);
+        const name = langString(args, "name") orelse language;
+        const slot = lang_session_start_dialect(@intFromEnum(lang), @intFromEnum(dialect), name.ptr, name.len);
+        if (slot < 0) return langResult(.{ .success = false, .@"error" = "session unavailable or invalid name" }, out_buf, in_out_len);
+        var id_buf: [16]u8 = undefined;
+        const id = std.fmt.bufPrint(&id_buf, "{d}", .{slot}) catch unreachable;
+        return langResult(.{ .success = true, .session_id = id, .language = language, .dialect_mode = dialect_name, .lifetime = "current library process" }, out_buf, in_out_len);
+    }
+    const session_tool = shim.toolIs(tool_name, "lang_session_status") or shim.toolIs(tool_name, "lang_session_close") or
+        shim.toolIs(tool_name, "lang_check") or shim.toolIs(tool_name, "lang_eval") or
+        shim.toolIs(tool_name, "lang_compile") or shim.toolIs(tool_name, "lang_hover") or shim.toolIs(tool_name, "lang_complete");
+    if (!session_tool) return shim.RC_UNKNOWN_TOOL;
+    const id = langString(args, "session_id") orelse return langResult(.{ .success = false, .@"error" = "session_id field required" }, out_buf, in_out_len);
+    const slot = std.fmt.parseInt(c_int, id, 10) catch return langResult(.{ .success = false, .@"error" = "invalid session_id" }, out_buf, in_out_len);
+    const state = lang_session_state(slot);
+    if (state < 0) return langResult(.{ .success = false, .@"error" = "unknown session in this process" }, out_buf, in_out_len);
+    if (shim.toolIs(tool_name, "lang_session_status")) {
+        return langResult(.{ .success = true, .session_id = id, .state = state, .language_id = lang_session_language(slot), .dialect_mode = lang_session_dialect(slot) }, out_buf, in_out_len);
+    }
+    if (shim.toolIs(tool_name, "lang_session_close")) {
+        return langResult(.{ .success = lang_session_end(slot) == 0, .session_id = id }, out_buf, in_out_len);
+    }
+    // The lower-level check/eval functions need a configured backend URL. The
+    // standard ABI has no owned persistent backend binding yet. Refuse rather
+    // than pretending arguments are missing or reporting invented diagnostics.
+    return langResult(.{ .success = false, .@"error" = "unsupported: standard ABI has no configured persistent language backend" }, out_buf, in_out_len);
+}
 
-    const body: []const u8 = if (shim.toolIs(tool_name, "lang_list"))
-        "{\"languages\":[\"affinescript\",\"zig\",\"idris2\",\"elixir\",\"rust\",\"javascript\",\"typescript\",\"python\"],\"count\":8}"
-    else if (shim.toolIs(tool_name, "lang_session_create"))
-        "{\"error\":\"language field required\"}"
-    else if (shim.toolIs(tool_name, "lang_session_status"))
-        "{\"error\":\"required fields missing\"}"
-    else if (shim.toolIs(tool_name, "lang_check"))
-        "{\"error\":\"required fields missing\"}"
-    else if (shim.toolIs(tool_name, "lang_eval"))
-        "{\"error\":\"required fields missing\"}"
-    else if (shim.toolIs(tool_name, "lang_compile"))
-        "{\"error\":\"required fields missing\"}"
-    else if (shim.toolIs(tool_name, "lang_hover"))
-        "{\"error\":\"required fields missing\"}"
-    else if (shim.toolIs(tool_name, "lang_complete"))
-        "{\"error\":\"required fields missing\"}"
-    else if (shim.toolIs(tool_name, "lang_session_close"))
-        "{\"error\":\"required fields missing\"}"
-    else
-        return shim.RC_UNKNOWN_TOOL;
+fn langString(args: std.json.ObjectMap, key: []const u8) ?[]const u8 {
+    const value = args.get(key) orelse return null;
+    return if (value == .string) value.string else null;
+}
 
-    return shim.writeResult(out_buf, in_out_len, body);
+fn langResult(value: anytype, out: [*c]u8, len: [*c]usize) i32 {
+    const bytes = std.json.Stringify.valueAlloc(std.heap.page_allocator, value, .{}) catch return shim.RC_BAD_ARGS;
+    defer std.heap.page_allocator.free(bytes);
+    return shim.writeResult(out, len, bytes);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -506,7 +532,7 @@ test "session URL rejects empty and overlong" {
 // ADR-0006 invoke dispatch tests
 // ═══════════════════════════════════════════════════════════════════════
 
-test "invoke: each declared tool succeeds" {
+test "invoke: declared tools return a result envelope even on validation failure" {
     var buf: [512]u8 = undefined;
     const tools = [_][]const u8{
         "lang_list",
@@ -537,7 +563,7 @@ test "invoke: lang_list returns language list" {
     const out = buf[0..len];
     try std.testing.expect(std.mem.indexOf(u8, out, "languages") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "affinescript") != null);
-    try std.testing.expect(std.mem.indexOf(u8, out, "\"count\":8") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"count\":12") != null);
 }
 
 test "invoke: lang_session_create missing language returns error" {
@@ -563,4 +589,23 @@ test "invoke: buffer too small returns -3" {
     const rc = boj_cartridge_invoke("lang_list", "{}", &buf, &len);
     try std.testing.expectEqual(@as(i32, -3), rc);
     try std.testing.expect(len > 4);
+}
+
+test "invoke: valid session arguments change real state and close invalidates it" {
+    lang_reset();
+    defer lang_reset();
+    var buf: [512]u8 = undefined;
+    var len: usize = buf.len;
+    try std.testing.expectEqual(@as(i32, 0), boj_cartridge_invoke("lang_session_create", "{\"language\":\"affinescript\",\"dialect_mode\":\"jtv\"}", &buf, &len));
+    const created = try std.json.parseFromSlice(std.json.Value, std.testing.allocator, buf[0..len], .{});
+    defer created.deinit();
+    try std.testing.expect(created.value.object.get("success").?.bool);
+    try std.testing.expectEqualStrings("0", created.value.object.get("session_id").?.string);
+    try std.testing.expectEqual(@as(c_int, 1), lang_session_dialect(0));
+    len = buf.len;
+    _ = boj_cartridge_invoke("lang_session_close", "{\"session_id\":\"0\"}", &buf, &len);
+    try std.testing.expectEqual(@as(c_int, -1), lang_session_state(0));
+    len = buf.len;
+    _ = boj_cartridge_invoke("lang_session_status", "{\"session_id\":\"0\"}", &buf, &len);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "unknown session") != null);
 }

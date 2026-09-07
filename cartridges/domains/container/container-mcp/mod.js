@@ -3,7 +3,7 @@
 //
 // container-mcp/mod.js -- container gateway.
 
-const BASE_URL = Deno.env.get("CONTAINER_MCP_BACKEND_URL") ?? "http://127.0.0.1:7716";
+const BASE_URL = process.env["CONTAINER_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7716";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

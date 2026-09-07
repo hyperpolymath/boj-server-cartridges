@@ -3,7 +3,7 @@
 //
 // matrix-mcp/mod.js -- matrix gateway.
 
-const BASE_URL = Deno.env.get("MATRIX_MCP_BACKEND_URL") ?? "http://127.0.0.1:7731";
+const BASE_URL = process.env["MATRIX_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7731";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

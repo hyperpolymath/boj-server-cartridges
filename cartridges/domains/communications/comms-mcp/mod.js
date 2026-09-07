@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7717 (override with COMMS_BACKEND_URL).
 
-const BASE_URL = Deno.env.get("COMMS_BACKEND_URL") ?? "http://127.0.0.1:7717";
+const BASE_URL = process.env["COMMS_BACKEND_URL"] ?? "http://127.0.0.1:7717";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

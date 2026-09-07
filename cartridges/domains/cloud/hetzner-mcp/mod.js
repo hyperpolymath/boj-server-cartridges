@@ -28,8 +28,8 @@ const API_BASE = "https://api.hetzner.cloud/v1";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("HETZNER_API_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["HETZNER_API_TOKEN"]
     : process.env.HETZNER_API_TOKEN;
   if (!token) {
     throw new Error("HETZNER_API_TOKEN not set. Store in vault-mcp or export to environment.");

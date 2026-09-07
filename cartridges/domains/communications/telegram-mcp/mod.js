@@ -3,7 +3,7 @@
 //
 // telegram-mcp/mod.js -- telegram gateway.
 
-const BASE_URL = Deno.env.get("TELEGRAM_MCP_BACKEND_URL") ?? "http://127.0.0.1:7730";
+const BASE_URL = process.env["TELEGRAM_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7730";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

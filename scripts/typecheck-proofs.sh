@@ -27,10 +27,16 @@ cd "$(dirname "$0")/.."
 TMO=${IDR_TIMEOUT:-120}
 fail=0
 pass=0
+compiler="${IDRIS2:-idris2}"
+version="$("$compiler" --version)" || exit 1
+if [[ ! "$version" =~ (^|[[:space:]])0\.8\.0($|[[:space:]]) ]]; then
+    echo "Expected Idris2 0.8.0, found: $version" >&2
+    exit 1
+fi
 
 check_idr() { # abi_root  module_relative_path
     local out
-    out=$(cd "$1" && timeout --kill-after=10 "$TMO" idris2 --check "$2" 2>&1)
+    out=$(cd "$1" && timeout --kill-after=10 "$TMO" "$compiler" --check "$2" 2>&1)
     local rc=$?
     if [ $rc -eq 0 ]; then
         pass=$((pass + 1))
@@ -38,7 +44,7 @@ check_idr() { # abi_root  module_relative_path
         fail=$((fail + 1))
         echo "  FAIL  $1/$2"
         [ $rc -eq 124 ] && echo "        TIMEOUT after ${TMO}s (proof search did not terminate)"
-        printf '%s\n' "$out" | grep -vE '^[0-9]+/[0-9]+: Building' | head -6 | sed 's/^/        /'
+        printf '%s\n' "$out"
     fi
 }
 

@@ -1,3 +1,4 @@
+import { Command } from "../../../lib/process.js";
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
@@ -23,7 +24,7 @@
 // ---------------------------------------------------------------------------
 
 class JsonRpcSession {
-  /** @type {Deno.ChildProcess} */ #proc;
+  /** @type {object} */ #proc;
   /** @type {Map<number, {resolve: Function, reject: Function, timer: number}>} */
   #pending = new Map();
   /** @type {Array<object>} */ #events = [];
@@ -163,7 +164,7 @@ export async function handleTool(toolName, args) {
       if (!command) return { status: 400, data: { error: "command is required" } };
 
       const cmdParts = command.trim().split(/\s+/);
-      const proc = new Deno.Command(cmdParts[0], {
+      const proc = new Command(cmdParts[0], {
         args: [...cmdParts.slice(1), ...extraArgs],
         cwd: cwd,
         stdin: "piped",

@@ -1,3 +1,6 @@
+// Run with Bun. Timings are local dispatch observations, not service SLAs.
+const cases = [];
+function bench(name, fn) { cases.push(typeof name === "string" ? {name, fn} : name); }
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
@@ -13,7 +16,7 @@
 //      runs with LINEAR_API_KEY set, and is NOT a regression gate: it measures
 //      Linear's network, not our code.
 //
-// Run: deno bench --allow-env --allow-net benchmarks/bench.js
+// Run: bun cartridges/domains/project-management/linear-mcp/benchmarks/bench.js
 
 import { handleTool } from "../mod.js";
 
@@ -41,27 +44,27 @@ function stubTransport() {
     );
 }
 
-Deno.env.set("LINEAR_API_KEY", "lin_api_bench");
+process.env.LINEAR_API_KEY = "public-benchmark-fixture";
 stubTransport();
 
-Deno.bench("dispatch: list_issues (50 nodes, stubbed transport)", async () => {
+bench("dispatch: list_issues (50 nodes, stubbed transport)", async () => {
   await handleTool("linear_list_issues", { team_id: "t", limit: 50 });
 });
 
-Deno.bench("dispatch: get_issue by UUID", async () => {
+bench("dispatch: get_issue by UUID", async () => {
   await handleTool("linear_get_issue", { issue_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6" });
 });
 
-Deno.bench("dispatch: get_issue by identifier (ENG-123 -> filter)", async () => {
+bench("dispatch: get_issue by identifier (ENG-123 -> filter)", async () => {
   await handleTool("linear_get_issue", { issue_id: "ENG-123" });
 });
 
-Deno.bench("dispatch: set_priority (validation + mutation)", async () => {
+bench("dispatch: set_priority (validation + mutation)", async () => {
   await handleTool("linear_set_priority", { issue_id: "i", priority: 2 });
 });
 
 // The rejection path must stay cheap — it is the one that fires under abuse.
-Deno.bench("dispatch: rejected arg (no network)", async () => {
+bench("dispatch: rejected arg (no network)", async () => {
   await handleTool("linear_create_issue", { team_id: "t" });
 });
 
@@ -69,14 +72,14 @@ Deno.bench("dispatch: rejected arg (no network)", async () => {
 // Tier 2 — live transport. Opt-in; skipped without a real key.
 // ---------------------------------------------------------------------------
 
-const liveKey = Deno.env.get("LINEAR_LIVE_KEY");
+const liveKey = process.env["LINEAR_LIVE_KEY"];
 
-Deno.bench({
+bench({
   name: "live: whoami round-trip to api.linear.app",
   ignore: !liveKey,
   async fn() {
     globalThis.fetch = REAL_FETCH;
-    Deno.env.set("LINEAR_API_KEY", liveKey);
+    process.env.LINEAR_API_KEY = liveKey;
     try {
       await handleTool("linear_whoami", {});
     } finally {
@@ -84,3 +87,10 @@ Deno.bench({
     }
   },
 });
+
+for (const item of cases) {
+  if (item.ignore) { console.log(`${item.name}: skipped (no live credential)`); continue; }
+  const started = performance.now();
+  for (let i = 0; i < 20; i++) await item.fn();
+  console.log(`${item.name}: ${((performance.now() - started) / 20).toFixed(3)} ms/call, 20 iterations`);
+}

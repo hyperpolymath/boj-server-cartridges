@@ -3,7 +3,7 @@
 //
 // supabase-mcp/mod.js -- supabase gateway.
 
-const BASE_URL = Deno.env.get("SUPABASE_MCP_BACKEND_URL") ?? "http://127.0.0.1:7725";
+const BASE_URL = process.env["SUPABASE_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7725";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

@@ -3,7 +3,7 @@
 //
 // redis-mcp/mod.js -- redis gateway.
 
-const BASE_URL = Deno.env.get("REDIS_MCP_BACKEND_URL") ?? "http://127.0.0.1:7721";
+const BASE_URL = process.env["REDIS_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7721";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

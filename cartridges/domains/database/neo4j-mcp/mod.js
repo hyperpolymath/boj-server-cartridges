@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7734 (override with NEO4J_BACKEND_URL).
 
-const BASE_URL = Deno.env.get("NEO4J_BACKEND_URL") ?? "http://127.0.0.1:7734";
+const BASE_URL = process.env["NEO4J_BACKEND_URL"] ?? "http://127.0.0.1:7734";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

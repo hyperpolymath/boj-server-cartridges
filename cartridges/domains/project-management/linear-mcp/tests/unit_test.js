@@ -1,3 +1,4 @@
+import { test } from "bun:test";
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
@@ -16,7 +17,7 @@
 //
 // Run: deno test --allow-env tests/unit_test.js
 
-import { assert, assertEquals } from "jsr:@std/assert@1";
+import { ok as assert, deepStrictEqual as assertEquals } from "node:assert/strict";
 import { handleTool } from "../mod.js";
 
 // ---------------------------------------------------------------------------
@@ -56,8 +57,8 @@ const KEY = "LINEAR_API_KEY";
 // all; the obvious "fix" is to reach for Bearer, which fails. Pin both forms.
 // ---------------------------------------------------------------------------
 
-Deno.test("regression: personal API key is sent raw, never Bearer-prefixed", async () => {
-  Deno.env.set(KEY, "lin_api_personal_abc123");
+test("regression: personal API key is sent raw, never Bearer-prefixed", async () => {
+  process.env[KEY] = "lin_api_personal_abc123";
   const { seen } = await withFetch(
     { json: { data: { viewer: { id: "u1" }, organization: { id: "o1" } } } },
     () => handleTool("linear_whoami", {}),
@@ -66,8 +67,8 @@ Deno.test("regression: personal API key is sent raw, never Bearer-prefixed", asy
   assert(!seen[0].headers["Authorization"].startsWith("Bearer"));
 });
 
-Deno.test("regression: OAuth2 access token IS Bearer-prefixed", async () => {
-  Deno.env.set(KEY, "oauth_access_token_xyz");
+test("regression: OAuth2 access token IS Bearer-prefixed", async () => {
+  process.env[KEY] = "oauth_access_token_xyz";
   const { seen } = await withFetch(
     { json: { data: { viewer: {}, organization: {} } } },
     () => handleTool("linear_whoami", {}),
@@ -83,8 +84,8 @@ Deno.test("regression: OAuth2 access token IS Bearer-prefixed", async () => {
 // does) reads this as a generic bad request and reports a confusing error.
 // ---------------------------------------------------------------------------
 
-Deno.test("regression: RATELIMITED at HTTP 400 is normalised to 429", async () => {
-  Deno.env.set(KEY, "lin_api_k");
+test("regression: RATELIMITED at HTTP 400 is normalised to 429", async () => {
+  process.env[KEY] = "lin_api_k";
   const { result } = await withFetch(
     {
       status: 400,
@@ -98,8 +99,8 @@ Deno.test("regression: RATELIMITED at HTTP 400 is normalised to 429", async () =
   assertEquals(result.limits["x-ratelimit-requests-remaining"], "0");
 });
 
-Deno.test("a plain HTTP 400 is NOT mistaken for a rate limit", async () => {
-  Deno.env.set(KEY, "lin_api_k");
+test("a plain HTTP 400 is NOT mistaken for a rate limit", async () => {
+  process.env[KEY] = "lin_api_k";
   const { result } = await withFetch(
     { status: 400, json: { errors: [{ message: "Field 'nope' doesn't exist" }] } },
     () => handleTool("linear_list_issues", {}),
@@ -116,8 +117,8 @@ Deno.test("a plain HTTP 400 is NOT mistaken for a rate limit", async () => {
 // filtered issues() query on team key + number instead.
 // ---------------------------------------------------------------------------
 
-Deno.test("get_issue: human identifier ENG-123 routes to a filtered query", async () => {
-  Deno.env.set(KEY, "lin_api_k");
+test("get_issue: human identifier ENG-123 routes to a filtered query", async () => {
+  process.env[KEY] = "lin_api_k";
   const { seen } = await withFetch(
     { json: { data: { issues: { nodes: [{ id: "x", identifier: "ENG-123" }] } } } },
     () => handleTool("linear_get_issue", { issue_id: "ENG-123" }),
@@ -128,8 +129,8 @@ Deno.test("get_issue: human identifier ENG-123 routes to a filtered query", asyn
   assertEquals(variables.filter.number.eq, 123);
 });
 
-Deno.test("get_issue: a UUID routes to issue(id:)", async () => {
-  Deno.env.set(KEY, "lin_api_k");
+test("get_issue: a UUID routes to issue(id:)", async () => {
+  process.env[KEY] = "lin_api_k";
   const { seen } = await withFetch(
     { json: { data: { issue: { id: "uuid-1" } } } },
     () => handleTool("linear_get_issue", { issue_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6" }),
@@ -138,8 +139,8 @@ Deno.test("get_issue: a UUID routes to issue(id:)", async () => {
   assert(!seen[0].body.query.includes("GetIssueByIdentifier"));
 });
 
-Deno.test("get_issue: a missing issue is 404, not an empty success", async () => {
-  Deno.env.set(KEY, "lin_api_k");
+test("get_issue: a missing issue is 404, not an empty success", async () => {
+  process.env[KEY] = "lin_api_k";
   const { result } = await withFetch(
     { json: { data: { issue: null } } },
     () => handleTool("linear_get_issue", { issue_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6" }),
@@ -151,8 +152,8 @@ Deno.test("get_issue: a missing issue is 404, not an empty success", async () =>
 // PropertyTest — priority accepts exactly Linear's 0..4 scale, nothing else.
 // ---------------------------------------------------------------------------
 
-Deno.test("property: set_priority accepts 0..4 and rejects everything else", async () => {
-  Deno.env.set(KEY, "lin_api_k");
+test("property: set_priority accepts 0..4 and rejects everything else", async () => {
+  process.env[KEY] = "lin_api_k";
 
   for (const p of [0, 1, 2, 3, 4]) {
     const { result } = await withFetch(
@@ -172,8 +173,8 @@ Deno.test("property: set_priority accepts 0..4 and rejects everything else", asy
 // UnitTest — the auth guard fires before any network call is attempted.
 // ---------------------------------------------------------------------------
 
-Deno.test("no API key: refuses with 401 and makes no request", async () => {
-  Deno.env.delete(KEY);
+test("no API key: refuses with 401 and makes no request", async () => {
+  delete process.env[KEY];
   const { result, seen } = await withFetch(
     { json: { data: {} } },
     () => handleTool("linear_list_issues", {}),
@@ -186,8 +187,8 @@ Deno.test("no API key: refuses with 401 and makes no request", async () => {
 // UnitTest — required-argument validation short-circuits before the network.
 // ---------------------------------------------------------------------------
 
-Deno.test("required arguments are validated before any request", async () => {
-  Deno.env.set(KEY, "lin_api_k");
+test("required arguments are validated before any request", async () => {
+  process.env[KEY] = "lin_api_k";
   const cases = [
     ["linear_get_issue", {}],
     ["linear_create_issue", { team_id: "t" }], // no title
@@ -203,8 +204,8 @@ Deno.test("required arguments are validated before any request", async () => {
   }
 });
 
-Deno.test("unknown tool is a clean 404", async () => {
-  Deno.env.set(KEY, "lin_api_k");
+test("unknown tool is a clean 404", async () => {
+  process.env[KEY] = "lin_api_k";
   const r = await handleTool("linear_not_a_tool", {});
   assertEquals(r.status, 404);
 });
@@ -213,8 +214,8 @@ Deno.test("unknown tool is a clean 404", async () => {
 // PropertyTest — page size is clamped to Linear's ceiling on every list tool.
 // ---------------------------------------------------------------------------
 
-Deno.test("property: limit is clamped to 250 and defaults to 50", async () => {
-  Deno.env.set(KEY, "lin_api_k");
+test("property: limit is clamped to 250 and defaults to 50", async () => {
+  process.env[KEY] = "lin_api_k";
   const probe = async (limit) => {
     const { seen } = await withFetch(
       { json: { data: { teams: { nodes: [] } } } },

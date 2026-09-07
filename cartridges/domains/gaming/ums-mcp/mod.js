@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7743 (override with UMS_BACKEND_URL).
 
-const BASE_URL = Deno.env.get("UMS_BACKEND_URL") ?? "http://127.0.0.1:7743";
+const BASE_URL = process.env["UMS_BACKEND_URL"] ?? "http://127.0.0.1:7743";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

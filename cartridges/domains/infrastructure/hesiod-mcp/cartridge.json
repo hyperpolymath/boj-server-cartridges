@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "hesiod-mcp",
   "version": "1.0.0",
-  "description": "DNS lookup cartridge — query DNS records via MCP tools",
+  "description": "DNS lookup cartridge \u2014 query DNS records via MCP tools",
   "domain": "Infrastructure",
   "category": "domain",
   "tier": "Ayo",
@@ -20,7 +20,7 @@
     "base_url": "local://hesiod-mcp",
     "content_type": "application/json"
   },
-  "available": true,
+  "available": false,
   "status": "ready",
   "tools": [
     {
@@ -129,14 +129,6 @@
       "boj_cartridge_name",
       "boj_cartridge_version",
       "boj_cartridge_invoke"
-    ]
-  },
-  "adapter": {
-    "language": "typescript",
-    "runtime": "deno",
-    "entry": "adapter/mod.ts",
-    "permissions": [
-      "net"
     ]
   },
   "loopback": {

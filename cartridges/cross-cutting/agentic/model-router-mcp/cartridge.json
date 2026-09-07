@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "model-router-mcp",
   "version": "0.1.0",
-  "description": "Intelligent model router for Claude Code. Classifies tasks and recommends opus/sonnet/haiku, plans delegation from a higher tier to a cheaper executor, reviews delegated output, and estimates relative token cost savings.",
+  "description": "Deterministic keyword heuristic for task classification and model-tier suggestions, with experimental delegation and cost helpers. No claim of optimal routing, measured model performance or current provider pricing.",
   "domain": "AI",
   "category": "cross-cutting",
   "tier": "Ayo",
@@ -34,7 +34,7 @@
   "tools": [
     {
       "name": "classify_task",
-      "description": "Analyse a task and recommend the optimal Claude model (opus/sonnet/haiku). Returns complexity, recommended model, confidence, reason, and whether the task can be delegated.",
+      "description": "Classify task text using fixed keyword rules and suggest a model tier (opus/sonnet/haiku). Confidence is a heuristic score, not an empirical probability or optimality guarantee.",
       "inputSchema": {
         "type": "object",
         "properties": {

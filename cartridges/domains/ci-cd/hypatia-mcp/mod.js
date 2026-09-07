@@ -3,7 +3,7 @@
 //
 // hypatia-mcp/mod.js -- hypatia gateway
 
-const BASE_URL = Deno.env.get("HYPATIA_BACKEND_URL") ?? "http://127.0.0.1:7701";
+const BASE_URL = process.env["HYPATIA_BACKEND_URL"] ?? "http://127.0.0.1:7701";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

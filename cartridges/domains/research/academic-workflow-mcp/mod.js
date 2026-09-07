@@ -14,15 +14,20 @@ export const cartridge = {
 };
 
 export async function health() {
-  return { status: "healthy", cartridge: "academic-workflow-mcp" };
+  return { status: "unavailable", cartridge: "academic-workflow-mcp" };
 }
 
 export async function init() {
   console.log("[academic-workflow-mcp] Initializing");
-  return { initialized: true };
+  return { initialized: false, error: "JavaScript adapter not implemented" };
 }
 
 export async function cleanup() {
   console.log("[academic-workflow-mcp] Shutting down");
   return { cleaned: true };
+}
+
+// Explicit refusal: this legacy JS surface has no implemented tool transport.
+export async function handleTool() {
+  return {status: 501, data: {success: false, error: "JavaScript adapter not implemented"}};
 }

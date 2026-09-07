@@ -3,7 +3,7 @@
 //
 // verisimdb-mcp/mod.js -- verisimdb gateway
 
-const BASE_URL = Deno.env.get("VERISIMDB_BACKEND_URL") ?? "http://127.0.0.1:7705";
+const BASE_URL = process.env["VERISIMDB_BACKEND_URL"] ?? "http://127.0.0.1:7705";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7710 (override with AERIE_BACKEND_URL).
 
-const BASE_URL = Deno.env.get("AERIE_BACKEND_URL") ?? "http://127.0.0.1:7710";
+const BASE_URL = process.env["AERIE_BACKEND_URL"] ?? "http://127.0.0.1:7710";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

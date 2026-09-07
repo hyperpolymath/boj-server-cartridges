@@ -3,7 +3,7 @@
 //
 // nesy-mcp/mod.js -- nesy gateway
 
-const BASE_URL = Deno.env.get("NESY_BACKEND_URL") ?? "http://127.0.0.1:7706";
+const BASE_URL = process.env["NESY_BACKEND_URL"] ?? "http://127.0.0.1:7706";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

@@ -3,7 +3,7 @@
 //
 // slack-mcp/mod.js -- slack gateway.
 
-const BASE_URL = Deno.env.get("SLACK_MCP_BACKEND_URL") ?? "http://127.0.0.1:7728";
+const BASE_URL = process.env["SLACK_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7728";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

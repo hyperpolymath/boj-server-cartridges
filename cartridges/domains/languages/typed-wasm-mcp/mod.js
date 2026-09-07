@@ -1,3 +1,4 @@
+import { Command } from "../../../lib/process.js";
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
@@ -17,7 +18,7 @@
 // Pass an explicit `output_path` to typed_wasm_compile_module; otherwise the
 // .wasm is written next to the source.
 
-const AFFINESCRIPT_BIN = Deno.env.get("AFFINESCRIPT_BIN") ?? "affinescript";
+const AFFINESCRIPT_BIN = process.env["AFFINESCRIPT_BIN"] ?? "affinescript";
 
 function dirOf(path) {
   const i = path.lastIndexOf("/");
@@ -29,7 +30,7 @@ function dirOf(path) {
 // file's location.
 async function runAffinescript(args, cwd) {
   try {
-    const cmd = new Deno.Command(AFFINESCRIPT_BIN, {
+    const cmd = new Command(AFFINESCRIPT_BIN, {
       args,
       cwd,
       stdout: "piped",

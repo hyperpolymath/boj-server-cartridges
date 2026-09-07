@@ -21,8 +21,8 @@
 const API_BASE = "https://circleci.com/api/v2";
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("CIRCLECI_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["CIRCLECI_TOKEN"]
     : process.env.CIRCLECI_TOKEN;
   return token || null;
 }

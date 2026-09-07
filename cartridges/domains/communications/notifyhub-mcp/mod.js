@@ -6,11 +6,11 @@
 // Delegates to backend at http://127.0.0.1:8080 (override with NOTIFYHUB_URL).
 // Auth: NOTIFYHUB_API_KEY (required for all operations).
 
-const BASE_URL = Deno.env.get("NOTIFYHUB_URL") ?? "http://127.0.0.1:8080";
+const BASE_URL = process.env["NOTIFYHUB_URL"] ?? "http://127.0.0.1:8080";
 const TIMEOUT_MS = 20_000;
 
 function getKey() {
-  return Deno.env.get("NOTIFYHUB_API_KEY") ?? null;
+  return process.env["NOTIFYHUB_API_KEY"] ?? null;
 }
 
 function authHeaders() {

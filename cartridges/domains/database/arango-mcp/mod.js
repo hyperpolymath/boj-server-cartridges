@@ -3,7 +3,7 @@
 //
 // arango-mcp/mod.js -- arango gateway.
 
-const BASE_URL = Deno.env.get("ARANGO_MCP_BACKEND_URL") ?? "http://127.0.0.1:7727";
+const BASE_URL = process.env["ARANGO_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7727";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

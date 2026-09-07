@@ -35,8 +35,8 @@ async function getJwt() {
   if (cachedJwt) return cachedJwt;
 
   // Try pre-set JWT token first
-  const directToken = typeof Deno !== "undefined"
-    ? Deno.env.get("DOCKER_HUB_TOKEN")
+  const directToken = typeof process !== "undefined"
+    ? process.env["DOCKER_HUB_TOKEN"]
     : process.env.DOCKER_HUB_TOKEN;
 
   if (directToken && directToken.startsWith("eyJ")) {
@@ -45,11 +45,11 @@ async function getJwt() {
   }
 
   // Two-phase login with username + password/PAT
-  const username = typeof Deno !== "undefined"
-    ? Deno.env.get("DOCKER_HUB_USERNAME")
+  const username = typeof process !== "undefined"
+    ? process.env["DOCKER_HUB_USERNAME"]
     : process.env.DOCKER_HUB_USERNAME;
-  const password = directToken || (typeof Deno !== "undefined"
-    ? Deno.env.get("DOCKER_HUB_PASSWORD")
+  const password = directToken || (typeof process !== "undefined"
+    ? process.env["DOCKER_HUB_PASSWORD"]
     : process.env.DOCKER_HUB_PASSWORD);
 
   if (!username || !password) {

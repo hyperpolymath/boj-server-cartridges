@@ -32,8 +32,8 @@ const STATS_BASE = "https://pypistats.org/api";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("PYPI_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["PYPI_TOKEN"]
     : process.env.PYPI_TOKEN;
   return token || null;
 }

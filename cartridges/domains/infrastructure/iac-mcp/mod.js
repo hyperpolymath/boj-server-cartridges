@@ -3,7 +3,7 @@
 //
 // iac-mcp/mod.js -- iac gateway.
 
-const BASE_URL = Deno.env.get("IAC_MCP_BACKEND_URL") ?? "http://127.0.0.1:7717";
+const BASE_URL = process.env["IAC_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7717";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

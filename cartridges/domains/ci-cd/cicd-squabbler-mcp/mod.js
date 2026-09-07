@@ -10,7 +10,7 @@
 // (green only by satisfying required checks, never by weakening them) lives
 // in squabble-core, not here.
 
-const BASE_URL = Deno.env.get("SQUABBLE_BACKEND_URL") ?? "http://127.0.0.1:7741";
+const BASE_URL = process.env["SQUABBLE_BACKEND_URL"] ?? "http://127.0.0.1:7741";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7716 (override with CODESEEKER_BACKEND_URL).
 
-const BASE_URL = Deno.env.get("CODESEEKER_BACKEND_URL") ?? "http://127.0.0.1:7716";
+const BASE_URL = process.env["CODESEEKER_BACKEND_URL"] ?? "http://127.0.0.1:7716";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

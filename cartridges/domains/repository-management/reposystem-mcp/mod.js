@@ -3,7 +3,7 @@
 //
 // reposystem-mcp/mod.js -- reposystem gateway
 
-const BASE_URL = Deno.env.get("REPOSYSTEM_BACKEND_URL") ?? "http://127.0.0.1:7710";
+const BASE_URL = process.env["REPOSYSTEM_BACKEND_URL"] ?? "http://127.0.0.1:7710";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

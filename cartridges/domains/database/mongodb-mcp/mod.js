@@ -3,7 +3,7 @@
 //
 // mongodb-mcp/mod.js -- mongodb gateway.
 
-const BASE_URL = Deno.env.get("MONGODB_MCP_BACKEND_URL") ?? "http://127.0.0.1:7720";
+const BASE_URL = process.env["MONGODB_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7720";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

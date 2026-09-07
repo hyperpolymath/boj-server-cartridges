@@ -31,8 +31,8 @@ const CF_API_BASE = "https://api.cloudflare.com/client/v4";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("CF_API_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["CF_API_TOKEN"]
     : process.env.CF_API_TOKEN;
   if (!token) {
     throw new Error(

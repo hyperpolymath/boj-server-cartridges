@@ -30,8 +30,8 @@ const DRIVE_API_BASE = "https://www.googleapis.com/drive/v3";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("GOOGLE_DOCS_ACCESS_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["GOOGLE_DOCS_ACCESS_TOKEN"]
     : process.env.GOOGLE_DOCS_ACCESS_TOKEN;
   return token || null;
 }

@@ -1,3 +1,5 @@
+import { Command } from "../../../lib/process.js";
+import { readTextFile } from "../../../lib/files.js";
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
@@ -20,7 +22,7 @@
 // ---------------------------------------------------------------------------
 
 class JsonRpcSession {
-  /** @type {Deno.ChildProcess} */  #proc;
+  /** @type {object} */  #proc;
   /** @type {Map<number, {resolve: Function, reject: Function, timer: number}>} */
   #pending = new Map();
   /** @type {Array<object>} */ #notifications = [];
@@ -166,7 +168,7 @@ let _presets = null;
 async function loadPresets() {
   if (_presets) return _presets;
   try {
-    const txt = await Deno.readTextFile(new URL("./presets.json", import.meta.url));
+    const txt = await readTextFile(new URL("./presets.json", import.meta.url));
     _presets = JSON.parse(txt).presets ?? {};
   } catch {
     _presets = {};
@@ -200,7 +202,7 @@ export async function handleTool(toolName, args) {
       if (!command) return { status: 400, data: { error: "command or preset is required" } };
 
       const cmdParts = command.trim().split(/\s+/);
-      const proc = new Deno.Command(cmdParts[0], {
+      const proc = new Command(cmdParts[0], {
         args: [...cmdParts.slice(1), ...extraArgs],
         cwd: workspace_root,
         stdin: "piped",

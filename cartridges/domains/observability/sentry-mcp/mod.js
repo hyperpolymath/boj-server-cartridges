@@ -25,8 +25,8 @@
 // ---------------------------------------------------------------------------
 
 function getBaseUrl() {
-  const url = typeof Deno !== "undefined"
-    ? Deno.env.get("SENTRY_BASE_URL")
+  const url = typeof process !== "undefined"
+    ? process.env["SENTRY_BASE_URL"]
     : process.env.SENTRY_BASE_URL;
   return url || "https://sentry.io/api/0";
 }
@@ -36,8 +36,8 @@ function getBaseUrl() {
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("SENTRY_AUTH_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["SENTRY_AUTH_TOKEN"]
     : process.env.SENTRY_AUTH_TOKEN;
   return token || null;
 }

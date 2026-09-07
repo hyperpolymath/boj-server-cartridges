@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7723 (override with FLEET_BACKEND_URL).
 
-const BASE_URL = Deno.env.get("FLEET_BACKEND_URL") ?? "http://127.0.0.1:7723";
+const BASE_URL = process.env["FLEET_BACKEND_URL"] ?? "http://127.0.0.1:7723";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

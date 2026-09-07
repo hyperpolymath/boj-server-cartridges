@@ -31,8 +31,8 @@ const API_BASE = "https://backboard.railway.app/graphql/v2";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("RAILWAY_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["RAILWAY_TOKEN"]
     : process.env.RAILWAY_TOKEN;
   if (!token) {
     throw new Error("RAILWAY_TOKEN not set. Generate at https://railway.app/account/tokens or export RAILWAY_TOKEN.");

@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7741 (override with SECRETS_BACKEND_URL).
 
-const BASE_URL = Deno.env.get("SECRETS_BACKEND_URL") ?? "http://127.0.0.1:7741";
+const BASE_URL = process.env["SECRETS_BACKEND_URL"] ?? "http://127.0.0.1:7741";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

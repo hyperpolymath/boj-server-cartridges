@@ -7,7 +7,7 @@
 // The backend runs the `k9iser` binary against a checked-out repo working
 // tree: load_manifest -> generate -> validate -> apply (commit+push).
 
-const BASE_URL = Deno.env.get("K9ISER_BACKEND_URL") ?? "http://127.0.0.1:7743";
+const BASE_URL = process.env["K9ISER_BACKEND_URL"] ?? "http://127.0.0.1:7743";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

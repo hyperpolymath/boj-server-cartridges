@@ -114,7 +114,7 @@ Ask. Sensitive areas:
 
 ### machine-readable-layer-describes-this-repo
 - description: Nothing under .machine_readable/ describes another project
-- probe: test "$(awk -F'"' '/^project = /{print $2}' .machine_readable/6a2/STATE.a2ml .machine_readable/6a2/ECOSYSTEM.a2ml .machine_readable/contractiles/*.a2ml | sort -u)" = "boj-server-cartridges"
+- probe: test "$(awk -F'"' '/^project = /{print $2}' .machine_readable/descriptiles/STATE.a2ml .machine_readable/descriptiles/ECOSYSTEM.a2ml .machine_readable/contractiles/*.a2ml | sort -u)" = "boj-server-cartridges"
 - status: done
 - notes: Done 2026-08-07 on branch docs/machine-readable-repair.
 

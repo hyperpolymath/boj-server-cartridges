@@ -21,4 +21,4 @@ permissions:
   contents: read
 jobs:
   governance:
-    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@84355587cb2a1f86e6882de83514a32db2646e7a
+    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@9e9513b11fff182b08cf8cd6c9c2272460636586

@@ -3,7 +3,7 @@
 //
 // stapeln-mcp/mod.js -- stapeln gateway
 
-const BASE_URL = Deno.env.get("STAPELN_BACKEND_URL") ?? "http://127.0.0.1:7704";
+const BASE_URL = process.env["STAPELN_BACKEND_URL"] ?? "http://127.0.0.1:7704";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

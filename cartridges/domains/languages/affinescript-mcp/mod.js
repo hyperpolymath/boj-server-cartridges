@@ -1,3 +1,5 @@
+import { Command } from "../../../lib/process.js";
+import { writeTextFile, remove } from "../../../lib/files.js";
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
@@ -28,7 +30,7 @@
 
 async function runCompiler(args, input) {
   try {
-    const cmd = new Deno.Command("affinescript", {
+    const cmd = new Command("affinescript", {
       args,
       stdin: input ? "piped" : "null",
       stdout: "piped",
@@ -192,7 +194,7 @@ export async function handleTool(toolName, args) {
       const tmpFile = `/tmp/boj_afs_${crypto.randomUUID()}.as`;
 
       try {
-        await Deno.writeTextFile(tmpFile, args.source);
+        await writeTextFile(tmpFile, args.source);
         // --json emits a structured JSON object on stderr
         const result = await runCompiler(["check", "--json", tmpFile], null);
 
@@ -209,7 +211,7 @@ export async function handleTool(toolName, args) {
           data: report,
         };
       } finally {
-        try { await Deno.remove(tmpFile); } catch { /* ignore */ }
+        try { await remove(tmpFile); } catch { /* ignore */ }
       }
     }
 
@@ -221,7 +223,7 @@ export async function handleTool(toolName, args) {
       const tmpFile = `/tmp/boj_afs_${crypto.randomUUID()}.as`;
 
       try {
-        await Deno.writeTextFile(tmpFile, args.source);
+        await writeTextFile(tmpFile, args.source);
         const result = await runCompiler(["parse", tmpFile], null);
 
         return {
@@ -233,7 +235,7 @@ export async function handleTool(toolName, args) {
           },
         };
       } finally {
-        try { await Deno.remove(tmpFile); } catch { /* ignore */ }
+        try { await remove(tmpFile); } catch { /* ignore */ }
       }
     }
 
@@ -359,7 +361,7 @@ export async function handleTool(toolName, args) {
       const tmpFile = `/tmp/boj_afs_${crypto.randomUUID()}.as`;
 
       try {
-        await Deno.writeTextFile(tmpFile, args.source);
+        await writeTextFile(tmpFile, args.source);
         const result = await runCompiler(["eval", tmpFile], null);
 
         return {
@@ -371,7 +373,7 @@ export async function handleTool(toolName, args) {
           },
         };
       } finally {
-        try { await Deno.remove(tmpFile); } catch { /* ignore */ }
+        try { await remove(tmpFile); } catch { /* ignore */ }
       }
     }
 
@@ -383,7 +385,7 @@ export async function handleTool(toolName, args) {
       const tmpFile = `/tmp/boj_afs_${crypto.randomUUID()}.as`;
 
       try {
-        await Deno.writeTextFile(tmpFile, args.source);
+        await writeTextFile(tmpFile, args.source);
         const result = await runCompiler(["lint", "--json", tmpFile], null);
 
         let report;
@@ -398,7 +400,7 @@ export async function handleTool(toolName, args) {
           data: report,
         };
       } finally {
-        try { await Deno.remove(tmpFile); } catch { /* ignore */ }
+        try { await remove(tmpFile); } catch { /* ignore */ }
       }
     }
 
@@ -417,7 +419,7 @@ export async function handleTool(toolName, args) {
       compileArgs.push("-o", tmpOut, tmpSrc);
 
       try {
-        await Deno.writeTextFile(tmpSrc, args.source);
+        await writeTextFile(tmpSrc, args.source);
         const result = await runCompiler(compileArgs, null);
 
         let report;
@@ -432,8 +434,8 @@ export async function handleTool(toolName, args) {
           data: { ...report, target },
         };
       } finally {
-        try { await Deno.remove(tmpSrc); } catch { /* ignore */ }
-        try { await Deno.remove(tmpOut); } catch { /* ignore */ }
+        try { await remove(tmpSrc); } catch { /* ignore */ }
+        try { await remove(tmpOut); } catch { /* ignore */ }
       }
     }
 
@@ -447,7 +449,7 @@ export async function handleTool(toolName, args) {
       const tmpFile = `/tmp/boj_afs_${crypto.randomUUID()}.as`;
 
       try {
-        await Deno.writeTextFile(tmpFile, args.source);
+        await writeTextFile(tmpFile, args.source);
         // hover outputs JSON on stdout; line/col are 1-based
         const result = await runCompiler(
           ["hover", tmpFile, String(args.line), String(args.col)],
@@ -466,7 +468,7 @@ export async function handleTool(toolName, args) {
           data: info,
         };
       } finally {
-        try { await Deno.remove(tmpFile); } catch { /* ignore */ }
+        try { await remove(tmpFile); } catch { /* ignore */ }
       }
     }
 
@@ -480,7 +482,7 @@ export async function handleTool(toolName, args) {
       const tmpFile = `/tmp/boj_afs_${crypto.randomUUID()}.as`;
 
       try {
-        await Deno.writeTextFile(tmpFile, args.source);
+        await writeTextFile(tmpFile, args.source);
         // goto-def outputs JSON on stdout; line/col are 1-based
         const result = await runCompiler(
           ["goto-def", tmpFile, String(args.line), String(args.col)],
@@ -499,7 +501,7 @@ export async function handleTool(toolName, args) {
           data: info,
         };
       } finally {
-        try { await Deno.remove(tmpFile); } catch { /* ignore */ }
+        try { await remove(tmpFile); } catch { /* ignore */ }
       }
     }
 
@@ -513,7 +515,7 @@ export async function handleTool(toolName, args) {
       const tmpFile = `/tmp/boj_afs_${crypto.randomUUID()}.as`;
 
       try {
-        await Deno.writeTextFile(tmpFile, args.source);
+        await writeTextFile(tmpFile, args.source);
         // complete outputs a JSON array on stdout; line/col are 1-based
         const result = await runCompiler(
           ["complete", tmpFile, String(args.line), String(args.col)],
@@ -532,7 +534,7 @@ export async function handleTool(toolName, args) {
           data: { items, count: Array.isArray(items) ? items.length : 0 },
         };
       } finally {
-        try { await Deno.remove(tmpFile); } catch { /* ignore */ }
+        try { await remove(tmpFile); } catch { /* ignore */ }
       }
     }
 

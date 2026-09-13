@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7738 (override with QUEUES_BACKEND_URL).
 
-const BASE_URL = Deno.env.get("QUEUES_BACKEND_URL") ?? "http://127.0.0.1:7738";
+const BASE_URL = process.env["QUEUES_BACKEND_URL"] ?? "http://127.0.0.1:7738";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

@@ -3,7 +3,7 @@
 //
 // vext-mcp/mod.js -- vext gateway
 
-const BASE_URL = Deno.env.get("VEXT_BACKEND_URL") ?? "http://127.0.0.1:7711";
+const BASE_URL = process.env["VEXT_BACKEND_URL"] ?? "http://127.0.0.1:7711";
 
 async function post(path, payload) {
   const ctrl = new AbortController();
@@ -40,8 +40,7 @@ export async function handleTool(toolName, args) {
     case "vext_append_chain": {
       const { payload } = args ?? {};
       if (!payload) return { status: 400, data: { error: "payload is required" } };
-      const payload = { payload };
-      return post("/api/v1/append-chain", payload);
+      return post("/api/v1/append-chain", { payload });
     }
     default:
       return { status: 404, data: { error: `Unknown tool: ${toolName}` } };

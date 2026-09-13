@@ -19,7 +19,7 @@
 // Configuration
 // ---------------------------------------------------------------------------
 
-const OPSM_BASE_URL = Deno.env.get("OPSM_BACKEND_URL") ?? "http://127.0.0.1:7700";
+const OPSM_BASE_URL = process.env["OPSM_BACKEND_URL"] ?? "http://127.0.0.1:7700";
 const OPSM_TIMEOUT_MS = 15_000;
 
 // ---------------------------------------------------------------------------

@@ -28,8 +28,8 @@ const API_BASE = "https://sheets.googleapis.com/v4";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("GOOGLE_SHEETS_ACCESS_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["GOOGLE_SHEETS_ACCESS_TOKEN"]
     : process.env.GOOGLE_SHEETS_ACCESS_TOKEN;
   return token || null;
 }

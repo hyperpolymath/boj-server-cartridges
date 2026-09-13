@@ -3,7 +3,7 @@
 //
 // k8s-mcp/mod.js -- k8s gateway.
 
-const BASE_URL = Deno.env.get("K8S_MCP_BACKEND_URL") ?? "http://127.0.0.1:7715";
+const BASE_URL = process.env["K8S_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7715";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

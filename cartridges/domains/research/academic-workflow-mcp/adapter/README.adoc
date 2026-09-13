@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: MPL-2.0
+= Adapter status
+
+The former SDK adapter is retired: its transport was not wired and its FFI
+calls were placeholders. The invalid AffineScript conversion is preserved in
+Git history at 99d6cda25e34e37052dec7a30f6addeea40c106c.
+
+Use the host's declared cartridge dispatch only after the requested tool has
+passed release qualification. This directory does not provide an MCP server.

@@ -32,8 +32,8 @@ const PLATFORM_API_BASE = "https://api.fly.io";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("FLY_API_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["FLY_API_TOKEN"]
     : process.env.FLY_API_TOKEN;
   if (!token) {
     throw new Error("FLY_API_TOKEN not set. Run 'fly auth token' or export FLY_API_TOKEN.");

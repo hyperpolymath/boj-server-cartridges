@@ -20,8 +20,8 @@
 const API_BASE = "https://api.buildkite.com/v2";
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("BUILDKITE_API_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["BUILDKITE_API_TOKEN"]
     : process.env.BUILDKITE_API_TOKEN;
   return token || null;
 }

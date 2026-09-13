@@ -3,7 +3,7 @@
 //
 // neon-mcp/mod.js -- neon gateway.
 
-const BASE_URL = Deno.env.get("NEON_MCP_BACKEND_URL") ?? "http://127.0.0.1:7724";
+const BASE_URL = process.env["NEON_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7724";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

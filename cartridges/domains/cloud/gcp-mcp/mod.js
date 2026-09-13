@@ -3,7 +3,7 @@
 //
 // gcp-mcp/mod.js -- gcp gateway.
 
-const BASE_URL = Deno.env.get("GCP_MCP_BACKEND_URL") ?? "http://127.0.0.1:7714";
+const BASE_URL = process.env["GCP_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7714";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

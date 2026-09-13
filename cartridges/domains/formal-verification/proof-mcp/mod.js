@@ -3,7 +3,7 @@
 //
 // proof-mcp/mod.js -- proof gateway
 
-const BASE_URL = Deno.env.get("PROOF_BACKEND_URL") ?? "http://127.0.0.1:7707";
+const BASE_URL = process.env["PROOF_BACKEND_URL"] ?? "http://127.0.0.1:7707";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

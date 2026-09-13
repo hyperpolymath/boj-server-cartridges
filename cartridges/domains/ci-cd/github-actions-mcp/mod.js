@@ -26,8 +26,8 @@ const API_BASE = "https://api.github.com";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("GITHUB_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["GITHUB_TOKEN"]
     : process.env.GITHUB_TOKEN;
   return token || null;
 }

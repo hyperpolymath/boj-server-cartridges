@@ -30,8 +30,8 @@ const API_BASE = "https://api.linode.com/v4";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("LINODE_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["LINODE_TOKEN"]
     : process.env.LINODE_TOKEN;
   if (!token) {
     throw new Error("LINODE_TOKEN not set. Store in vault-mcp or export to environment.");

@@ -39,7 +39,7 @@ pre-commit hooks fail if any check fails.
 
 Every check here is deterministic, dependency-free POSIX shell run from the
 repository root. Checks that need a toolchain (deno, zig, idris2) live in
-the CI workflows and in .machine_readable/6a2/PLAYBOOK.a2ml, not here.
+the CI workflows and in .machine_readable/descriptiles/PLAYBOOK.a2ml, not here.
 @end
 
 ## File Presence
@@ -110,7 +110,7 @@ the CI workflows and in .machine_readable/6a2/PLAYBOOK.a2ml, not here.
 
 ### six-directory-present
 - description: 6a2 directory exists with all six checkpoint files
-- run: test -d .machine_readable/6a2 && test -f .machine_readable/6a2/META.a2ml && test -f .machine_readable/6a2/ECOSYSTEM.a2ml && test -f .machine_readable/6a2/STATE.a2ml && test -f .machine_readable/6a2/PLAYBOOK.a2ml && test -f .machine_readable/6a2/AGENTIC.a2ml && test -f .machine_readable/6a2/NEUROSYM.a2ml
+- run: test -d .machine_readable/6a2 && test -f .machine_readable/descriptiles/META.a2ml && test -f .machine_readable/descriptiles/ECOSYSTEM.a2ml && test -f .machine_readable/descriptiles/STATE.a2ml && test -f .machine_readable/descriptiles/PLAYBOOK.a2ml && test -f .machine_readable/descriptiles/AGENTIC.a2ml && test -f .machine_readable/descriptiles/NEUROSYM.a2ml
 - severity: critical
 
 ## Registry Integrity
@@ -161,13 +161,13 @@ the CI workflows and in .machine_readable/6a2/PLAYBOOK.a2ml, not here.
 
 ### 6a2-workflow-paths-resolve
 - description: Every workflow path cited in a 6a2 file actually exists
-- run: for p in $(grep -ho 'workflow = "[^"]*"' .machine_readable/6a2/*.a2ml | sed 's/.*"\(.*\)"/\1/'); do test -e "$p" || exit 1; done
+- run: for p in $(grep -ho 'workflow = "[^"]*"' .machine_readable/descriptiles/*.a2ml | sed 's/.*"\(.*\)"/\1/'); do test -e "$p" || exit 1; done
 - severity: critical
 - notes: Added because AGENTIC.a2ml used to cite .machine_readable/bot_directives/, a path that has never existed in this repository.
 
 ### no-template-project-identity
 - description: No 6a2 file claims to be a different project
-- run: test "$(awk -F'"' '/^project = /{print $2}' .machine_readable/6a2/STATE.a2ml .machine_readable/6a2/ECOSYSTEM.a2ml .machine_readable/contractiles/*.a2ml | sort -u)" = "boj-server-cartridges"
+- run: test "$(awk -F'"' '/^project = /{print $2}' .machine_readable/descriptiles/STATE.a2ml .machine_readable/descriptiles/ECOSYSTEM.a2ml .machine_readable/contractiles/*.a2ml | sort -u)" = "boj-server-cartridges"
 - severity: critical
 - notes: STATE.a2ml declared rsr-template-repo and ECOSYSTEM.a2ml declared pseudoscript until 2026-08-07.
 

@@ -6,7 +6,7 @@
 // Delegates to backend at http://127.0.0.1:7745 (override with COORD_BACKEND_URL).
 // CRITICAL: Backend MUST bind to loopback only — the Idris2 ABI guarantees this.
 
-const BASE_URL = Deno.env.get("COORD_BACKEND_URL") ?? "http://127.0.0.1:7745";
+const BASE_URL = process.env["COORD_BACKEND_URL"] ?? "http://127.0.0.1:7745";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

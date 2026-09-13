@@ -1,3 +1,4 @@
+# This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
 # This workflow is managed by gh actions-lock.
 # This workflow is managed by gh actions-lock.
@@ -29,10 +30,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      - name: Set up Deno
-        uses: denoland/setup-deno@v2.0.5
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2.2.0
         with:
-          deno-version: v2.x
+          bun-version: 1.3.14
 
       - name: Verify schema mirror SHA-256 matches PINNED-SHA
         run: |
@@ -46,15 +47,38 @@ jobs:
           fi
           echo "Schema mirror matches pinned SHA-256: $pinned"
 
-      - name: Validator unit tests
-        working-directory: tools/validate-cartridges
-        run: deno task test
+      - name: Install pinned dependencies
+        run: bun install --frozen-lockfile
 
-      - name: Validate all cartridge manifests (strict)
-        working-directory: tools/validate-cartridges
+      - name: Build the editor panel before testing its compiled activation
+        working-directory: cartridges/domains/languages/orchestrator-lsp-mcp/panels
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Registry and adapter tests
+        run: |
+          bun scripts/check-entrypoints.js
+          bun test tools cartridges
+
+      - name: Validate all cartridge manifests and catalogue
         run: |
           set -euo pipefail
-          # Tee audit output into the step summary so the report is browsable
-          # even on success, then run strict to enforce zero violations.
-          deno task audit | tee "$GITHUB_STEP_SUMMARY"
-          deno task strict
+          bun tools/validate-cartridges/main.js --strict | tee "$GITHUB_STEP_SUMMARY"
+          bun tools/build-catalog/main.js --check
+
+  orchestration:
+    name: Active orchestration adapter
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: erlef/setup-beam@v1.24.0
+        with:
+          elixir-version: '1.18.3'
+          otp-version: '27'
+      - name: Locked dependency resolution and full suite
+        working-directory: cartridges/domains/languages/orchestrator-lsp-mcp/adapter
+        run: |
+          mix deps.get --check-locked
+          mix test

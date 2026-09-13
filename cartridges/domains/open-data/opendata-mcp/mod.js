@@ -6,7 +6,7 @@
 // Delegates to backend at http://127.0.0.1:8000 (override with OPENDATA_URL).
 // No auth required. Access and publish public open datasets.
 
-const BASE_URL = Deno.env.get("OPENDATA_URL") ?? "http://127.0.0.1:8000";
+const BASE_URL = process.env["OPENDATA_URL"] ?? "http://127.0.0.1:8000";
 const TIMEOUT_MS = 30_000; // dataset queries can be slow
 
 async function post(path, payload) {

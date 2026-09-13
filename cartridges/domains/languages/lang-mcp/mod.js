@@ -1,3 +1,5 @@
+import { Command } from "../../../lib/process.js";
+import { writeTextFile, remove } from "../../../lib/files.js";
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
@@ -74,7 +76,7 @@ function getSession(session_id) {
 
 async function runCLI(binary, cliArgs, input = null) {
   try {
-    const proc = new Deno.Command(binary, {
+    const proc = new Command(binary, {
       args: cliArgs,
       stdin: input != null ? "piped" : "null",
       stdout: "piped",
@@ -100,10 +102,10 @@ async function withTmpFile(language, source, fn) {
   const ext = EXTENSIONS[language] ?? "txt";
   const path = `/tmp/boj_lang_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}.${ext}`;
   try {
-    await Deno.writeTextFile(path, source);
+    await writeTextFile(path, source);
     return await fn(path);
   } finally {
-    try { await Deno.remove(path); } catch { /* ignore */ }
+    try { await remove(path); } catch { /* ignore */ }
   }
 }
 
@@ -119,7 +121,7 @@ function renderArgs(template, vars) {
 /** Try to probe whether a binary is installed (exits cleanly or with usage error). */
 async function isInstalled(binary) {
   try {
-    const r = await new Deno.Command(binary, { args: ["--version"], stdout: "null", stderr: "null" }).output();
+    const r = await new Command(binary, { args: ["--version"], stdout: "null", stderr: "null" }).output();
     return r.code === 0;
   } catch { return false; }
 }

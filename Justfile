@@ -52,7 +52,7 @@ info:
     @echo "Version: {{version}}"
     @echo "RSR Tier: {{tier}}"
     @echo "Recipes: $(just --summary | wc -w)"
-    @[ -f ".machine_readable/STATE.a2ml" ] && grep -oP 'phase\s*=\s*"\K[^"]+' .machine_readable/STATE.a2ml | head -1 | xargs -I{} echo "Phase: {}" || true
+    @[ -f ".machine_readable/descriptiles/STATE.a2ml" ] && grep -oP 'phase\s*=\s*"\K[^"]+' .machine_readable/descriptiles/STATE.a2ml | head -1 | xargs -I{} echo "Phase: {}" || true
 
 # Run Invariant Path overlay tools for this repository
 invariant-path *ARGS:
@@ -82,38 +82,26 @@ import? "build/just/assess.just"
 
 # Build the project (debug mode)
 build *args:
-    @echo "Building {{project}} (debug)..."
-    # TODO: Replace with your build command
-    # Examples:
-    #   cargo build {{args}}                    # Rust
-    #   mix compile {{args}}                    # Elixir
-    #   zig build {{args}}                      # Zig
-    #   deno task build {{args}}                # Deno/AffineScript
-    @echo "Build complete"
+    bash scripts/build-native.sh {{args}}
 
 # Build in release mode with optimizations
 build-release *args:
-    @echo "Building {{project}} (release)..."
-    # TODO: Replace with your release build command
-    # Examples:
-    #   cargo build --release {{args}}
-    #   MIX_ENV=prod mix compile {{args}}
-    #   zig build -Doptimize=ReleaseFast {{args}}
-    @echo "Release build complete"
+    bash scripts/build-native.sh -Doptimize=ReleaseSafe {{args}}
 
 # Build and watch for changes (requires entr or similar)
 build-watch:
     @echo "Watching for changes..."
-    # TODO: Customize file patterns for your language
+    @echo "This recipe is not implemented; use the documented registry gates." >&2
+    @exit 2
     # Examples:
     #   find src -name '*.rs' | entr -c just build
     #   mix compile --force --warnings-as-errors
-    #   deno task dev
 
 # Clean build artifacts [reversible: rebuild with `just build`]
 clean:
     @echo "Cleaning..."
-    # TODO: Customize for your build system
+    @echo "This recipe is not implemented; use the documented registry gates." >&2
+    @exit 2
     rm -rf target/ _build/ build/ dist/ out/ obj/ bin/
 
 # Deep clean including caches [reversible: rebuild]
@@ -126,29 +114,25 @@ clean-all: clean
 
 # Run all tests
 test *args:
-    @echo "Running tests..."
-    # TODO: Replace with your test command
-    # Examples:
-    #   cargo test {{args}}
-    #   mix test {{args}}
-    #   zig build test {{args}}
-    #   deno test {{args}}
-    @echo "Tests passed!"
+    bash scripts/check-javascript.sh {{args}}
 
 # Run tests with verbose output
 test-verbose:
     @echo "Running tests (verbose)..."
-    # TODO: Replace with verbose test command
+    @echo "This recipe is not implemented; use the documented registry gates." >&2
+    @exit 2
 
 # Smoke test
 test-smoke:
     @echo "Smoke test..."
-    # TODO: Add basic sanity checks
+    @echo "This recipe is not implemented; use the documented registry gates." >&2
+    @exit 2
 
 # Run end-to-end tests (full pipeline: build → run → verify)
 e2e:
     @echo "Running E2E tests..."
-    # TODO: Replace with your E2E test command. Examples:
+    @echo "This recipe is not implemented; use the documented registry gates." >&2
+    @exit 2
     #   bash tests/e2e.sh                    # Shell-based E2E
     #   npx playwright test                  # Browser E2E
     #   mix test test/integration/e2e_test.exs  # Elixir E2E
@@ -158,7 +142,8 @@ e2e:
 # Run aspect tests (cross-cutting concern validation)
 aspect:
     @echo "Running aspect tests..."
-    # TODO: Replace with your aspect test command. Examples:
+    @echo "This recipe is not implemented; use the documented registry gates." >&2
+    @exit 2
     #   bash tests/aspect_tests.sh           # Shell-based aspect tests
     #   cargo test --test aspects             # Rust aspect tests
     # Aspect tests validate architectural invariants:
@@ -171,17 +156,18 @@ aspect:
 # Run benchmarks (performance regression detection)
 bench:
     @echo "Running benchmarks..."
-    # TODO: Replace with your benchmark command. Examples:
+    @echo "This recipe is not implemented; use the documented registry gates." >&2
+    @exit 2
     #   cargo bench                           # Rust criterion
     #   zig build bench                       # Zig benchmarks
     #   mix run bench/benchmarks.exs          # Elixir benchee
-    #   deno bench                            # Deno bench
     @echo "Benchmarks complete!"
 
 # Run readiness tests (Component Readiness Grade: D/C/B)
 readiness:
     @echo "Running readiness tests..."
-    # TODO: Replace with your readiness test command. Examples:
+    @echo "This recipe is not implemented; use the documented registry gates." >&2
+    @exit 2
     #   cargo test --test readiness -- --nocapture
     @echo "Readiness tests complete!"
 
@@ -209,8 +195,10 @@ crg-badge:
 
 # Run the full merge-requirement test suite (ALL categories)
 # Per STANDING rule: P2P + E2E + aspect + execution + lifecycle + bench
-test-all: test e2e aspect bench readiness
-    @echo "All test categories passed — safe to merge!"
+test-all: test
+    bash scripts/build-native.sh
+    bash scripts/typecheck-proofs.sh
+    bash scripts/check-trusted-base.sh
 
 # Run all quality checks
 quality: fmt-check lint test
@@ -227,17 +215,18 @@ fix: fmt
 # Format all source files [reversible: git checkout]
 fmt:
     @echo "Formatting source files..."
-    # TODO: Replace with your formatter
+    @echo "This recipe is not implemented; use the documented registry gates." >&2
+    @exit 2
     # Examples:
     #   cargo fmt
     #   mix format
     #   gleam format
-    #   deno fmt
 
 # Check formatting without changes
 fmt-check:
     @echo "Checking formatting..."
-    # TODO: Replace with your format check
+    @echo "This recipe is not implemented; use the documented registry gates." >&2
+    @exit 2
     # Examples:
     #   cargo fmt --check
     #   mix format --check-formatted
@@ -246,7 +235,8 @@ fmt-check:
 # Run linter
 lint:
     @echo "Linting source files..."
-    # TODO: Replace with your linter
+    @echo "This recipe is not implemented; use the documented registry gates." >&2
+    @exit 2
     # Examples:
     #   cargo clippy -- -D warnings
     #   mix credo --strict
@@ -258,18 +248,21 @@ lint:
 
 # Run the application
 run *args: build
-    # TODO: Replace with your run command
+    @echo "This recipe is not implemented; use the documented registry gates." >&2
+    @exit 2
     echo "Run not configured yet"
 
 # Run with verbose output
 run-verbose *args: build
-    # TODO: Replace with verbose run command
+    @echo "This recipe is not implemented; use the documented registry gates." >&2
+    @exit 2
     echo "Run not configured yet"
 
 # Install to user path
 install: build-release
     @echo "Installing {{project}}..."
-    # TODO: Replace with your install command
+    @echo "This recipe is not implemented; use the documented registry gates." >&2
+    @exit 2
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # DEPENDENCIES
@@ -277,23 +270,12 @@ install: build-release
 
 # Install/check all dependencies
 deps:
-    @echo "Checking dependencies..."
-    # TODO: Replace with your dependency check
-    # Examples:
-    #   cargo check
-    #   mix deps.get
-    #   gleam deps download
-    @echo "All dependencies satisfied"
+    bun install --frozen-lockfile
+    cd cartridges/domains/languages/orchestrator-lsp-mcp/panels && bun install --frozen-lockfile
 
 # Audit dependencies for vulnerabilities
 deps-audit:
-    @echo "Auditing for vulnerabilities..."
-    # TODO: Replace with your audit command
-    # Examples:
-    #   cargo audit
-    #   mix audit
-    @command -v trivy >/dev/null && trivy fs --severity HIGH,CRITICAL --quiet . || true
-    @echo "Audit complete"
+    bun audit
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CARTRIDGE REGISTRY
@@ -301,19 +283,19 @@ deps-audit:
 
 # Mint a new cartridge from a minter.toml (see docs/cartridge-authoring.adoc)
 mint config *ARGS:
-    deno run --allow-read --allow-write tools/cartridge-minter/mint.ts {{config}} {{ARGS}}
+    bun tools/cartridge-minter/mint.js {{config}} {{ARGS}}
 
 # Regenerate site/catalog.json (and the counts in site/index.html) from the manifests
 catalog:
-    cd tools/build-catalog && deno task build
+    bun tools/build-catalog/main.js
 
 # Fail if site/catalog.json or site/index.html has drifted from the manifests
 catalog-check:
-    cd tools/build-catalog && deno task check
+    bun tools/build-catalog/main.js --check
 
 # Validate every cartridge.json against the pinned schema (CI gate)
 validate:
-    cd tools/validate-cartridges && deno task strict
+    bun tools/validate-cartridges/main.js --strict
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # DOCUMENTATION
@@ -569,14 +551,14 @@ import? "build/just/validate.just"
 
 # Update STATE.a2ml timestamp
 state-touch:
-    @if [ -f ".machine_readable/STATE.a2ml" ]; then \
-        sed -i 's/last-updated = "[^"]*"/last-updated = "'"$(date +%Y-%m-%d)"'"/' .machine_readable/STATE.a2ml && \
+    @if [ -f ".machine_readable/descriptiles/STATE.a2ml" ]; then \
+        sed -i 's/last-updated = "[^"]*"/last-updated = "'"$(date +%Y-%m-%d)"'"/' .machine_readable/descriptiles/STATE.a2ml && \
         echo "STATE.a2ml timestamp updated"; \
     fi
 
 # Show current phase from STATE.a2ml
 state-phase:
-    @grep -oP 'phase\s*=\s*"\K[^"]+' .machine_readable/STATE.a2ml 2>/dev/null | head -1 || echo "unknown"
+    @grep -oP 'phase\s*=\s*"\K[^"]+' .machine_readable/descriptiles/STATE.a2ml 2>/dev/null | head -1 || echo "unknown"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # GUIX & GUIX
@@ -590,9 +572,6 @@ guix-shell:
 guix-build:
     guix build -f guix.scm
 
-# Enter Guix development shell (fallback)
-guix-shell:
-    @if [ -f "flake.guix" ]; then guix develop; else echo "No flake.guix"; fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # HYBRID AUTOMATION
@@ -807,9 +786,6 @@ secret-scan-trufflehog:
 # Cartridge minting + shim hygiene
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Mint a new cartridge from a minter.toml (see tools/cartridge-minter/README.md)
-mint config *args:
-    deno run --allow-read --allow-write tools/cartridge-minter/mint.ts {{config}} {{args}}
 
 # Re-stamp every vendored cartridge_shim.zig from the canonical template copy
 shim-sync:

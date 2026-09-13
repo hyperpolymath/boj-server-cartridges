@@ -27,8 +27,8 @@ const API_BASE = "https://api.render.com/v1";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("RENDER_API_KEY")
+  const token = typeof process !== "undefined"
+    ? process.env["RENDER_API_KEY"]
     : process.env.RENDER_API_KEY;
   if (!token) {
     throw new Error("RENDER_API_KEY not set. Store in vault-mcp or export to environment.");

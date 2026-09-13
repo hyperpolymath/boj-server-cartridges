@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7744 (override with VAULT_BACKEND_URL).
 
-const BASE_URL = Deno.env.get("VAULT_BACKEND_URL") ?? "http://127.0.0.1:7744";
+const BASE_URL = process.env["VAULT_BACKEND_URL"] ?? "http://127.0.0.1:7744";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

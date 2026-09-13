@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: MPL-2.0
+[metadata]
+project = "boj-server-cartridges"
+version = "0.2.0"
+last-updated = "2026-09-07"
+status = "active"
+
+[project-context]
+name = "boj-server-cartridges"
+purpose = "Canonical source registry for the original BoJ host. MK2 is publicly archived."
+
+[position]
+phase = "implementation"
+maturity = "beta"
+notes = "Source restoration and build gates pass. Tool qualification, effect confinement and deployment are separate evidence dimensions. No aggregate completion percentage is inferred."
+
+[validated-scope]
+source-baseline = "99d6cda25e34e37052dec7a30f6addeea40c106c"
+report = "docs/RESTORATION-20260907.md"
+manifest-count = 142
+installable-cartridges = 141
+template-count = 1
+native-build-test-install-roots = 217
+cartridge-and-foundry-proof-checks = 115
+root-js-entrypoints-compiled = 128
+javascript-tests = 110
+active-elixir-adapter-tests = 48
+foundry-controls = 25
+panel-activation = "Compiled ReScript checked with mock VS Code host; GUI editor not exercised"
+
+[toolchains]
+zig = "0.16.0"
+idris = "0.8.0"
+bun = "1.3.14"
+panel-rescript = "11.1.4"
+
+[next-actions]
+actions = [
+  "Qualify real operations with the original server's artifact-bound admission and confinement contracts",
+  "Add a credential-brokered network read before broader network writes",
+  "Implement caller-owned persistent language sessions before claiming compiler/LSP invocation support",
+  "Identify and inspect the actual deployed host and gateway",
+]
+
+[ecosystem]
+part-of = ["BoJ platform", "hyperpolymath estate"]
+depends-on = ["hyperpolymath/standards"]
+consumed-by = ["hyperpolymath/boj-server", "panll"]

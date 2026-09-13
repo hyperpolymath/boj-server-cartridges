@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "bofig-mcp",
   "version": "1.0.0",
-  "description": "Bofig Cartridge — Evidence graph query tools for investigative workflows",
+  "description": "Bofig Cartridge \u2014 Evidence graph query tools for investigative workflows",
   "domain": "Research",
   "category": "domain",
   "tier": "Ayo",
@@ -93,17 +93,9 @@
       "boj_cartridge_invoke"
     ]
   },
-  "adapter": {
-    "language": "typescript",
-    "runtime": "deno",
-    "entry": "adapter/mod.ts",
-    "permissions": [
-      "net",
-      "env"
-    ]
-  },
   "loopback": {
     "host": "127.0.0.1",
     "port": 5178
-  }
+  },
+  "available": false
 }

@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7713 (override with BURBLE_ADMIN_URL).
 
-const BASE_URL = Deno.env.get("BURBLE_ADMIN_URL") ?? "http://127.0.0.1:7713";
+const BASE_URL = process.env["BURBLE_ADMIN_URL"] ?? "http://127.0.0.1:7713";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

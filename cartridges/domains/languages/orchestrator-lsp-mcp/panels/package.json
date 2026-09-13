@@ -1,8 +1,8 @@
 {
-  "_comment": "VSCode extension manifest. npm is required here by the VSCode platform — this is a documented exception to the no-npm policy. vscode-languageclient is a VSCode platform dependency, not a general runtime dep.",
+  "_comment": "VSCode extension manifest. npm is required here by the VSCode platform \u2014 this is a documented exception to the no-npm policy. vscode-languageclient is a VSCode platform dependency, not a general runtime dep.",
   "name": "orchestrator-lsp-mcp",
   "displayName": "BoJ Orchestrator LSP",
-  "description": "Cross-domain LSP orchestrator — routes textDocument/* requests across all 12 poly-*-lsp servers via a single connection",
+  "description": "Cross-domain LSP orchestrator \u2014 routes textDocument/* requests across all 12 poly-*-lsp servers via a single connection",
   "version": "0.1.0",
   "publisher": "hyperpolymath",
   "license": "MPL-2.0",
@@ -13,8 +13,13 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Programming Languages", "Linters"],
-  "activationEvents": ["onStartupFinished"],
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./lib/js/src/Extension.js",
   "contributes": {
     "configuration": {
@@ -32,13 +37,22 @@
         },
         "boj.orchestratorLsp.args": {
           "type": "array",
-          "items": {"type": "string"},
-          "default": ["run", "--no-halt"],
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "run",
+            "--no-halt"
+          ],
           "description": "Arguments passed to the start command."
         },
         "boj.orchestratorLsp.trace.server": {
           "type": "string",
-          "enum": ["off", "messages", "verbose"],
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
           "default": "off",
           "description": "Trace LSP communication between the extension and the adapter."
         }
@@ -50,11 +64,11 @@
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
-    "affinescript": "^11.0.0"
+    "rescript": "11.1.4"
   },
   "scripts": {
-    "build": "affinescript build",
-    "clean": "affinescript clean",
-    "watch": "affinescript build -w"
+    "build": "rescript build",
+    "clean": "rescript clean",
+    "watch": "rescript build -w"
   }
 }

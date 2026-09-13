@@ -3,7 +3,7 @@
 //
 // duckdb-mcp/mod.js -- duckdb gateway.
 
-const BASE_URL = Deno.env.get("DUCKDB_MCP_BACKEND_URL") ?? "http://127.0.0.1:7723";
+const BASE_URL = process.env["DUCKDB_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7723";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

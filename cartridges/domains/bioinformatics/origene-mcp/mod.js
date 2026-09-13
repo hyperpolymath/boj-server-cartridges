@@ -7,11 +7,11 @@
 // Auth: ORIGENE_API_KEY (required for all operations).
 // Integrates UniProt, ChEMBL, PubChem, OpenTargets, Monarch, PDB, ClinicalTrials.
 
-const BASE_URL = Deno.env.get("ORIGENE_URL") ?? "http://127.0.0.1:8788";
+const BASE_URL = process.env["ORIGENE_URL"] ?? "http://127.0.0.1:8788";
 const TIMEOUT_MS = 30_000; // biomedical DB queries can be slow
 
 function getKey() {
-  return Deno.env.get("ORIGENE_API_KEY") ?? null;
+  return process.env["ORIGENE_API_KEY"] ?? null;
 }
 
 function authHeaders() {

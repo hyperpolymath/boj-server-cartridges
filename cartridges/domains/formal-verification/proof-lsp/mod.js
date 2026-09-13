@@ -1,3 +1,4 @@
+import { Command } from "../../../lib/process.js";
 // SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 
@@ -6,7 +7,8 @@
 // Cartridge state: adapter-implemented. start() spawns the Deno adapter
 // at adapter/server.ts which speaks LSP over stdio.
 
-import { dirname, fromFileUrl, join } from "jsr:@std/path@1";
+import { dirname, join } from "node:path";
+import { fileURLToPath as fromFileUrl } from "node:url";
 
 export const manifest = {
   name: "proof-lsp",
@@ -22,9 +24,9 @@ let child = null;
 export async function start() {
   if (child) return child;
   const here = dirname(fromFileUrl(import.meta.url));
-  const entry = join(here, "adapter", "server.ts");
-  const cmd = new Deno.Command(Deno.execPath(), {
-    args: ["run", "--allow-read", "--allow-run", "--allow-env", entry],
+  const entry = join(here, "adapter", "server.js");
+  const cmd = new Command(process.execPath, {
+    args: ["run", entry],
     stdin: "piped",
     stdout: "piped",
     stderr: "inherit",

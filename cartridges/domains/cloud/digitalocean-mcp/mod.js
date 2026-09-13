@@ -30,8 +30,8 @@ const API_BASE = "https://api.digitalocean.com/v2";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("DIGITALOCEAN_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["DIGITALOCEAN_TOKEN"]
     : process.env.DIGITALOCEAN_TOKEN;
   if (!token) {
     throw new Error("DIGITALOCEAN_TOKEN not set. Store in vault-mcp or export to environment.");

@@ -3,7 +3,7 @@
 //
 // aws-mcp/mod.js -- aws gateway.
 
-const BASE_URL = Deno.env.get("AWS_MCP_BACKEND_URL") ?? "http://127.0.0.1:7713";
+const BASE_URL = process.env["AWS_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7713";
 
 async function post(path, payload) {
   const ctrl = new AbortController();
@@ -60,9 +60,9 @@ export async function handleTool(toolName, args) {
     case "aws_lambda_invoke": {
       const { function_name, payload } = args ?? {};
       if (!function_name) return { status: 400, data: { error: "function_name is required" } };
-      const payload = { function_name };
-      if (payload !== undefined) payload.payload = payload;
-      return post("/api/v1/lambda-invoke", payload);
+      const request = { function_name };
+      if (payload !== undefined) request.payload = payload;
+      return post("/api/v1/lambda-invoke", request);
     }
     case "aws_session_state": {
       const { slot } = args ?? {};

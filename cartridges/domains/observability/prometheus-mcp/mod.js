@@ -23,8 +23,8 @@
 // ---------------------------------------------------------------------------
 
 function getBaseUrl() {
-  const url = typeof Deno !== "undefined"
-    ? Deno.env.get("PROMETHEUS_BASE_URL")
+  const url = typeof process !== "undefined"
+    ? process.env["PROMETHEUS_BASE_URL"]
     : process.env.PROMETHEUS_BASE_URL;
   return url || "http://localhost:9090/api/v1";
 }
@@ -34,8 +34,8 @@ function getBaseUrl() {
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("PROMETHEUS_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["PROMETHEUS_TOKEN"]
     : process.env.PROMETHEUS_TOKEN;
   return token || null;
 }

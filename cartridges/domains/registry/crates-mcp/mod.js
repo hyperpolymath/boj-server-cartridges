@@ -31,8 +31,8 @@ const API_BASE = "https://crates.io/api/v1";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("CRATES_IO_TOKEN")
+  const token = typeof process !== "undefined"
+    ? process.env["CRATES_IO_TOKEN"]
     : process.env.CRATES_IO_TOKEN;
   return token || null;
 }

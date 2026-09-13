@@ -6,7 +6,7 @@
 // Delegates to backend at http://127.0.0.1:7474 (override with CODERAG_URL).
 // No auth required. The backend connects to Neo4j on bolt://127.0.0.1:7687.
 
-const BASE_URL = Deno.env.get("CODERAG_URL") ?? "http://127.0.0.1:7474";
+const BASE_URL = process.env["CODERAG_URL"] ?? "http://127.0.0.1:7474";
 const TIMEOUT_MS = 60_000; // graph analysis can be slow
 
 async function post(path, payload) {

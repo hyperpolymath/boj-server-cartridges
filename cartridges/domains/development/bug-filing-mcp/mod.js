@@ -17,7 +17,7 @@
 // under D0 = new wrapping cartridge). It is NOT feedback-mcp (an unrelated
 // in-memory sentiment counter that happens to share the 7722 placeholder port).
 
-const BASE_URL = Deno.env.get("BUG_FILING_BACKEND_URL") ?? "http://127.0.0.1:7722";
+const BASE_URL = process.env["BUG_FILING_BACKEND_URL"] ?? "http://127.0.0.1:7722";
 const TIMEOUT_MS = 30_000;
 
 async function post(path, payload) {

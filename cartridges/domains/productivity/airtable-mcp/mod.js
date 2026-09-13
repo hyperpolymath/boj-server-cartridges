@@ -30,8 +30,8 @@ const META_API_BASE = "https://api.airtable.com/v0/meta";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("AIRTABLE_API_KEY")
+  const token = typeof process !== "undefined"
+    ? process.env["AIRTABLE_API_KEY"]
     : process.env.AIRTABLE_API_KEY;
   return token || null;
 }

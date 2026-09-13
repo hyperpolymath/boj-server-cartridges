@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "fireflag-mcp",
   "version": "1.0.0",
-  "description": "Fireflag Cartridge — Extension-to-MCP mapping and discovery tools",
+  "description": "Fireflag Cartridge \u2014 Extension-to-MCP mapping and discovery tools",
   "domain": "Developer Tools",
   "category": "domain",
   "tier": "Ayo",
@@ -84,17 +84,9 @@
       "boj_cartridge_invoke"
     ]
   },
-  "adapter": {
-    "language": "typescript",
-    "runtime": "deno",
-    "entry": "adapter/mod.ts",
-    "permissions": [
-      "net",
-      "env"
-    ]
-  },
   "loopback": {
     "host": "127.0.0.1",
     "port": 5177
-  }
+  },
+  "available": false
 }

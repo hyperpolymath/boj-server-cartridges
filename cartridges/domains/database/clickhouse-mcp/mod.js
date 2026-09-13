@@ -3,7 +3,7 @@
 //
 // clickhouse-mcp/mod.js -- clickhouse gateway.
 
-const BASE_URL = Deno.env.get("CLICKHOUSE_MCP_BACKEND_URL") ?? "http://127.0.0.1:7722";
+const BASE_URL = process.env["CLICKHOUSE_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7722";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

@@ -29,8 +29,8 @@ const API_BASE = "https://hex.pm/api";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("HEX_API_KEY")
+  const token = typeof process !== "undefined"
+    ? process.env["HEX_API_KEY"]
     : process.env.HEX_API_KEY;
   return token || null;
 }

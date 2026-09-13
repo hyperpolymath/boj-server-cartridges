@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7714 (override with CIVIC_CONNECT_URL).
 
-const BASE_URL = Deno.env.get("CIVIC_CONNECT_URL") ?? "http://127.0.0.1:7714";
+const BASE_URL = process.env["CIVIC_CONNECT_URL"] ?? "http://127.0.0.1:7714";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

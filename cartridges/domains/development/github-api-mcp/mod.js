@@ -5,7 +5,7 @@
 //
 // Delegates to backend at http://127.0.0.1:7726 (override with GITHUB_API_URL).
 
-const BASE_URL = Deno.env.get("GITHUB_API_URL") ?? "http://127.0.0.1:7726";
+const BASE_URL = process.env["GITHUB_API_URL"] ?? "http://127.0.0.1:7726";
 const TIMEOUT_MS = 15_000;
 
 async function post(path, payload) {

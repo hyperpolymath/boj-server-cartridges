@@ -19,26 +19,28 @@ toc::[]
 
 == Status
 
-*This repository is the sole source of BoJ cartridges.* `boj-server` retired its
-own bundled `cartridges/` tree in
-https://github.com/hyperpolymath/boj-server/pull/300[boj-server#300] (merged
-2026-08-04). There is no longer a second copy anywhere: what lands here is what
-every host fetches.
+This is the canonical registry for the original BoJ server. BoJ MK2 is publicly
+archived; development is concentrated on this registry and `boj-server`.
+The 7 September 2026 validation covers 142 manifests (141 installable cartridges
+and one template), 217 native build/test/install roots, and 115 Idris proof
+checks. These denominators describe different checks, not 217 working tools.
 
-🟢 *Manifests.* The schema validator runs in *strict mode* in CI and is green:
-*142 manifests, 142 passing, 0 failing* (`just validate`). Drift-remediation
-campaigns #18 / #19 / #20 are closed.
+The pinned toolchains are Zig 0.16.0, Idris 0.8.0 and Bun 1.3.14. The editor
+panel uses ReScript 11.1.4. Active sources damaged by the AffineScript conversion
+have been restored or explicitly retired; see
+link:docs/RESTORATION-20260907.md[restoration provenance and limits].
 
-🟡 *Toolchain.* `.tool-versions` pins *`zig 0.15.1`*, `deno 2.7.14`,
-`idris2 0.8.0`. A migration of all 118 FFI trees to Zig 0.16.0 is in flight in
-https://github.com/hyperpolymath/boj-server-cartridges/pull/109[#109] and is
-*not merged*; until it is, 0.15.1 is the pin that CI builds against.
+Use `bash scripts/check-javascript.sh`, `bash scripts/build-native.sh`,
+`bash scripts/typecheck-proofs.sh` and `bash scripts/check-trusted-base.sh` for
+actual gates. The active orchestration adapter also has its own locked
+`mix test` suite. Unimplemented legacy recipes fail explicitly.
 
-🔴 *Adapters.* The `adapter/` layer does not build, and no CI job compiles it —
-`zig-test.yml` globs `ffi/` only. The canonical template's adapter calls a
-function that exists nowhere in the tree, and `just mint` copies it forward.
-Full evidence in link:docs/known-issues/adapters.adoc[`docs/known-issues/adapters.adoc`].
-The `ffi/` layer is unaffected and is built and tested in CI.
+Host readiness is per tool and per artifact. A manifest, successful build or
+process exit does not establish that an operation works. The original server
+currently qualifies a small pure native profile; network integrations,
+persistent language sessions and unwired SDK adapters need their own execution
+contracts and evidence before admission. Install a coherent registry snapshot,
+including shared `cartridges/lib` modules, rather than copying directories alone.
 
 == What is a cartridge?
 
@@ -111,16 +113,15 @@ also link:schemas/SCHEMA-MIRROR.md[schemas/SCHEMA-MIRROR.md]).
 
 The pinned mirror is verified against `schemas/PINNED-SHA` on every CI run, then
 every `cartridge.json` is checked against `schemas/cartridge-v1.json` by the
-in-tree Deno validator under
+in-tree Bun/Ajv validator under
 link:tools/validate-cartridges/[`tools/validate-cartridges/`]:
 
 [cols="1,2",options="header"]
 |===
 | Task | Behaviour
 
-| `deno task audit` | Walks all manifests, prints a one-line summary per cartridge; exit 0 regardless.
-| `deno task audit-verbose` | As `audit`, but expands every schema violation per cartridge.
-| `deno task strict` | Fails the run on any violation. *Active in CI as of 2026-06-01.*
+| `bun tools/validate-cartridges/main.js --audit` | Reports schema violations without failing for invalid manifests.
+| `bun tools/validate-cartridges/main.js --strict` | Fails for schema violations, duplicate names, malformed JSON, missing/empty input and schema-pin drift.
 |===
 
 CI (link:.github/workflows/cartridge-schema.yml[`.github/workflows/cartridge-schema.yml`])
@@ -139,10 +140,10 @@ https://github.com/hyperpolymath/standards/tree/main/cartridges[hyperpolymath/st
 
 == Versioning + on-demand fetch
 
-Each cartridge directory contains its own `cartridge.json` with `version`
-(semver). Hosts fetch cartridges by name + version; the tray UI
-(`hyperpolymath/boj-server`) exposes "Add cartridge source" to point at this
-registry (the canonical default) or any other GitHub URL.
+Each cartridge has a declared semantic version. The original server pins an
+exact registry Git revision in `CARTRIDGES-REVISION` and installs a coherent
+snapshot preserving shared imports. Its qualification document additionally
+binds each admitted tool to manifest, binary and runtime hashes.
 
 == Inventory
 
@@ -152,12 +153,9 @@ registry (the canonical default) or any other GitHub URL.
 * *31 functional domains* + *7 cross-cutting categories* (`agentic`, `build`,
   `debug`, `fleet`, `health`, `nesy`, `orchestration`) + *1 template*.
 * Every `cartridge.json` validates strictly against `schemas/cartridge-v1.json`.
-* *12 manifests declare `"available": true`* — the Foundry Wave-1 "Golden
-  Dozen". The other 130 omit the key entirely rather than setting it to `false`,
-  so the tree records no availability claim for them either way. A count of
-  "canonical-only" cartridges cannot be derived from the manifests; earlier
-  editions of this README asserted 14, which was not verifiable then and is not
-  now.
+* Availability fields are author declarations. The host requires separate,
+  tool-specific artifact evidence; a successful build or manifest flag does
+  not authorize execution.
 
 These figures come from the tree, not from a stored constant. Recount with
 `just validate` (manifest total) and `just catalog` (catalogue total).
@@ -170,14 +168,10 @@ These figures come from the tree, not from a stored constant. Recount with
 |===
 | Tool | Pin | Used by
 
-| `zig` | *0.15.1* | `ffi/` (and, nominally, `adapter/`)
-| `deno` | 2.7.14 | `tools/validate-cartridges`, `tools/build-catalog`, `tools/cartridge-minter`
+| `zig` | *0.16.0* | All `ffi/` and native `adapter/` build roots
+| `bun` | 1.3.14 | `tools/validate-cartridges`, `tools/build-catalog`, `tools/cartridge-minter`
 | `idris2` | 0.8.0 | `abi/` contracts
 |===
-
-The Zig 0.16.0 migration is open in
-https://github.com/hyperpolymath/boj-server-cartridges/pull/109[#109] and has not
-merged. Build against 0.15.1 until it does.
 
 == FFI / Zig shim layout
 

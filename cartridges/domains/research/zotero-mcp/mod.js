@@ -32,8 +32,8 @@ const API_BASE = "https://api.zotero.org";
 // ---------------------------------------------------------------------------
 
 function getToken() {
-  const token = typeof Deno !== "undefined"
-    ? Deno.env.get("ZOTERO_API_KEY")
+  const token = typeof process !== "undefined"
+    ? process.env["ZOTERO_API_KEY"]
     : process.env.ZOTERO_API_KEY;
   return token || null;
 }

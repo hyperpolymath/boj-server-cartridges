@@ -6,7 +6,7 @@
 // Delegates to the Anthropic Claude API via fetch().
 // Requires ANTHROPIC_API_KEY environment variable.
 
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+const ANTHROPIC_API_KEY = process.env["ANTHROPIC_API_KEY"] ?? "";
 const ANTHROPIC_BASE = "https://api.anthropic.com/v1";
 const TIMEOUT_MS = 60_000;
 

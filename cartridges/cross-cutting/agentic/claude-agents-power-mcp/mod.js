@@ -6,11 +6,11 @@
 // Delegates to backend at http://127.0.0.1:3000 (override with CLAUDE_AGENTS_URL).
 // Auth: GITHUB_TOKEN (required for agent install; list/search work without it).
 
-const BASE_URL = Deno.env.get("CLAUDE_AGENTS_URL") ?? "http://127.0.0.1:3000";
+const BASE_URL = process.env["CLAUDE_AGENTS_URL"] ?? "http://127.0.0.1:3000";
 const TIMEOUT_MS = 20_000;
 
 function getToken() {
-  return Deno.env.get("GITHUB_TOKEN") ?? null;
+  return process.env["GITHUB_TOKEN"] ?? null;
 }
 
 function authHeaders() {

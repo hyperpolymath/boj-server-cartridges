@@ -3,7 +3,7 @@
 //
 // database-mcp/mod.js -- database gateway.
 
-const BASE_URL = Deno.env.get("DATABASE_MCP_BACKEND_URL") ?? "http://127.0.0.1:7718";
+const BASE_URL = process.env["DATABASE_MCP_BACKEND_URL"] ?? "http://127.0.0.1:7718";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

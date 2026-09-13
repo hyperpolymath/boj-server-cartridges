@@ -12,7 +12,7 @@
 #
 # FAIL-CLOSED (--strict). The wizard's value is the assurance it carries, so a
 # missing toolchain must not silently degrade it. In strict mode an absent
-# deno/idris2/jq is a FAILURE, not a skip. Without --strict the wizard is
+# bun/idris2/jq is a FAILURE, not a skip. Without --strict the wizard is
 # permissive for local exploration, but it will still never claim success for a
 # cartridge it did not actually produce.
 #
@@ -124,7 +124,7 @@ toml_get() { sed -nE "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*\"([^\"]*)\".*/\
 # ── 1 · MINT (delegate to the Mint stage — single source of path logic) ────
 say "1/4 · mint — scaffold from the proven template"
 CART_DIR=""
-if need deno "the Mint stage cannot scaffold a cartridge"; then
+if need bun "the Mint stage cannot scaffold a cartridge"; then
   # mint.sh's stdout is the scaffolded path; its chatter goes to stderr.
   CART_DIR="$("$HERE/stages/mint.sh" "$TOML")"
   [ -n "$CART_DIR" ] && [ -d "$CART_DIR" ] \
@@ -137,7 +137,7 @@ fi
 # cartridge it did not produce.
 if [ -z "$CART_DIR" ]; then
   echo "Foundry: INCOMPLETE — no cartridge was minted, so provision/configure/harness did not run." >&2
-  echo "         Install deno and re-run, or gate an existing cartridge with: foundry.sh --harness <dir>" >&2
+  echo "         Install bun and re-run, or gate an existing cartridge with: foundry.sh --harness <dir>" >&2
   exit 1
 fi
 

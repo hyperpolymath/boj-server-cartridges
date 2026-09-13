@@ -6,7 +6,7 @@ id: "boj-server-cartridges"
 level: 0
 parent: null
 version: "0.2"
-last_updated: "2026-08-07"
+last_updated: "2026-09-07"
 counted_on_commit: "d4be56b"
 
 ---
@@ -33,7 +33,7 @@ canonical_locations:
   schema_pin: "schemas/PINNED-SHA"
   schema_doc: "schemas/SCHEMA-MIRROR.md"
   validator: "tools/validate-cartridges/"
-  minter: "tools/cartridge-minter/mint.ts"
+  minter: "tools/cartridge-minter/mint.js"
   foundry: "tools/foundry/foundry.sh"
   minting_template: "cartridges/templates/gossamer-mcp/"
   shim_canon: "cartridges/templates/gossamer-mcp/ffi/cartridge_shim.zig"
@@ -41,20 +41,14 @@ canonical_locations:
   trusted_base_gate: "scripts/check-trusted-base.sh"
   audits: "audits/"
   taxonomy_adr: "docs/decisions/ADR-001-taxonomy.adoc"
-  checkpoints: ".machine_readable/6a2/"
+  checkpoints: ".machine_readable/descriptiles/"
   contractiles: ".machine_readable/contractiles/"
 
 upstream:
   schema_canonical: "hyperpolymath/standards@cartridges/cartridge-v1.json"
-  schema_canonical_commit: "7c2b81556791e97172da866b560147ec541797eb"
-  schema_canonical_commit_drift: |
-    KNOWN DISAGREEMENT. schemas/PINNED-SHA records
-    canonical_commit = "f5f0506a6ec88e574753eee701a268e0d4b3a7f2"
-    (pinned_at 2026-07-01, pinned_by_pr standards#373), which is not the
-    commit named above. PINNED-SHA is the OPERATIVE record — the CI gate
-    verifies the mirror's content SHA-256 against it, and that check
-    passes. The field above was not updated when the pin moved. Reconcile
-    it, or delete it in favour of PINNED-SHA; do not assume it is current.
+  schema_canonical_commit: "f5f0506a6ec88e574753eee701a268e0d4b3a7f2"
+  schema_content_sha256: "7d03f79f9c881784eba21670ac86130371d02f54483b373c8673587c49ab8d08"
+  schema_verification: "Mirror bytes and host mirror reconciled against this exact upstream pin on 2026-09-07."
 
 downstream_consumers:
   - id: "boj-server"
@@ -88,7 +82,7 @@ role_suffixes:
 
 trust_tiers:
   - id: "Teranga"
-    description: "Core / always-available"
+    description: "Core catalogue tier; availability requires tool-specific host evidence"
   - id: "Shield"
     description: "Security-critical / elevated-trust"
   - id: "Ayo"
@@ -153,7 +147,7 @@ ci_gates:
     flipped_to_strict_at: "2026-06-01"
     baseline: "142 total / 142 passing / 0 failing"
     baseline_verified_at: "2026-08-07"
-    baseline_command: "cd tools/validate-cartridges && deno task audit"
+    baseline_command: "bun tools/validate-cartridges/main.js --strict"
     note: "Also re-verifies the schema mirror SHA-256 against schemas/PINNED-SHA before validating, and runs the validator's own unit tests."
   - id: "proofs"
     workflow: ".github/workflows/proofs.yml"
@@ -162,9 +156,9 @@ ci_gates:
     note: "Idris2 0.8.0 per .tool-versions. typecheck runs `idris2 --check` on each .idr INDIVIDUALLY from its abi/ root, so a stale .ipkg cannot mask a rotted module, and carries a vacuous-pass guard (PASS=0 is FAILURE). Added after 23 proofs here rotted while their boj-server twins stayed green (#36/#37)."
   - id: "zig-test"
     workflow: ".github/workflows/zig-test.yml"
-    jobs: ["changes", "zig-test"]
+    jobs: ["changes", "zig-test", "shim-drift", "full-sweep"]
     gating: "partial"
-    note: "PARTIAL BY CONSTRUCTION. The change filter is '^cartridges/.*/ffi/', so it builds only the FFI of cartridges a PR touched. It never builds an adapter and never sweeps the whole tree. Installs zig 0.15.2 while .tool-versions pins 0.15.1."
+    note: "PR gate builds changed FFI and native adapter roots using Zig 0.16.0. Weekly/manual full-sweep builds every native root. Local audited sweep: 217/217 build/test/install roots passed on 2026-09-07."
   - id: "foundry"
     workflow: ".github/workflows/foundry.yml"
     jobs: ["changes", "provision-harness"]
@@ -224,47 +218,26 @@ untracked_workflow_warning: |
 
 ---
 ### [KNOWN_GAPS]
-# Recorded, not papered over. Each is real and reproducible today.
 gaps:
-  - id: "adapters-do-not-build"
+  - id: "tool-qualification"
     severity: "high"
-    detail: "None of the 99 cartridges/*/adapter/build.zig trees compiles. The gossamer template adapter calls ffi.gossamer_init, which does not exist, and the ffi `export fn` declarations are not `pub`, so the adapter cannot import them. Every minted adapter inherits the fault, so `just mint` output must not be treated as green."
-  - id: "adapters-are-ungated"
+    detail: "Build, ABI proof and manifest validation do not establish operation correctness. The host currently qualifies two pure native tools; other operations need explicit profiles and evidence."
+  - id: "persistent-language-backend"
     severity: "high"
-    detail: "No CI job builds any adapter. zig-test.yml filters on '^cartridges/.*/ffi/' only. This is why adapters-do-not-build survived undetected."
-  - id: "no-full-tree-sweep"
+    detail: "lang-mcp native sessions are process-local. Compiler/LSP operations need a caller-owned persistent backend; they cannot survive fork-per-call host execution."
+  - id: "retired-sdk-placeholders"
     severity: "medium"
-    detail: "Nothing builds the whole tree. CI builds only what a PR touched, so a cartridge can rot indefinitely as long as nobody edits it."
-  - id: "shim-drift-undetected"
-    severity: "medium"
-    detail: "116 vendored shim copies, 1 divergent, nothing comparing them."
-  - id: "empty-abi-dirs"
-    severity: "low"
-    detail: "18 of 126 abi/ directories contain no .idr file. The proof gate's vacuous-pass guard is whole-run; an individually empty abi/ passes silently."
-  - id: "toolchain-pin-disagreement"
-    severity: "low"
-    detail: ".tool-versions pins zig 0.15.1; zig-test.yml installs 0.15.2."
+    detail: "Five unwired SDK adapters are explicitly unavailable. Their native code and root modules are not thereby qualified. See docs/RESTORATION-20260907.md."
+  - id: "deployment-evidence"
+    severity: "high"
+    detail: "No current external BoJ deployment has been independently verified by the 2026-09-07 audit. Local tests are not deployment evidence."
 
 ---
 ### [PENDING]
-# Work that exists on a branch but is NOT on main. Listed so an agent does
-# not write runbook steps against tools that are not in the checkout.
-open_prs:
-  - id: "boj-server-cartridges#109"
-    branch: "feat/zig-016-ffi-sweep"
-    state: "open"
-    verified_at: "2026-08-07"
-    adds:
-      - "Zig 0.16.0 migration of all 118 ffi trees (.tool-versions and zig-test.yml both move to 0.16.0)"
-      - "tools/sync_cartridge_shim.sh — stamps the canonical shim into every cartridge; --check reports drift"
-      - "CI job shim-drift — fails on any shim differing from shim_canon"
-      - "CI job full-sweep — weekly cron + workflow_dispatch, builds every cartridge"
-      - "Justfile recipes: mint, shim-sync, shim-check"
-    absent_from_main:
-      - "tools/sync_cartridge_shim.sh"
-      - "the shim-drift job"
-      - "the full-sweep job"
-      - "the mint / shim-sync / shim-check recipes"
+next_actions:
+  - "Expand qualified operations by real use case, with credential/effect/resource and output contracts."
+  - "Inspect the actual deployment and gateway when its current address is supplied."
+  - "Treat optional Wasm and generalized choreography as bounded experiments, not a rewrite mandate."
 
 ---
 ### [KNOWN_DRIFT]
@@ -279,7 +252,7 @@ known_drift:
     - "boj-server-cartridges#32 — browser-mcp error_recover regression — CLOSED (fix bundled into #31)"
   text_corruption_2026_08_07: |
     A global find/replace of "v" -> "zig" corrupted ~140 cartridge READMEs
-    and .machine_readable/6a2/PLAYBOOK.a2ml, rewriting the estate's V-lang
+    and .machine_readable/descriptiles/PLAYBOOK.a2ml, rewriting the estate's V-lang
     ban notes into claims that ZIG is banned. Corrected on branch
     docs/machine-readable-repair. The corrupted rows also documented
     SIDELINED-*.v.adoc files that exist nowhere in this repository or its

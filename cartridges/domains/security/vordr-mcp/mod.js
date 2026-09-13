@@ -3,7 +3,7 @@
 //
 // vordr-mcp/mod.js -- vordr gateway
 
-const BASE_URL = Deno.env.get("VORDR_BACKEND_URL") ?? "http://127.0.0.1:7712";
+const BASE_URL = process.env["VORDR_BACKEND_URL"] ?? "http://127.0.0.1:7712";
 
 async function post(path, payload) {
   const ctrl = new AbortController();

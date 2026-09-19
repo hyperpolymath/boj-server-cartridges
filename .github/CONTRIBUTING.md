@@ -9,26 +9,26 @@ on demand into a host-local cache. Anything you land here ships to every
 downstream host on its next fetch — treat additions accordingly.
 
 Read README.adoc first for taxonomy + role suffixes, then
-[`docs/cartridge-authoring.adoc`](docs/cartridge-authoring.adoc) for the
+[`docs/cartridge-authoring.adoc`](../docs/cartridge-authoring.adoc) for the
 layer contract and the ABI. The canonical spec lives at
 [hyperpolymath/standards](https://github.com/hyperpolymath/standards/blob/main/cartridges/CARTRIDGE-FORMAT.adoc).
 
 > **Before you touch `adapter/`:** it does not build, and no CI job
 > compiles it. See
-> [`docs/known-issues/adapters.adoc`](docs/known-issues/adapters.adoc).
+> [`docs/known-issues/adapters.adoc`](../docs/known-issues/adapters.adoc).
 > The `ffi/` layer is fine.
 
 ## The minimum bar
 
 1.  Every new `cartridge.json` MUST validate against
-    [`schemas/cartridge-v1.json`](schemas/cartridge-v1.json). The schema
+    [`schemas/cartridge-v1.json`](../schemas/cartridge-v1.json). The schema
     is a SHA-pinned mirror of the canonical spec at
     [hyperpolymath/standards](https://github.com/hyperpolymath/standards/blob/main/cartridges/cartridge-v1.json);
     see [`schemas/SCHEMA-MIRROR.md`](schemas/SCHEMA-MIRROR.md) and
-    [`schemas/PINNED-SHA`](schemas/PINNED-SHA).
+    [`schemas/PINNED-SHA`](../schemas/PINNED-SHA).
 
 2.  CI runs the validator in **strict mode** —
-    [`.github/workflows/cartridge-schema.yml`](.github/workflows/cartridge-schema.yml)
+    [`.github/workflows/cartridge-schema.yml`](../.github/workflows/cartridge-schema.yml)
     blocks any PR that introduces an invalid manifest. The current
     baseline is **142/142 passing**; run `just` `validate` for the live
     figure rather than quoting a number. (The 139/139 in
@@ -37,7 +37,7 @@ layer contract and the ABI. The canonical spec lives at
 
 3.  Cartridge name MUST match
     `^[a-z0-9-]-(mcp|lsp|dap|bsp|debug|format|lint|build|nesy|agentic|fleet)$+`.
-    See <a href="README.adoc#_cartridge_roles"
+    See <a href="../README.adoc#_cartridge_roles"
     class="adoc §&quot;`Cartridge roles`&quot;">README</a> for the role
     suffix table.
 
@@ -60,7 +60,7 @@ Use `just` `mint` rather than copying the template by hand: it also
 performs the name substitutions through `cartridge.json`, `mod.js` and
 `README.adoc`, and records the `minter.toml` in the new cartridge so the
 mint is reproducible. Full walkthrough in
-[`docs/cartridge-authoring.adoc`](docs/cartridge-authoring.adoc).
+[`docs/cartridge-authoring.adoc`](../docs/cartridge-authoring.adoc).
 
 `deno` `task` `audit` walks every manifest in the tree and prints a
 one-line summary per cartridge; exit 0 regardless. `deno` `task`
@@ -75,7 +75,7 @@ scale.
 | `cartridges/templates/gossamer-mcp/` | Canonical scaffold. Use this as the starting point for new cartridges. |
 
 Taxonomy ratified in
-[`docs/decisions/ADR-001-taxonomy.adoc`](docs/decisions/ADR-001-taxonomy.adoc).
+[`docs/decisions/ADR-001-taxonomy.adoc`](../docs/decisions/ADR-001-taxonomy.adoc).
 
 ## PR discipline
 
@@ -134,11 +134,11 @@ this repo PR \#45).
 
 The **layer contract, ABI, minting and gates** are *not* on the wiki —
 they are in-tree at
-[`docs/cartridge-authoring.adoc`](docs/cartridge-authoring.adoc),
+[`docs/cartridge-authoring.adoc`](../docs/cartridge-authoring.adoc),
 because they have to version alongside the code they describe.
 
 ## Machine-readable summary
 
-[`0-AI-MANIFEST.a2ml`](0-AI-MANIFEST.a2ml) is the project’s
+[`0-AI-MANIFEST.a2ml`](../0-AI-MANIFEST.a2ml) is the project’s
 machine-readable manifest. Update it when adding a top-level structural
 element (a new domain, a new role suffix, a new tool under `tools/`).

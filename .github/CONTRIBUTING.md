@@ -102,8 +102,8 @@ always-run `changes` job that recomputes the gate’s path set via `git`
 `diff` `origin/<base>...HEAD`, and gate each heavy job with `needs:`
 `changes` + `if:` `needs.changes.outputs.run` `==` `'true'` (a job
 skipped via `if:` counts as a passing required check). Fail safe:
-default to running. Mirrors boj-server’s gates (boj-server PR \#216,
-this repo PR \#45).
+default to running. Mirrors boj-server’s gates (boj-server PR #216,
+this repo PR #45).
 
 ## What lives elsewhere
 

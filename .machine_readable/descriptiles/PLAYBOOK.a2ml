@@ -186,7 +186,7 @@ banned-on = "2026-04-10"
 scope = "estate-wide"
 replacement = "Zig (+ Idris2 for the proof layer, + Rust clients where relevant)"
 rationale = """
-The Hexadeca-Connector / unified-adapter pattern descends from a retired
+The UnifiedApiAdapter / unified-adapter pattern descends from a retired
 V-lang reference implementation (developer-ecosystem/v-ecosystem/
 v_api_interfaces/v_api_interfaces.v). Across the estate it was replaced by
 the Zig-FFI + Idris2-ABI substrate. In this repository that substrate is

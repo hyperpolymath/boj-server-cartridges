@@ -25,6 +25,7 @@ workflows:
         - 'github/codeql-action@b96794f015dfd88f77b49b1c93e0fa7110f94c63'
     '.github/workflows/label-triage.yml': []
     '.github/workflows/labels.yml': []
+    '.github/workflows/lock-sync-gate.yml': []
     '.github/workflows/mirror.yml':
         - 'hyperpolymath/standards@84355587cb2a1f86e6882de83514a32db2646e7a'
     '.github/workflows/pages-deploy.yml':

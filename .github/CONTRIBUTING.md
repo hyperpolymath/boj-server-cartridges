@@ -46,7 +46,7 @@ layer contract and the ABI. The canonical spec lives at
     class="boj-server net">cartridges</a> matches the tree. `just`
     `catalog-check` fails if it has drifted.
 
-5.  Commits MUST be GPG-signed.
+5.  Commits MUST be signed, with SSH for people (see Signed commits).
 
 ## Workflow
 
@@ -142,3 +142,20 @@ because they have to version alongside the code they describe.
 [`0-AI-MANIFEST.a2ml`](../0-AI-MANIFEST.a2ml) is the project’s
 machine-readable manifest. Update it when adding a top-level structural
 element (a new domain, a new role suffix, a new tool under `tools/`).
+
+## Signed commits
+
+Every commit that reaches the default branch must be signed; a ruleset refuses
+unsigned pushes. Estate policy:
+[SIGNING-POLICY](https://github.com/hyperpolymath/standards/blob/main/docs/SIGNING-POLICY.adoc).
+
+- **People and interactive agents** sign with an SSH key registered on GitHub
+  as a *signing* key (`gpg.format=ssh`, `user.signingkey=<key>.pub`,
+  `commit.gpgsign=true`). The committer email must be verified on that account.
+- **Apps, bots and workflows** never `git push` local commits. They write
+  through the API (`createCommitOnBranch` or the estate `signed-push` action)
+  so that GitHub signs each commit.
+- Merge PRs with **squash**. The ruleset checks every commit on the PR branch,
+  not just the result, so one unsigned commit blocks the merge. Re-create such a
+  branch with signed commits (`git cherry-pick -S`) and open a new PR.
+  Rebase-merge replays commits unsigned and is disabled.

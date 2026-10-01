@@ -4,10 +4,9 @@ message: "If you cite this software, please cite the Zenodo DOI once minted."
 type: software
 authors:
   - given-names: Jonathan
+    orcid: "https://orcid.org/0000-0002-3078-6652"
     family-names: Jewell
     email: jonathan.jewell@gmail.com
-    # PLACEHOLDER: insert ORCID once registered, e.g.
-    # orcid: "https://orcid.org/0000-0000-0000-0000"
 repository-code: "https://github.com/hyperpolymath/boj-server-cartridges"
 url: "https://github.com/hyperpolymath/boj-server-cartridges"
 abstract: >

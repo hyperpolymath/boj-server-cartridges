@@ -11,7 +11,7 @@ confirmation.
 
 == Context
 
-* Token ID: `689fa59a165c47cc61095d984c453205`
+* Token value: [REDACTED — see the incident references below; rotation remains unverified].
 * Leak location: `standards/avow-protocol/deploy-repos.sh:5` commit `5f2f8b2`
 * Token status: **UNVERIFIED** at Cloudflare as of session-end 2026-05-26.
 * Code fix PR `standards#161` MERGED 2026-05-26 — removed the literal token from the file.
@@ -21,7 +21,7 @@ Memory: `project_cloudflare_token_leak_2026_05_21.md`.
 
 == Concrete steps
 
-. **ASK** the user explicitly: "Was Cloudflare token `689fa59a...` rotated?"
+. **ASK** the user explicitly: "Was the leaked Cloudflare token referenced below rotated?"
    Do not proceed without an unambiguous yes.
 . If yes:
 .. Confirm the new token works for whatever workflow depended on the old one.

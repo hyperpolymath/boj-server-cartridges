@@ -13,9 +13,9 @@ confirmation.
 
 * Token value: [REDACTED — see the incident references below].
 * Leak location: `standards/avow-protocol/deploy-repos.sh:5` commit `5f2f8b2`
-* Token status: **DEAD** — owner confirmed in writing on 2026-09-14 (ruling R-D, which released `standards#756`). It was **UNVERIFIED** at session-end 2026-05-26; the rest of this prompt records that earlier state. Whether to rewrite history is still a separate, unruled decision.
+* Token status: **DEAD**. The rotation was user-confirmed on 2026-05-26 (`handover.machine.yaml` marks this task `closed_abandoned`), and the owner reconfirmed it in writing on 2026-09-14 (ruling R-D, which released `standards#756`). This prompt was written before that confirmation, and the rest of it records the earlier state.
 * Code fix PR `standards#161` MERGED 2026-05-26 — removed the literal token from the file.
-* History rewrite is PAUSED pending rotation confirmation.
+* History rewrite: **ABANDONED** after a blast-radius audit (436 commits would lose signatures under `required_signatures`, and about 578 downstream pins would break). The steps below are historical; do not resume them.
 
 Memory: `project_cloudflare_token_leak_2026_05_21.md`.
 

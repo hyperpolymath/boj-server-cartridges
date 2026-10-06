@@ -11,9 +11,9 @@ confirmation.
 
 == Context
 
-* Token value: [REDACTED — see the incident references below; rotation remains unverified].
+* Token value: [REDACTED — see the incident references below].
 * Leak location: `standards/avow-protocol/deploy-repos.sh:5` commit `5f2f8b2`
-* Token status: **UNVERIFIED** at Cloudflare as of session-end 2026-05-26.
+* Token status: **DEAD** — owner confirmed in writing on 2026-09-14 (ruling R-D, which released `standards#756`). It was **UNVERIFIED** at session-end 2026-05-26; the rest of this prompt records that earlier state. Whether to rewrite history is still a separate, unruled decision.
 * Code fix PR `standards#161` MERGED 2026-05-26 — removed the literal token from the file.
 * History rewrite is PAUSED pending rotation confirmation.
 

@@ -1,0 +1,174 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= ADR-003: Trust tiers — admission gates plus signing authority
+:adr-status: Proposed
+:adr-date: 2026-10-07
+
+== Status
+
+*Proposed* 2026-10-07. The owner ruled the decisions below on 2026-10-07.
+This record becomes Accepted when the CI gate in <<enforcement>> lands.
+
+== Context
+
+Every `+cartridge.json+` declares a `+tier+`. The schema
+(`+schemas/cartridge-v1.json+`, SHA-pinned from `+hyperpolymath/standards+`)
+gives it three values:
+
+* Teranga: "core/always-available";
+* Shield: "security-critical/elevated-trust";
+* Ayo: "community-contributed".
+
+Nothing enforces the field. Measured at `+ec89045+`
+(`+.machine_readable/migrations/split.jsonl+`, see
+`+docs/migrations/split-phase0-survey.adoc+`), the 142 manifests declare
+131 Ayo, 11 Teranga and 0 Shield.
+
+In `+hyperpolymath/boj-server+` (`+7dd5897d+`), `+tier+` is read for one
+purpose only: grouping the menu (`+elixir/lib/boj_rest/router.ex+` L70–73,
+and `+MenuTier+` in `+ffi/zig/src/catalogue.zig+`). The loader
+(`+ffi/zig/src/loader.zig+` `+loadCartridge+`) checks a SHA-256 hash only
+when it is given one; `+expected_hash+` is optional. Nothing checks a
+signature.
+
+So the field is decoration. Ten of the eleven Teranga cartridges do not
+meet any reasonable reading of "core/always-available":
+
+[cols="2,1,1,1,1,1"]
+|===
+|Teranga cartridge |`+abi/+` |`+ffi/+` |`+adapter/+` |`+tests/+` |auth
+|bug-filing-mcp |yes |yes |yes |yes |none
+|orchestrator-lsp-mcp |no |yes |yes |*no* |none
+|elevenlabs-mcp |no |*no* |*no* |*no* |api-key
+|ffmpeg-mcp |no |*no* |*no* |*no* |none
+|replicate-mcp |no |*no* |*no* |*no* |api-key
+|whisper-mcp |no |*no* |*no* |*no* |api-key
+|search-mcp |no |*no* |*no* |*no* |api-key
+|chromadb-mcp |no |*no* |*no* |*no* |api-key
+|pinecone-mcp |no |*no* |*no* |*no* |api-key
+|qdrant-mcp |no |*no* |*no* |*no* |api-key
+|weaviate-mcp |no |*no* |*no* |*no* |api-key
+|===
+
+The last nine contain only a `+cartridge.json+`; search-mcp also has a
+README. The table was produced with `+test -d <path>/<dir>+` for each path
+in the ledger with `+"tier":"Teranga"+`.
+
+== Decision
+
+A tier is a set of *admission requirements* plus a *signing authority*.
+A cartridge holds a tier only while it meets that tier's requirements, and
+only once a key allowed to sign for that tier has signed its index entry.
+The requirements are cumulative:
+
+[cols="1,4,2,2"]
+|===
+|Tier |Admission requirements |Signed by |Loaded
+
+|Ayo
+|The manifest validates against `+cartridge-v1.json+`. The index entry
+carries the binary's SHA-256. This is the only tier whose FFI may return
+canned stub output (DEBT T-1).
+|a maintainer key or the owner key
+|on demand
+
+|Teranga
+|Ayo, plus: `+ffi/+` and `+adapter/+` exist; no `+*_ffi.zig+` returns
+`+"status":"stub"+`; `+tests/+` exists and passes in CI.
+|the owner key only
+|at boot
+
+|Shield
+|Teranga, plus: `+abi/+` exists, written in Idris2 with `+%default total+`,
+and its trusted core contains no `+believe_me+`, `+postulate+` or
+`+assert_total+`; the cartridge's exposure is not public.
+|the owner key only
+|at boot
+|===
+
+"Community-contributed", the schema's wording for Ayo, describes
+provenance, not trust. Under this ADR, Ayo means "admitted, not yet held
+to core requirements". Changing the schema's description is a
+`+hyperpolymath/standards+` change and is listed under
+<<consequences>>; it does not block this record.
+
+[[enforcement]]
+=== Where it is enforced: CI and the loader
+
+Both places apply the same rule:
+
+* *CI (this repository).* A required check fails any PR in which a
+  manifest declares a tier whose admission requirements the cartridge
+  does not meet. It reads the exemption ratchet below.
+* *Loader (boj-server, split Phases 5–6).* It loads only entries from the
+  signed index. It refuses an entry with no signature, a signature by a
+  key not authorised for the declared tier, or a binary whose SHA-256
+  differs from the one recorded. `+expected_hash+` stops being optional.
+
+The loader cannot re-run the tests, but it can re-check everything the
+signature commits to: the tier, the hash and the signer. The CI check and
+the loader check are independent, so one failing does not depend on the
+other.
+
+=== Re-audit of current assignments
+
+The owner ruled that all eleven Teranga assignments stay, and that the
+ten which fall short are to be built up to Teranga, not demoted. Until
+each is built it would fail the CI check from the first run. So the check
+ships with an *exemption ratchet*, declared here before enforcement
+starts rather than discovered halfway through (estate §5b):
+
+[cols="2,3"]
+|===
+|Exempt cartridge |Missing for Teranga
+|orchestrator-lsp-mcp |`+tests/+`
+|elevenlabs-mcp |`+ffi/+`, `+adapter/+`, `+tests/+`
+|ffmpeg-mcp |`+ffi/+`, `+adapter/+`, `+tests/+`
+|replicate-mcp |`+ffi/+`, `+adapter/+`, `+tests/+`
+|whisper-mcp |`+ffi/+`, `+adapter/+`, `+tests/+`
+|search-mcp |`+ffi/+`, `+adapter/+`, `+tests/+`
+|chromadb-mcp |`+ffi/+`, `+adapter/+`, `+tests/+`
+|pinecone-mcp |`+ffi/+`, `+adapter/+`, `+tests/+`
+|qdrant-mcp |`+ffi/+`, `+adapter/+`, `+tests/+`
+|weaviate-mcp |`+ffi/+`, `+adapter/+`, `+tests/+`
+|===
+
+The ratchet only shrinks. The PR that brings a cartridge up to Teranga
+removes its row, and the check fails if a listed cartridge already meets
+its tier, so that a stale exemption cannot survive. No row may be added
+without a new owner ruling. The 131 Ayo cartridges are not re-tiered;
+Ayo's requirements are the schema check the repository already runs.
+
+[[consequences]]
+== Consequences
+
+* Ten cartridges need building: nine from nothing (Idris2 ABI optional for
+  Teranga, Zig FFI, Zig adapter, tests) and one needing tests. Eight of
+  them call API-key services. Truthful tests need either live credentials
+  in CI or recorded fixtures; each PR states which one it used. This
+  overlaps `+hyperpolymath/boj-server#201+`.
+* Until the ratchet is empty, the menu lists ten Teranga entries that do
+  nothing. The ratchet makes this visible; it does not cure it.
+* The owner signs every Teranga and Shield index entry: eleven at
+  present.
+* `+loadCartridge+` must require a hash and a valid signature. That is
+  boj-server Phase 5–6 work and depends on the signed index format.
+* Follow-up in `+hyperpolymath/standards+`: reword the `+tier+`
+  description in `+cartridge-v1.json+` to match this ADR, then re-pin the
+  schema here and in boj-server.
+* No manifest changes with this record.
+
+== Alternatives considered
+
+Each was put to the owner on 2026-10-07:
+
+* *Signing authority alone.* The loader would trust any correctly signed
+  entry, whatever its quality. Rejected because a signature then vouches
+  for nothing checkable.
+* *Demote the ten now, re-promote each on build.* This keeps the tier
+  true at every point and needs no ratchet. Not chosen; the owner kept the
+  Teranga intent.
+* *Freeze until Phase 3*, or *delete the nine manifest-only cartridges.*
+  Not chosen.
+* *CI only*, or *loader only.* Each leaves one path unchecked: a
+  hand-built index, or an unreviewed manifest.

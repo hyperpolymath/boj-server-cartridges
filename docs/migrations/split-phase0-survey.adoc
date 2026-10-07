@@ -1,0 +1,205 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= Split Phase 0 — survey (read-only)
+:revdate: 2026-10-07
+
+Phase 0 of the BoJ split: move every cartridge off its vendored copy of
+the host glue and onto one shared adapter library. This document records
+the starting state. It changes no code. Every count carries the command
+that produced it, so any row can be re-checked or falsified in one step
+(the `+DEBT.adoc+` convention).
+
+The per-cartridge ledger is
+`+.machine_readable/migrations/split.jsonl+`: JSON Lines, one record per
+`+cartridge.json+` manifest, each line I-JSON (RFC 7493) in JCS
+(RFC 8785) canonical form (estate ruling D306). The plan originally
+named an A2ML file in boj-server; A2ML is retired (D308), and the ledger
+lives here because this is the repository whose counts move.
+
+== Horizon
+
+Measured 2026-10-07 against these heads, after `+git fetch+`:
+
+[cols="1,2"]
+|===
+|Repository |Head
+|`+hyperpolymath/boj-server-cartridges+` |`+ec890457e443542b84b07857fdd30e205213aa95+`
+|`+hyperpolymath/boj-server+` |`+7dd5897d0233932c8529f875ee2fb8d41297501d+`
+|`+hyperpolymath/unified-api-adapter+` |`+b7c3fff7b446403e55eb8946435967fbbc610f74+`
+|`+hyperpolymath/developer-ecosystem+` |`+ca6393725b3ba859430981d8adb56a21df8506ec+`
+|===
+
+The trees were read with `+git ls-tree -r --name-only origin/main+`
+(cartridges and boj-server); unified-api-adapter and developer-ecosystem were read the same way, and unified-api-adapter was built in a throwaway worktree. Nothing was built in this repository. Any
+statement that something is absent is bounded by those trees.
+
+== Cartridges in this repository
+
+[cols="3,1,4"]
+|===
+|Item |Count |Command (repository root, `+origin/main+`)
+
+|`+cartridge.json+` manifests (= ledger rows)
+|142
+|`+git ls-tree -r --name-only HEAD \| grep -c '/cartridge\.json$'+`
+
+|…of which `+cartridges/domains/+` / `+cross-cutting/+` / `+templates/+`
+|129 / 12 / 1
+|`+… \| awk -F/ '{print $2}' \| sort \| uniq -c+`
+
+|Vendored `+cartridge_shim.zig+` copies
+|118
+|`+git ls-tree -r --name-only HEAD \| grep -c '/cartridge_shim\.zig$'+`
+
+|…distinct blobs among them
+|1
+|`+git ls-tree -r HEAD \| awk '$4 ~ /\/cartridge_shim\.zig$/ {print $3}' \| sort -u \| wc -l+`
+
+|`+adapter/+` directories
+|125
+|`+git ls-tree -r --name-only HEAD \| grep -oE '^.*/adapter/' \| sort -u \| wc -l+`
+
+|`+adapter/build.zig+` files
+|99
+|`+… \| grep -c '/adapter/build\.zig$'+`
+
+|`+*_adapter.zig+` files
+|99
+|`+… \| grep -cE '_adapter\.zig$'+`
+
+|Cartridges with an `+ffi/+` directory
+|131
+|ledger: `+grep -c '"has_ffi":true'+`
+
+|`+*_ffi.zig+` files returning canned stub JSON (DEBT T-1)
+|92 files, 91 cartridges
+|`+grep -rlF '\"status\":\"stub\"' cartridges --include='*_ffi.zig' \| wc -l+`
+
+|Declared `+tier+`: Ayo / Teranga / Shield
+|131 / 11 / 0
+|ledger: `+grep -o '"tier":"[A-Za-z]*"' \| sort \| uniq -c+`
+|===
+
+All 118 shims are byte-identical, so de-vendoring them is a mechanical
+replacement, not a merge. DEBT T-1 previously printed a search pattern
+that finds 1 file rather than 92; this change corrects it (the quotes are
+escaped inside Zig string literals).
+
+== The ledger
+
+One record per manifest, keyed by `+path+` (unique) and `+name+`
+(unique across all 142; checked). No identifiers are minted.
+
+[cols="1,3"]
+|===
+|Field |Meaning
+|`+name+` |the manifest's `+name+`
+|`+path+` |the cartridge directory
+|`+kind+` |`+domains+`, `+cross-cutting+` or `+templates+` (ADR-001). The one `+templates+` row is the authoring template, not a shipped cartridge; it is kept so the count reconciles with the manifest count.
+|`+tier+` |the manifest's declared trust tier, verbatim. This is the re-audit baseline for the trust-tier ADR; nothing here asserts it is correct.
+|`+has_ffi+`, `+has_adapter_dir+`, `+has_adapter_build+`, `+has_shim+` |presence of those files under `+path+`
+|`+ffi_stub+` |at least one `+*_ffi.zig+` under `+path+` returns `+"status":"stub"+` (DEBT T-1 pattern)
+|`+state+` |`+in-tree+` for every row. Later phases move a row to `+de-vendored+`, `+moved+` or `+blocked+`.
+|`+prs+` |empty for every row: no split PR exists yet, so none was queried.
+|`+reason+` |`+null+` unless `+state+` is `+blocked+`
+|===
+
+How the ledger was produced: for each manifest path from the tree
+listing, the record was assembled with `+jq -c+` and passed through
+`+ijson-jcs canon+` (`+hyperpolymath/ijson-jcs+` `+main+`, which carries the
+CLI). How it is checked: `+ijson-jcs check+` takes whole files, not JSON
+Lines, so each line was written to its own file and checked; 142 of 142
+returned `+OK+`. Controls planted first: a line with keys out of order
+returned `+NOT CANONICAL+` (rc 1) and a line with a duplicate key returned
+`+INVALID+` (rc 2).
+
+To re-check, from the repository root:
+
+[source,sh]
+----
+n=0; while IFS= read -r l; do n=$((n+1)); printf '%s\n' "$l" > "/tmp/l$n.json"
+  ijson-jcs check "/tmp/l$n.json" >/dev/null || echo "line $n"; done \
+  < .machine_readable/migrations/split.jsonl
+----
+
+== unified-api-adapter
+
+* *It is still the RSR template.* It has 6 commits and 0 tags
+  (`+git ls-remote --tags origin | wc -l+`). The tree of its first commit
+  `+e868173+` is identical to `+rsr-template-repo@05bf1b9+` (compared with
+  `+git rev-parse <c>^{tree}+`). Since then 6 files have changed, 41 lines
+  added and 7 removed: workflow pin bumps, CONTRIBUTING and CITATION.cff.
+  152 of its 479 tracked files still contain `+{{+` placeholders, including
+  the README title `+= {{PROJECT_NAME}}+`.
+* *What builds.* `+idris2 --typecheck abi.ipkg+` in `+src/interface+` (Idris2
+  0.7.0) passes; it checks the template's 3 ABI modules. `+zig build+` in
+  `+src/interface/ffi+` (Zig 0.16.0) returns 0, but `+build.zig+` defines no
+  steps, so the pass means nothing. `+zig test src/main.zig+` fails with
+  `+expected '(', found '{'+` on `+export fn {{project}}_init()+`.
+* *No cartridge ABI yet.*
+  `+git grep -nE 'boj_cartridge_(init|deinit|name|version|invoke)|serve\('+`
+  finds nothing in `+unified-api-adapter+`. The same grep over this
+  repository hits 369 files (positive control).
+
+== The V-lang original
+
+`+developer-ecosystem:v-ecosystem/v_api_interfaces/+`. The last commit
+touching it is `+c3210732+` (2026-09-21, the rename to
+unified-api-adapter). The entry point `+v_api_interfaces.v+` defines
+`+interface ProtocolAdapter { port; start() }+` and
+`+struct UnifiedApiAdapter+`. It wires 16 adapters on `+base_port+1..16+`.
+
+[cols="2,3"]
+|===
+|Surface |State in the V original
+|REST, gRPC, GraphQL |Real HTTP servers: `+rest.v+` 278 lines, `+grpc.v+` 396, `+graphql.v+` 359
+|FlatBuffers, Bebop, JSON-RPC, WebSocket, MQTT, tRPC, Cap'n Proto, SOAP, VeriSimDB |Stubs: 17 lines each, they print a start-up line
+|BSP, SCIP, IPFS, Arrow |One-line `+println+` structs in the entry file
+|===
+
+The suite wires in no cross-cutting controls: the three real servers bind
+`+:port+`, with no host, auth, rate limit or TLS. Auth, zero-trust, proxy
+and metrics live in separate modules that the suite does not import:
+`+v_auth+`, `+v_zerotrust+`, `+v_proxy+` and `+v_metrics+`. The REST server
+builds a shell command from a request path without quoting it
+(`+rest.v+` L156–161). That is inferred from reading the code, not tested.
+The V version is retired (V-lang ban, 2026-04-10) and is a reference for
+*what* surfaces exist, never code to port. The in-repo reference for the
+Zig shape is `+cartridges/domains/config/k9iser-mcp/adapter/+`: one
+loopback listener, protocol-classified, every request passing an
+exposure gate before one `+boj_cartridge_invoke+` call
+(`+.claude/CLAUDE.md+`).
+
+*Missing from unified-api-adapter:* every surface and control above.
+For each protocol name, and for HTTP-server and auth terms,
+`+git grep -il+` finds 0 files in its `+src/+`.
+
+== Leftover state from earlier attempts
+
+Scope: the remote heads of the three repositories, local refs and
+worktrees of the local clones, and the issues named.
+
+* *No split branches exist.* No remote head in unified-api-adapter,
+  boj-server or this repository has split, adapter, devendor or unified in
+  its name.
+* *One rescued partial port. This is the most relevant prior work.*
+  `+refs/rescued/inc2-20261006/heads/feat/adapter-resurrection+` (`+106c767+`,
+  2026-08-07) is in the local clone of this repository. It holds 8 commits
+  that are not on `+main+`; `+git diff --shortstat origin/main...106c767+`
+  reports 543 files changed, +23292/−6058. It ports about 90 adapters and
+  "the two unified adapters" to Zig 0.16. Phase 3 should mine it rather
+  than redo it. The ref exists only locally; it has not been pushed.
+* *Open issues:* boj-server#201 ("Implement the ~100 stub cartridges")
+  covers the same ground as DEBT T-1. cartridges#97 is about the Pages
+  deploy and is unrelated to the split.
+* *`+metadatastician/boj-server-mk2+` is readable.* `+gh repo view+`
+  succeeded on 2026-10-07. This survey has not read its contents.
+
+== What this survey does not settle
+
+* *Trust-tier semantics.* The owner has ruled that the existing
+  `+tier+` enum (Teranga / Shield / Ayo) is to be enforced. What each tier
+  gates at signing and load time is not yet ruled; that is a separate ADR
+  with status Proposed. No manifest's `+tier+` is changed here.
+* *Phase 1 shape* of `+unified-api-adapter+` (its ABI for the five
+  `+boj_cartridge_*+` exports) is Phase 1 work.

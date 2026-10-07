@@ -143,11 +143,14 @@ in this repository enforces it.
 [width="100%",cols="16%,20%,24%,40%",options="header",]
 |===
 |ID |Sev |Item |Evidence
-|T-1 |HIGH |*92 of 142 FFI implementations return canned stub JSON*
-(`+"status":"stub"+`). The per-file headers are honest about it; the
-scale is the debt — roughly two-thirds of the advertised surface is not
-wired to anything.
-|`+grep -rl '"status":"stub"' cartridges --include='*_ffi.zig' \| wc -l+`
+|T-1 |HIGH |*92 of 118 `+*_ffi.zig+` files return canned stub JSON*
+(`+"status":"stub"+`), spanning 91 of 142 cartridges (`+textkit-mcp+`
+has two). The per-file headers are honest about it; the scale is the
+debt — roughly two-thirds of the advertised surface is not wired to
+anything. The quotes are escaped inside the Zig string literals, so the
+search must match `+\"+`; the unescaped pattern finds 1 file
+(re-measured 2026-10-07 at `+ec89045+`).
+|`+grep -rlF '\"status\":\"stub\"' cartridges --include='*_ffi.zig' \| wc -l+`
 → 92
 
 |T-2 |HIGH |*130 of 142 manifests omit `+available+` entirely*; 12 set

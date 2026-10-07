@@ -320,7 +320,11 @@ replaced. Agent-hostile: it is machine-readable content asserting the
 opposite of the truth.
 |`+grep -rln 'zig banned 2026-04-10\|zig predecessor' cartridges \| wc -l+`
 
-|D-5 |MEDIUM |_(remediation in flight)_ `+.machine_readable/6a2/+` is
+|D-5 |MEDIUM |*FIXED by #135 (`+872bc52+`, 2026-09-13), retained for provenance.*
+The directory is gone: `+git ls-tree -r --name-only main \| grep -c 6a2/+` → 0. A2ML
+is retired (D308). One unexecuted reference remains: Mustfile
+`+six-directory-present+` still tests for the directory, but no workflow
+or recipe runs the Mustfile. Originally: `+.machine_readable/6a2/+` was
 *another repository’s boilerplate*: `+STATE.a2ml+` says
 `+project = "rsr-template-repo"+`, `+ECOSYSTEM.a2ml+` says
 `+project = "pseudoscript"+`. An agent following

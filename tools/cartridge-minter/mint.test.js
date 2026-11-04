@@ -22,7 +22,27 @@ test("mint creates a valid unavailable scaffold and refuses to overwrite", async
     expect(validateManifest(manifest)).toEqual([]);
     expect(manifest.available).toBe(false);
     expect(manifest.tools).toEqual([]);
+    expect(await readFile(join(dest, "mod.js"), "utf8")).toBe(await readFile(new URL("../../cartridges/templates/gossamer-mcp/mod.js", import.meta.url), "utf8"));
     await expect(mint(config, dest)).rejects.toThrow("already exists");
     expect(JSON.parse(await readFile(join(dest, "cartridge.json"), "utf8"))).toEqual(manifest);
+  } finally { await rm(root, {recursive:true}); }
+});
+
+test("concurrent minters reserve one complete destination and reject the other writer", async () => {
+  const root = await mkdtemp(join(tmpdir(), "boj-mint-race-"));
+  try {
+    const config = join(root, "minter.toml"), dest = join(root, "result");
+    await writeFile(config, Object.entries(cfg).map(([key,value]) => `${key} = ${JSON.stringify(value)}`).join("\n"));
+    const results = await Promise.allSettled([mint(config, dest), mint(config, dest)]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    const failures = results.filter((result) => result.status === "rejected");
+    expect(failures).toHaveLength(1);
+    expect(failures[0].reason.code === "EEXIST" || /already exists/.test(failures[0].reason.message)).toBe(true);
+    const manifest = JSON.parse(await readFile(join(dest, "cartridge.json"), "utf8"));
+    expect(validateManifest(manifest)).toEqual([]);
+    expect(manifest.name).toBe(cfg.name);
+    expect(manifest.available).toBe(false);
+    expect(await readFile(join(dest, "minter.toml"), "utf8")).toBe(await readFile(config, "utf8"));
+    expect(await readFile(join(dest, "mod.js"), "utf8")).toBe(await readFile(new URL("../../cartridges/templates/gossamer-mcp/mod.js", import.meta.url), "utf8"));
   } finally { await rm(root, {recursive:true}); }
 });

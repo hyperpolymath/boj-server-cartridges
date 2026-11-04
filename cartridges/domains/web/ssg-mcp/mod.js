@@ -8,7 +8,7 @@
 const TIMEOUT_MS = 15_000;
 
 /**
- * POST JSON to path appended to the trimmed SSG_BACKEND_URL. Missing or blank
+ * POST JSON below the SSG_BACKEND_URL path, with one joining slash. Missing or blank
  * configuration returns 503 without a request. Returns the backend status and
  * JSON data, or a non-JSON error as data with the original status. An
  * AbortError reaching the request handler returns 504; other errors caught by
@@ -28,7 +28,9 @@ async function post(path, payload) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const r = await fetch(`${baseUrl}${path}`, {
+    const endpoint = new URL(baseUrl);
+    endpoint.pathname = `${endpoint.pathname.replace(/\/+$/, "")}${path}`;
+    const r = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

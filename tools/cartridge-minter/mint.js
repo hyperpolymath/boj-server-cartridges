@@ -1,9 +1,9 @@
 import { validateManifest } from "../validate-cartridges/main.js";
 // SPDX-License-Identifier: MPL-2.0
 import { readTextFile, writeTextFile } from "../lib/files.js";
-import { stat, mkdir } from "node:fs/promises";
+import { stat, mkdir, readdir } from "node:fs/promises";
 const parseToml = Bun.TOML.parse;
-import { ensureDir, copy } from "../lib/files.js";
+import { copy } from "../lib/files.js";
 import { join, dirname } from "node:path";
 import { fileURLToPath as fromFileUrl } from "node:url";
 const REPO_ROOT = dirname(dirname(dirname(fromFileUrl(import.meta.url)))), TEMPLATE_DIR = join(REPO_ROOT, "cartridges", "templates", "gossamer-mcp"), ROLE_RE = /-(mcp|lsp|dap|bsp|debug|format|lint|build|nesy|agentic|fleet)$/, DOMAIN_NORMALISE = {
@@ -121,7 +121,12 @@ export async function mint(configPath, explicitDest) {
   // Reserve the destination atomically. A racing minter must fail here.
   await mkdir(dirname(dest), {recursive: true});
   await mkdir(dest, {recursive: false});
-  await copy(TEMPLATE_DIR, dest);
+  // The root is ours already; copy its children without overwriting any entry.
+  // Copying the template root onto the reserved directory fails with EEXIST
+  // under Bun 1.4, while dropping the reservation would reintroduce the race.
+  for (const entry of await readdir(TEMPLATE_DIR)) {
+    await copy(join(TEMPLATE_DIR, entry), join(dest, entry));
+  }
   await writeTextFile(join(dest, "cartridge.json"), JSON.stringify(manifest, null, 2) + `
 `);
   await writeTextFile(join(dest, "minter.toml"), tomlText);

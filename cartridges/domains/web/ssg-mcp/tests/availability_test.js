@@ -79,3 +79,28 @@ test("an unknown tool stays unknown even when no backend is configured", async (
   delete process.env.SSG_BACKEND_URL;
   expect((await handleTool("unknown", {})).status).toBe(404);
 });
+
+test("backend URL joining preserves the prefix with or without trailing slashes", async () => {
+  const requests = [];
+  server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch(request) {
+      const url = new URL(request.url);
+      requests.push({path: url.pathname, search: url.search});
+      return Response.json({success: false, fixture: "transport-only"}, {status: 503});
+    },
+  });
+  for (const prefix of ["", "/gateway/ssg"]) {
+    for (const trailing of ["", "/", "///"]) {
+      for (const search of ["", "?fixture=join"]) {
+        process.env.SSG_BACKEND_URL = `  ${server.url.origin}${prefix}${trailing}${search}  `;
+        const result = await handleTool("ssg_build", {});
+        expect(result.status).toBe(503);
+        expect(result.data.fixture).toBe("transport-only");
+        expect(requests.at(-1)).toEqual({path: `${prefix}/api/v1/ssg_build`, search});
+      }
+    }
+  }
+  expect(requests).toHaveLength(12);
+});

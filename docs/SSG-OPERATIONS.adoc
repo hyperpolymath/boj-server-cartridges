@@ -128,3 +128,26 @@ https://github.com/hyperpolymath/boj-server-cartridges/issues/165[Issue #165]
 remains the existing tracker for any selected qualified successor. Its real
 build acceptance must be met before claiming such a successor; this change
 only establishes truthful unavailability and retained source value.
+
+== Workflow recovery evidence
+
+The official credential-free lock recovery run
+https://github.com/hyperpolymath/cicd-suite/actions/runs/41896427906[41896427906]
+inspected source `107e17` at its complete commit identity recorded in the
+receipt. Its unchanged `actions.lock` candidate has SHA-256
+`b5171fcd60febc25d57f09381cfbebfe8784ce979c1d4cbec321239a7c9be63d`.
+That candidate was applied in `c7cf506582176974bb2a9111a1470a4a28bc6b3b`;
+the repository's subsequent native lock-sync check passed.
+
+Governance and Secret Scanner still failed before creating jobs because the
+Actions policy had not admitted their exact canonical coordinates. The policy
+now admits only those two paths under `metadatastician/standards` at
+`d3e4b485a2af90c92a8e18af0888cd19cb132cd9`, alongside its existing entries.
+The new source event must demonstrate that both workflows start and pass;
+the settings change and a valid lock alone are not that execution evidence.
+
+Recognised SSG tools retain `RC_RUNTIME_ERROR` and now supply ADR-0006's
+structured `error`, `message`, and `details` fields. These fields describe
+unavailability; they do not imply that any backend ran. The native tests parse
+the complete response for all five tools and retain the unknown-tool and
+undersized-buffer controls.

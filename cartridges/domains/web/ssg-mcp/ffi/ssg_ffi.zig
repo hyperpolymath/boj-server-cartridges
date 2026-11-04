@@ -254,7 +254,7 @@ pub export fn boj_cartridge_invoke(
         !shim.toolIs(tool_name, "ssg_deploy") and
         !shim.toolIs(tool_name, "ssg_clean")) return shim.RC_UNKNOWN_TOOL;
 
-    const rc = shim.writeResult(out_buf, in_out_len, "{\"success\":false,\"status\":\"unavailable\",\"error\":\"ssg-mcp native backend is not implemented\"}");
+    const rc = shim.writeResult(out_buf, in_out_len, "{\"success\":false,\"status\":\"unavailable\",\"error\":\"backend_unavailable\",\"message\":\"ssg-mcp native backend is not implemented\",\"details\":{\"backend_implemented\":false}}");
     return if (rc == shim.RC_SUCCESS) shim.RC_RUNTIME_ERROR else rc;
 }
 
@@ -352,8 +352,14 @@ test "invoke: each declared tool reports unavailable without changing model stat
         var len: usize = buf.len;
         const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
         try std.testing.expectEqual(shim.RC_RUNTIME_ERROR, rc);
-        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"success\":false") != null);
-        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"status\":\"unavailable\"") != null);
+        const parsed = try std.json.parseFromSlice(std.json.Value, std.testing.allocator, buf[0..len], .{});
+        defer parsed.deinit();
+        const body = parsed.value.object;
+        try std.testing.expectEqual(false, body.get("success").?.bool);
+        try std.testing.expectEqualStrings("unavailable", body.get("status").?.string);
+        try std.testing.expectEqualStrings("backend_unavailable", body.get("error").?.string);
+        try std.testing.expectEqualStrings("ssg-mcp native backend is not implemented", body.get("message").?.string);
+        try std.testing.expectEqual(false, body.get("details").?.object.get("backend_implemented").?.bool);
         for (0..MAX_SITES) |i| {
             try std.testing.expectEqual(@as(c_int, @intFromEnum(SsgState.empty)), ssg_state(@intCast(i)));
         }

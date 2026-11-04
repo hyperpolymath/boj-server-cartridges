@@ -20,6 +20,8 @@ fn errJson(buf: []u8, msg: []const u8) []u8 {
     return std.fmt.bufPrint(buf, "{{\"success\":false,\"error\":\"{s}\"}}", .{msg}) catch buf[0..0];
 }
 
+/// Return 503 for recognised SSG tools and 404 for unknown tools; the request
+/// body is ignored. The response body uses `resp` and is empty if it is too small.
 fn dispatch(tool: []const u8, _body: []const u8, resp: []u8) Response {
     _ = _body;
     if (std.mem.eql(u8, tool, "ssg_load_content") or
@@ -104,6 +106,8 @@ const AdapterProto = enum { rest, grpc, graphql };
 const CONN_BUF_LEN: usize = 16 * 1024;
 const HDR_BUF_LEN: usize = 1024;
 
+/// Handle one request using the selected protocol and close the stream.
+/// Read and write errors end the connection without being returned.
 fn handleConnection(io: std.Io, stream: std.Io.net.Stream, proto: AdapterProto) void {
     defer stream.close(io);
 

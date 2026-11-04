@@ -68,7 +68,8 @@ fn isValidTransition(from: SsgState, to: SsgState) bool {
 
 // Internal model operations: these are deliberately not C-ABI exports. Their
 // transitions preserve the design experiment, not an implementation of an SSG.
-/// Model content loading into a new slot. Returns slot index or -1 on failure.
+/// Model content loading into a free slot using a valid SsgEngine code and content hash.
+/// Returns the slot index, or -1 if all slots are active.
 fn ssg_load_content(engine: c_int, content_hash: u32) c_int {
     mutex.lock();
     defer mutex.unlock();
@@ -84,7 +85,9 @@ fn ssg_load_content(engine: c_int, content_hash: u32) c_int {
     return -1; // No slots available
 }
 
-/// Build the static site.
+/// Mark a loaded or already built model slot as built; no site is generated.
+/// Returns 0 on success, -1 for an invalid or inactive slot, or -2 for an
+/// invalid state transition.
 fn ssg_build(slot_idx: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
@@ -97,7 +100,9 @@ fn ssg_build(slot_idx: c_int) c_int {
     return 0;
 }
 
-/// Start preview server. REQUIRES state to be Built (not ContentLoaded).
+/// Mark a built model slot as previewing; no preview server is started.
+/// Returns 0 on success, -1 for an invalid or inactive slot, or -2 if the
+/// slot is not built.
 fn ssg_preview(slot_idx: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
@@ -113,6 +118,8 @@ fn ssg_preview(slot_idx: c_int) c_int {
 }
 
 /// Mark preview as complete, transition to ReadyToDeploy.
+/// Returns 0 on success, -1 for an invalid or inactive slot, or -2 if the
+/// slot is not previewing.
 fn ssg_ready_deploy(slot_idx: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
@@ -125,8 +132,10 @@ fn ssg_ready_deploy(slot_idx: c_int) c_int {
     return 0;
 }
 
-/// Deploy the site. REQUIRES state to be ReadyToDeploy (not Built).
-/// This is the key safety invariant: you cannot deploy without previewing first.
+/// Mark a model slot as deployed without deploying a site. The slot must be
+/// ReadyToDeploy, so the model cannot skip previewing.
+/// Returns 0 on success, -1 for an invalid or inactive slot, or -2 if the
+/// slot is not ready to deploy.
 fn ssg_deploy(slot_idx: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
@@ -141,7 +150,9 @@ fn ssg_deploy(slot_idx: c_int) c_int {
     return 0;
 }
 
-/// Clean build artifacts and reset to Empty.
+/// Release a model slot in ReadyToDeploy, Deployed or SsgError state; no
+/// files are removed. Returns 0 on success, -1 for an invalid or inactive
+/// slot, or -2 for an invalid state transition.
 fn ssg_clean(slot_idx: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
@@ -156,7 +167,8 @@ fn ssg_clean(slot_idx: c_int) c_int {
     return 0;
 }
 
-/// Get the state of a site.
+/// Get a slot's model state, or Empty for an inactive slot. Returns -1 for
+/// an out-of-range slot index.
 fn ssg_state(slot_idx: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
@@ -166,7 +178,7 @@ fn ssg_state(slot_idx: c_int) c_int {
     return @intFromEnum(sites[idx].state);
 }
 
-/// Validate a model state transition.
+/// Return 1 if the transition between two valid SsgState codes is allowed, else 0.
 fn ssg_can_transition(from: c_int, to: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
@@ -175,7 +187,7 @@ fn ssg_can_transition(from: c_int, to: c_int) c_int {
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
-/// Reset all sites (for testing).
+/// Reset all model slots to Empty and clear their content hashes.
 fn ssg_reset() void {
     mutex.lock();
     defer mutex.unlock();
@@ -221,9 +233,12 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 
 pub const shim = @import("cartridge_shim.zig");
 
-/// Dispatch the cartridge.json MCP tools. No native SSG backend is wired in.
-/// Preserve the contract and state-machine model without reporting an
-/// unimplemented build or other operation as successful.
+/// Report the cartridge.json MCP tools as unavailable; json_args is ignored.
+/// For a recognised tool, write an unavailable JSON result and return
+/// RC_RUNTIME_ERROR. `in_out_len` supplies the output capacity in bytes and
+/// receives the written or required length. An undersized buffer returns
+/// RC_BUFFER_TOO_SMALL; null required pointers return RC_BAD_ARGS and an
+/// unknown tool returns RC_UNKNOWN_TOOL.
 pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,

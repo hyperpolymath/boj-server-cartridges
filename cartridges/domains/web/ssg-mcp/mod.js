@@ -7,6 +7,13 @@
 
 const TIMEOUT_MS = 15_000;
 
+/**
+ * POST JSON to path appended to the trimmed SSG_BACKEND_URL. Missing or blank
+ * configuration returns 503 without a request. Returns the backend status and
+ * JSON data, or a non-JSON error as data with the original status. An
+ * AbortError reaching the request handler returns 504; other errors caught by
+ * that handler return 503. The request is given a 15-second abort timeout.
+ */
 async function post(path, payload) {
   const baseUrl = process.env["SSG_BACKEND_URL"]?.trim();
   if (!baseUrl) {

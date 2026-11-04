@@ -15,4 +15,4 @@ bun run build
 test -s lib/js/src/Extension.js
 
 cd -- "$repo_root"
-exec bun test tools cartridges
+exec bun test tools cartridges "$@"

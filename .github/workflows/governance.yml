@@ -3,7 +3,7 @@
 # This workflow is managed by gh actions-lock.
 # This workflow is managed by gh actions-lock.
 # governance.yml — single wrapper calling the shared estate governance bundle
-# in hyperpolymath/standards instead of carrying per-repo copies.
+# in metadatastician/standards instead of carrying per-repo copies.
 
 name: Governance
 on:
@@ -22,4 +22,4 @@ permissions:
   contents: read
 jobs:
   governance:
-    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@9e9513b11fff182b08cf8cd6c9c2272460636586
+    uses: metadatastician/standards/.github/workflows/governance-reusable.yml@d3e4b485a2af90c92a8e18af0888cd19cb132cd9

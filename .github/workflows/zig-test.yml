@@ -133,7 +133,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: Verify every cartridge_shim.zig matches the canonical template copy
+      - name: Verify attribution preservation and drift controls
+        run: bash tools/test_sync_cartridge_shim.sh
+      - name: Verify every shim implementation and licence matches the canonical template
         run: bash tools/sync_cartridge_shim.sh --check
 
   # Weekly + on-demand full-estate build: every cartridge ffi/ and adapter/,

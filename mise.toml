@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
+# Bun pin matches the canonical standards governance runtime qualified here.
+[tools]
+bun = "1.4.2"

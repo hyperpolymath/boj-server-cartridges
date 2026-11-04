@@ -15,11 +15,17 @@ Scaffolded cartridge for a Language Server Protocol implementation covering
 The cartridge directory exists, the manifest declares the LSP capability
 surface, and the source lineage is archived under `_source-archive/`. The
 adapter (`adapter/`), Idris2 ABI (`abi/`), Zig FFI (`ffi/`), and panels
-(`panels/`) are *empty* — to be filled in a follow-up PR.
+(`panels/`) contain placeholder files only.
+
+The declared LSP operations are unsupported. `mod.js:start()` explicitly
+rejects startup; the backend names and loopback port below describe the
+proposed interface, not running services. Retaining this scaffold does not
+commit to implementing every backend. See
+link:../../../../docs/SSG-OPERATIONS.adoc[the SSG operation ledger].
 
 == Source lineage
 
-The original implementation is an Elixir LSP server living in the now-archived
+The original implementation is an Elixir LSP server preserved from
 `polystack/poly-ssg/lsp/` (1522 LOC across 14 modules):
 
 ----
@@ -43,6 +49,11 @@ These files are preserved verbatim in `_source-archive/elixir-lib/` for the
 port effort. They are not built by this cartridge.
 
 == Port plan
+
+The following is a historical design sketch, not a completion requirement for
+retiring the original source. Any future implementation must select its actual
+supported operations and follow the current cartridge ABI/FFI/adapter policy;
+the earlier Deno adapter proposal below is not that current baseline.
 
 . *adapter/server.ts* — Deno LSP framing (header-and-content message loop over
   stdio), routing to per-backend dispatchers.

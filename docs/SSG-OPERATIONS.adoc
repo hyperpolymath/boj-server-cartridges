@@ -1,0 +1,130 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= SSG operation and preservation ledger
+:revdate: 2026-11-04
+
+== Decision and scope
+
+Retain the SSG interface experiments and source lineage while representing
+unimplemented operations as unavailable. No native SSG engine is enabled by
+this decision. A later working successor is optional, separately scoped work;
+it must name its supported engine and supply real source-to-output evidence.
+Completing every historical experimental backend is not a preservation gate.
+
+This ledger covers `cartridges/domains/web/ssg-mcp` and `ssg-lsp`. It does not
+declare the wider Polystack repository retired or establish parity with every
+Poly SSG feature. Historical source retention, a working successor and a
+deliberately unsupported operation are separate outcomes.
+
+== Operation dispositions
+
+[cols="2,3,4",options="header"]
+|===
+|Surface |Current disposition |Requirement for future support
+
+|`ssg_load_content`
+|Native dispatch unavailable. The internal model accepts an engine code and
+content hash; it does not read a source directory.
+|A named backend with confined source access and input-validation tests.
+
+|`ssg_build`
+|Native dispatch unavailable. A model transition to `built` is not an HTML build.
+|Pinned generator/toolchain, executed source-to-output fixture and inspected
+HTML, with failure and timeout controls.
+
+|`ssg_preview`
+|Native dispatch unavailable. No preview process is started by the model.
+|Tested process lifecycle, loopback binding, port ownership and shutdown.
+
+|`ssg_deploy`
+|Native dispatch unavailable. No deployment provider is implemented by the model.
+|Separately authorised effects, scoped credentials, dry-run behaviour and
+provider-specific evidence. A local build alone cannot qualify deployment.
+
+|`ssg_clean`
+|Native dispatch unavailable. The model releases a slot without deleting files.
+|Confined output paths, refusal of paths outside the output root and verified
+cleanup of only intended artefacts.
+
+|SSG LSP initialise, diagnostics, hover, completion and command execution
+|Unsupported scaffold. `start()` throws; archived Elixir source is not built
+by this cartridge. No proposed backend is currently qualified here.
+|A deliberately selected protocol/engine scope with actual framing, request,
+response and negative-case tests. Supporting every proposed backend is optional.
+|===
+
+The nine state-model functions in `ssg_ffi.zig` remain internal and tested.
+They are not exported as real SSG operations. The five ADR-0006 cartridge
+symbols remain the public native ABI. A recognised tool returns
+`RC_RUNTIME_ERROR` with an unavailable error; buffer-size and unknown-tool
+errors retain their existing contracts. The native REST, gRPC-compat and
+GraphQL adapter returns 503 for recognised SSG operations.
+
+== Explicit external HTTP backend
+
+`ssg-mcp/mod.js` retains an optional forwarding path for a caller-owned service.
+`SSG_BACKEND_URL` must be set explicitly; missing or blank configuration
+returns 503 without a network request. There is no implicit backend at
+`127.0.0.1:7742`. The cartridge neither starts nor provisions a backend.
+
+The forwarder sends the five declared operations to the corresponding
+`/api/v1/ssg_*` endpoints and preserves the service's status and JSON result.
+Its loopback fixture tests demonstrate request and response transport only.
+They do not qualify a generator, authorise deployment or establish that a
+service exists in any external environment. Keep adapters internal and use
+the host's governed ingress and effect policy for an actual service.
+
+The current host menu and generated registry catalogue default missing
+`available` to false; neither SSG manifest opts in. Direct calls must remain
+explicitly unavailable too, because catalogue metadata alone does not prevent
+a caller from invoking an adapter.
+
+== Known source-level consumers
+
+[cols="2,4,3",options="header"]
+|===
+|Consumer |Actual route |Current boundary
+|BoJ host catalogue and invocation
+|The host fetches cartridges from this registry into a flat cache. Its menu
+defaults `available` to false. Direct invocation uses the declared entrypoints.
+|Metadata is not a working-backend receipt; native and unconfigured JavaScript
+calls must reject explicitly.
+|`stack-orchestrator-mcp/adapter/lsp_client.js`
+|`poly-ssg` and `ssg-lsp` resolve to `domains/web/ssg-lsp/adapter/server.js`.
+|That server does not exist. The stdio client reports closed-output or exchange
+failure; its route mapping is not implementation evidence.
+|`orchestrator-lsp-mcp/adapter/lib/orchestrator/`
+|`StackParser` includes SSG with default port 9009; `Planner` routes Markdown,
+AsciiDoc and reStructuredText to that domain. The client pool handles the
+configured service, not the archived source.
+|No SSG service is supplied here. Missing or failed domain replies contribute
+no result in `Executor`; an empty merged response does not verify diagnostics.
+|===
+
+These are inspected code paths, not a claim that an external deployment or
+operator-owned backend was observed. They do not import or build the preserved
+Poly SSG source. Restoring one of them is a separate, explicitly configured
+successor decision. The LSP scaffold's proposed port 5189 and the orchestrator's
+default port 9009 are historical declarations, not evidence of matching services.
+
+== Retained value and finite retirement boundary
+
+* `ssg-mcp/abi/` and the internal FFI model retain the pipeline ordering idea
+  and its tests without implying that a build, preview or deployment occurred.
+* `ssg-lsp/_source-archive/` retains the historical Elixir source with its
+  existing notices. The scaffold's port sketch is not an implementation promise.
+* `hyperpolymath/ssg-collection` remains the separate experiment collection;
+  source presence there does not qualify a BoJ operation.
+* `stuff-of-awe/awesome-ssgs` is the public discovery and comparison home. It
+  carries original educational material and honest status labels, not this
+  cartridge's executable backend.
+
+The original Poly SSG source can be treated as historical and unsupported
+after its preservation receipt and consumer dispositions are accepted. That
+must not be described as functional migration. No archival or deletion is
+performed by this ledger, and non-SSG Polystack components need their own review.
+
+https://github.com/hyperpolymath/boj-server-cartridges/issues/165[Issue #165]
+remains the existing tracker for any selected qualified successor. Its real
+build acceptance must be met before claiming such a successor; this change
+only establishes truthful unavailability and retained source value.

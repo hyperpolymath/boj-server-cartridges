@@ -9,13 +9,21 @@ Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 == Overview
 
-Static site generator (Hugo, Zola, Astro, Casket)
+Experimental SSG contracts, a native state-machine model, and an HTTP
+forwarder for an explicitly provisioned backend. This cartridge does not ship
+a generator backend or establish support for Hugo, Zola, Astro or Casket.
+
+Native tool calls are unavailable. The JavaScript entry point returns 503
+without `SSG_BACKEND_URL`; there is no assumed service on port 7742. Setting
+that variable enables transport only, not qualification of the supplied
+backend. See link:../../../../docs/SSG-OPERATIONS.adoc[the operation ledger]
+for the disposition of each operation and the separate source-retirement scope.
 
 == Tools (5)
 
 [cols="2,4"]
 |===
-| Tool | Description
+| Declared tool | Intended operation (native implementation unavailable)
 
 | `ssg_load_content` | Load content from a source directory
 | `ssg_build` | Build the static site
@@ -32,9 +40,9 @@ Three-layer stack per the BoJ cartridge standard:
 |===
 | Layer | Language | Purpose
 
-| ABI    | Idris2 | Formally verified state machine with dependent-type proofs
-| FFI    | Zig    | C-ABI implementation: session pool, action metrics, thread safety
-| Adapter| Zig    | Adapter bridge to the BoJ unified adapter protocol
+| ABI    | Idris2 | State-machine contract; its transitions do not prove that a generator ran
+| FFI    | Zig    | Internal process-local model and ADR-0006 dispatch that reports unavailability
+| Adapter| Zig    | Loopback transport returning 503 for the unimplemented operations
 |===
 
 == Building
@@ -42,18 +50,27 @@ Three-layer stack per the BoJ cartridge standard:
 [source,bash]
 ----
 # ABI (Idris2)
-cd abi && idris2 --check *.idr
+(cd abi && idris2 --check SsgMcp/SafeSsg.idr)
 
 # FFI (Zig)
-cd ffi && zig build
-cd ffi && zig build test
+(cd ffi && zig build && zig build test)
 
 # Adapter (Zig)
-cd adapter && zig build
+(cd adapter && zig build && zig build test)
 ----
+
+These checks exercise model, dispatch and transport boundaries. They do not
+build, preview, deploy or remove a site. JavaScript availability and loopback
+HTTP transport fixtures run with `bun test tests/availability_test.js` from
+this cartridge directory; the fixture backend performs no SSG operation.
 
 == Status
 
-Alpha (CRG D). Cartridge metadata declared in `cartridge.json`; 5 tool(s) exposed.
-Not yet dogfooded externally. See `docs/READINESS.md` at repo root for the
-project-wide grade table and `docs/practice/DOGFOOD-LOG.adoc` for usage evidence.
+Retained experimental interface; no native SSG operation is qualified. Five
+tool names remain declared in `cartridge.json` without an availability opt-in.
+The host catalogue defaults that omission to unavailable. Direct native calls
+also fail explicitly rather than returning canned success. No external
+dogfood or generator execution is claimed.
+
+https://github.com/hyperpolymath/boj-server-cartridges/issues/165[Issue #165]
+tracks any selected working successor separately from historical preservation.

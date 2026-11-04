@@ -5,20 +5,16 @@
 //
 // Three-protocol BoJ adapter: REST (port 9292), gRPC-compat (port 9293),
 // GraphQL (port 9294).
-// Replaces the banned zig adapter (ssg_adapter.v).
+// The transport exists, but no SSG backend is wired into native dispatch.
 
 const std = @import("std");
 const ffi = @import("ssg_ffi");
 
 const REST_PORT: u16 = 9292;
 const GRPC_PORT: u16 = 9293;
-const GQL_PORT:  u16 = 9294;
+const GQL_PORT: u16 = 9294;
 
 const Response = struct { status: u16, body: []const u8 };
-
-fn okJson(buf: []u8, msg: []const u8) []u8 {
-    return std.fmt.bufPrint(buf, "{{\"success\":true,\"message\":\"{s}\"}}", .{msg}) catch buf[0..0];
-}
 
 fn errJson(buf: []u8, msg: []const u8) []u8 {
     return std.fmt.bufPrint(buf, "{{\"success\":false,\"error\":\"{s}\"}}", .{msg}) catch buf[0..0];
@@ -26,20 +22,13 @@ fn errJson(buf: []u8, msg: []const u8) []u8 {
 
 fn dispatch(tool: []const u8, _body: []const u8, resp: []u8) Response {
     _ = _body;
-    if (std.mem.eql(u8, tool, "ssg_load_content")) {
-        return .{ .status = 200, .body = okJson(resp, "ssg_load_content forwarded") };
-    }
-    if (std.mem.eql(u8, tool, "ssg_build")) {
-        return .{ .status = 200, .body = okJson(resp, "ssg_build forwarded") };
-    }
-    if (std.mem.eql(u8, tool, "ssg_preview")) {
-        return .{ .status = 200, .body = okJson(resp, "ssg_preview forwarded") };
-    }
-    if (std.mem.eql(u8, tool, "ssg_deploy")) {
-        return .{ .status = 200, .body = okJson(resp, "ssg_deploy forwarded") };
-    }
-    if (std.mem.eql(u8, tool, "ssg_clean")) {
-        return .{ .status = 200, .body = okJson(resp, "ssg_clean forwarded") };
+    if (std.mem.eql(u8, tool, "ssg_load_content") or
+        std.mem.eql(u8, tool, "ssg_build") or
+        std.mem.eql(u8, tool, "ssg_preview") or
+        std.mem.eql(u8, tool, "ssg_deploy") or
+        std.mem.eql(u8, tool, "ssg_clean"))
+    {
+        return .{ .status = 503, .body = errJson(resp, "ssg-mcp native backend is not implemented") };
     }
     return .{ .status = 404, .body = errJson(resp, "unknown tool") };
 }
@@ -75,6 +64,32 @@ fn dispatchGraphql(body: []const u8, resp: []u8) Response {
     if (std.mem.indexOf(u8, body, "ssg_clean") != null)
         return dispatch("ssg_clean", body, resp);
     return .{ .status = 400, .body = errJson(resp, "unrecognised GraphQL operation") };
+}
+
+test "all SSG operations are unavailable on each native protocol" {
+    const tools = [_][]const u8{ "ssg_load_content", "ssg_build", "ssg_preview", "ssg_deploy", "ssg_clean" };
+    var response: [256]u8 = undefined;
+    var path: [128]u8 = undefined;
+    for (tools) |tool| {
+        const rest_path = try std.fmt.bufPrint(&path, "/tools/{s}", .{tool});
+        const rest = dispatchRest(rest_path, "{}", &response);
+        try std.testing.expectEqual(@as(u16, 503), rest.status);
+        try std.testing.expect(std.mem.indexOf(u8, rest.body, "\"success\":false") != null);
+
+        const grpc_path = try std.fmt.bufPrint(&path, "/Ssg/{s}", .{tool});
+        const grpc = dispatchGrpc(grpc_path, "{}", &response);
+        try std.testing.expectEqual(@as(u16, 503), grpc.status);
+
+        const graphql = dispatchGraphql(tool, &response);
+        try std.testing.expectEqual(@as(u16, 503), graphql.status);
+    }
+}
+
+test "unknown operations remain distinct from an unavailable backend" {
+    var response: [256]u8 = undefined;
+    try std.testing.expectEqual(@as(u16, 404), dispatchRest("/tools/unknown", "{}", &response).status);
+    try std.testing.expectEqual(@as(u16, 404), dispatchGrpc("/Ssg/unknown", "{}", &response).status);
+    try std.testing.expectEqual(@as(u16, 400), dispatchGraphql("unknown", &response).status);
 }
 
 // ── Wire I/O (Zig 0.16 `std.Io.net`) ────────────────────────────────────
@@ -121,9 +136,10 @@ fn handleConnection(io: std.Io, stream: std.Io.net.Stream, proto: AdapterProto) 
     var hdr_buf: [HDR_BUF_LEN]u8 = undefined;
     var stream_writer = stream.writer(io, &hdr_buf);
     const w = &stream_writer.interface;
+    const reason = if (result.status == 503) "Service Unavailable" else "Error";
     w.print(
-        "HTTP/1.1 {d} OK\r\nContent-Type: {s}\r\nContent-Length: {d}\r\nConnection: close\r\n\r\n",
-        .{ result.status, ct, result.body.len },
+        "HTTP/1.1 {d} {s}\r\nContent-Type: {s}\r\nContent-Length: {d}\r\nConnection: close\r\n\r\n",
+        .{ result.status, reason, ct, result.body.len },
     ) catch return;
     w.writeAll(result.body) catch return;
     w.flush() catch return;

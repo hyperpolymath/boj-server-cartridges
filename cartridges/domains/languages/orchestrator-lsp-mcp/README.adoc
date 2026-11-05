@@ -14,6 +14,14 @@ proof, observability, browser) via a single GenLSP supervisor. Exposes a
 unified `textDocument/*` interface to editors and AI agents — they connect
 once and get cross-domain intelligence.
 
+Domain routing does not establish backend availability. In particular, the
+shipped `ssg-lsp` is an unsupported scaffold: no SSG language server is supplied
+by this registry. The planner can route Markdown, AsciiDoc and reStructuredText
+to a caller-provided SSG service, with default port 9009 in `StackParser`, but
+an absent or failed domain contributes no result. An empty merged response is
+not evidence that SSG diagnostics ran. See
+link:../../../../docs/SSG-OPERATIONS.adoc[the SSG operation and consumer ledger].
+
 == Architecture
 
 ----
@@ -30,7 +38,7 @@ once and get cross-domain intelligence.
          ├──→ poly-queue-lsp (NATS/RabbitMQ)
          ├──→ poly-secret-lsp (Vault/SOPS)
          ├──→ poly-git-lsp (GitHub/GitLab)
-         ├──→ poly-ssg-lsp (60+ SSGs)
+         ├──→ SSG domain (external backend required; shipped LSP unsupported)
          ├──→ poly-proof-lsp (Coq/Lean/Isabelle)
          ├──→ poly-observability-lsp (Prometheus/Grafana)
          └──→ claude-firefox-lsp (browser)

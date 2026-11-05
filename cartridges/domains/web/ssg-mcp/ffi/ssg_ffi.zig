@@ -3,9 +3,9 @@
 //
 // SSG-MCP Cartridge — Zig FFI bridge for static site generation operations.
 //
-// Implements the build pipeline state machine from SafeSsg.idr.
-// Ensures no deployment can execute without a preceding build and preview,
-// and no preview can run without a successful build.
+// Models the build pipeline state machine from SafeSsg.idr. These process-local
+// transitions do not read content, invoke a generator, start a preview server,
+// deploy a site or clean files. Native tool dispatch is explicitly unavailable.
 
 const std = @import("std");
 
@@ -66,8 +66,11 @@ fn isValidTransition(from: SsgState, to: SsgState) bool {
     };
 }
 
-/// Load content into a new site. Returns slot index or -1 on failure.
-pub export fn ssg_load_content(engine: c_int, content_hash: u32) c_int {
+// Internal model operations: these are deliberately not C-ABI exports. Their
+// transitions preserve the design experiment, not an implementation of an SSG.
+/// Model content loading into a free slot using a valid SsgEngine code and content hash.
+/// Returns the slot index, or -1 if all slots are active.
+fn ssg_load_content(engine: c_int, content_hash: u32) c_int {
     mutex.lock();
     defer mutex.unlock();
     for (&sites, 0..) |*slot, i| {
@@ -82,8 +85,10 @@ pub export fn ssg_load_content(engine: c_int, content_hash: u32) c_int {
     return -1; // No slots available
 }
 
-/// Build the static site.
-pub export fn ssg_build(slot_idx: c_int) c_int {
+/// Mark a loaded or already built model slot as built; no site is generated.
+/// Returns 0 on success, -1 for an invalid or inactive slot, or -2 for an
+/// invalid state transition.
+fn ssg_build(slot_idx: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SITES) return -1;
@@ -95,8 +100,10 @@ pub export fn ssg_build(slot_idx: c_int) c_int {
     return 0;
 }
 
-/// Start preview server. REQUIRES state to be Built (not ContentLoaded).
-pub export fn ssg_preview(slot_idx: c_int) c_int {
+/// Mark a built model slot as previewing; no preview server is started.
+/// Returns 0 on success, -1 for an invalid or inactive slot, or -2 if the
+/// slot is not built.
+fn ssg_preview(slot_idx: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SITES) return -1;
@@ -111,7 +118,9 @@ pub export fn ssg_preview(slot_idx: c_int) c_int {
 }
 
 /// Mark preview as complete, transition to ReadyToDeploy.
-pub export fn ssg_ready_deploy(slot_idx: c_int) c_int {
+/// Returns 0 on success, -1 for an invalid or inactive slot, or -2 if the
+/// slot is not previewing.
+fn ssg_ready_deploy(slot_idx: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SITES) return -1;
@@ -123,9 +132,11 @@ pub export fn ssg_ready_deploy(slot_idx: c_int) c_int {
     return 0;
 }
 
-/// Deploy the site. REQUIRES state to be ReadyToDeploy (not Built).
-/// This is the key safety invariant: you cannot deploy without previewing first.
-pub export fn ssg_deploy(slot_idx: c_int) c_int {
+/// Mark a model slot as deployed without deploying a site. The slot must be
+/// ReadyToDeploy, so the model cannot skip previewing.
+/// Returns 0 on success, -1 for an invalid or inactive slot, or -2 if the
+/// slot is not ready to deploy.
+fn ssg_deploy(slot_idx: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SITES) return -1;
@@ -139,8 +150,10 @@ pub export fn ssg_deploy(slot_idx: c_int) c_int {
     return 0;
 }
 
-/// Clean build artifacts and reset to Empty.
-pub export fn ssg_clean(slot_idx: c_int) c_int {
+/// Release a model slot in ReadyToDeploy, Deployed or SsgError state; no
+/// files are removed. Returns 0 on success, -1 for an invalid or inactive
+/// slot, or -2 for an invalid state transition.
+fn ssg_clean(slot_idx: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SITES) return -1;
@@ -154,8 +167,9 @@ pub export fn ssg_clean(slot_idx: c_int) c_int {
     return 0;
 }
 
-/// Get the state of a site.
-pub export fn ssg_state(slot_idx: c_int) c_int {
+/// Get a slot's model state, or Empty for an inactive slot. Returns -1 for
+/// an out-of-range slot index.
+fn ssg_state(slot_idx: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SITES) return -1;
@@ -164,8 +178,8 @@ pub export fn ssg_state(slot_idx: c_int) c_int {
     return @intFromEnum(sites[idx].state);
 }
 
-/// Validate a state transition (C-ABI export).
-pub export fn ssg_can_transition(from: c_int, to: c_int) c_int {
+/// Return 1 if the transition between two valid SsgState codes is allowed, else 0.
+fn ssg_can_transition(from: c_int, to: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
     const f: SsgState = @enumFromInt(from);
@@ -173,8 +187,8 @@ pub export fn ssg_can_transition(from: c_int, to: c_int) c_int {
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
-/// Reset all sites (for testing).
-pub export fn ssg_reset() void {
+/// Reset all model slots to Empty and clear their content hashes.
+fn ssg_reset() void {
     mutex.lock();
     defer mutex.unlock();
     for (&sites) |*slot| {
@@ -185,7 +199,7 @@ pub export fn ssg_reset() void {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Standard Cartridge Interface (loader expects these 4 C-ABI symbols)
+// Standard Cartridge Interface (these four symbols plus invoke below)
 // ═══════════════════════════════════════════════════════════════════════
 
 /// Initialise the ssg-mcp cartridge. Resets all site slots.
@@ -219,8 +233,12 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 
 pub const shim = @import("cartridge_shim.zig");
 
-/// Dispatch the cartridge.json MCP tools. Grade D Alpha — each arm
-/// returns a stub JSON body shaped to the tool's intended response.
+/// Report the cartridge.json MCP tools as unavailable; json_args is ignored.
+/// For a recognised tool, write an unavailable JSON result and return
+/// RC_RUNTIME_ERROR. `in_out_len` supplies the output capacity in bytes and
+/// receives the written or required length. An undersized buffer returns
+/// RC_BUFFER_TOO_SMALL; null required pointers return RC_BAD_ARGS and an
+/// unknown tool returns RC_UNKNOWN_TOOL.
 pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
@@ -230,20 +248,14 @@ pub export fn boj_cartridge_invoke(
     _ = json_args;
     if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
 
-    const body: []const u8 =     if (shim.toolIs(tool_name, "ssg_load_content"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "ssg_build"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "ssg_preview"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "ssg_deploy"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "ssg_clean"))
-        "{\"result\":{\"status\":\"stub\"}}"
-else
-    return shim.RC_UNKNOWN_TOOL;
+    if (!shim.toolIs(tool_name, "ssg_load_content") and
+        !shim.toolIs(tool_name, "ssg_build") and
+        !shim.toolIs(tool_name, "ssg_preview") and
+        !shim.toolIs(tool_name, "ssg_deploy") and
+        !shim.toolIs(tool_name, "ssg_clean")) return shim.RC_UNKNOWN_TOOL;
 
-    return shim.writeResult(out_buf, in_out_len, body);
+    const rc = shim.writeResult(out_buf, in_out_len, "{\"success\":false,\"status\":\"unavailable\",\"error\":\"backend_unavailable\",\"message\":\"ssg-mcp native backend is not implemented\",\"details\":{\"backend_implemented\":false}}");
+    return if (rc == shim.RC_SUCCESS) shim.RC_RUNTIME_ERROR else rc;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -326,7 +338,8 @@ test "state transition validation" {
 // ADR-0006 invoke dispatch tests
 // ═══════════════════════════════════════════════════════════════════════
 
-test "invoke: each declared tool succeeds" {
+test "invoke: each declared tool reports unavailable without changing model state" {
+    ssg_reset();
     var buf: [256]u8 = undefined;
     const tools = [_][]const u8{
         "ssg_load_content",
@@ -338,8 +351,18 @@ test "invoke: each declared tool succeeds" {
     for (tools) |t| {
         var len: usize = buf.len;
         const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
-        try std.testing.expectEqual(@as(i32, 0), rc);
-        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
+        try std.testing.expectEqual(shim.RC_RUNTIME_ERROR, rc);
+        const parsed = try std.json.parseFromSlice(std.json.Value, std.testing.allocator, buf[0..len], .{});
+        defer parsed.deinit();
+        const body = parsed.value.object;
+        try std.testing.expectEqual(false, body.get("success").?.bool);
+        try std.testing.expectEqualStrings("unavailable", body.get("status").?.string);
+        try std.testing.expectEqualStrings("backend_unavailable", body.get("error").?.string);
+        try std.testing.expectEqualStrings("ssg-mcp native backend is not implemented", body.get("message").?.string);
+        try std.testing.expectEqual(false, body.get("details").?.object.get("backend_implemented").?.bool);
+        for (0..MAX_SITES) |i| {
+            try std.testing.expectEqual(@as(c_int, @intFromEnum(SsgState.empty)), ssg_state(@intCast(i)));
+        }
     }
 }
 
